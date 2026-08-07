@@ -33,7 +33,10 @@ printf '%s' "$out" | grep -qE 'harness +[0-9]+ / [0-9]+' \
   && ok "bench (guards) produces an arm table" \
   || bad "bench (guards) produces an arm table" "$(printf '%s' "$out" | tail -2)"
 
-n_inc="$(grep -c '^inc ' evals/incidents.sh 2>/dev/null)"
+# Both declaration forms count: `inc` for Bash cases, `inc_tool` for the rest.
+# Matching only '^inc ' undercounts, and then this gate tracks a number the
+# benchmark itself never prints.
+n_inc="$(grep -cE '^inc(_tool)? ' evals/incidents.sh 2>/dev/null)"
 [ "${n_inc:-0}" -ge 40 ] && ok "incident corpus still has $n_inc cases" \
   || bad "incident corpus size" "found ${n_inc:-0}, expected >= 40"
 
