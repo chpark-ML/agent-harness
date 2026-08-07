@@ -34,7 +34,17 @@ exceed a short timeout, and every arm reads as zero.
 `harness-slides:results-deck` for a plugin skill or a bare `slide-deck` for a
 project skill. `--cwd` is where the prompts run, which is what decides whose
 `.claude/skills` are loaded — that is how another repo's skills get measured
-without installing anything. Runs on the stock macOS python3 (3.9) — the
+without installing anything.
+
+`--cwd` points a real agent at a real working tree. What keeps that tree clean
+is that this script kills the session at the first tool call, before the tool
+runs — 36 runs against a live repo left nothing behind. That property belongs
+to this script and not to the act of prompting: one hand-run `claude -p` in the
+same directory, with nothing killing it, wrote a file into that repo. Prefer a
+scratch clone when the target is someone's live tree, and check `git status`
+there afterwards either way.
+
+Runs on the stock macOS python3 (3.9) — the
 `from __future__ import annotations` above is what makes that true, and it is
 why skill-creator's own run_eval.py does not run there.
 """
@@ -110,7 +120,9 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=2)
     ap.add_argument("--timeout", type=int, default=90)
     ap.add_argument("--cwd", help="directory the prompts run in; project skills are "
-                                  "loaded from <cwd>/.claude/skills. Defaults to here.")
+                                  "loaded from <cwd>/.claude/skills. Defaults to here. "
+                                  "Runs a real agent there — prefer a scratch clone over "
+                                  "a live working tree.")
     a = ap.parse_args()
 
     raw = json.loads(Path(a.eval_set).read_text())
@@ -160,7 +172,15 @@ def main() -> int:
     print(f"{len(cases)} prompts x {a.runs} runs, serial, {a.timeout}s cap")
     print(f"model={os.environ.get('BENCH_MODEL','opus')} "
           f"effort={os.environ.get('BENCH_EFFORT','high')}   "
-          f"(BENCH_MODEL / BENCH_EFFORT to change)\n")
+          f"(BENCH_MODEL / BENCH_EFFORT to change)")
+    # Said at the moment it is true, not only in the docstring: an agent is about
+    # to run in a directory the caller named, and the caller may not own it.
+    if a.cwd:
+        print(f"cwd={a.cwd}\n"
+              f"  prompts run there as a real agent. Sessions are killed at the first\n"
+              f"  tool call, so nothing should be written — check `git status` there\n"
+              f"  afterwards anyway, and prefer a scratch clone for someone's live tree.")
+    print()
 
     rows, timeouts = [], 0
     for c in cases:
