@@ -299,5 +299,5 @@ description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대
 ├── scripts/verify-{install,frontmatter}.sh
 ├── Makefile · CLAUDE.md · .claude/     # 저장소 자체 개발용
 ├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · 플러그인 매니페스트
-└── docs/ (agent-layer.md · adr/0001..0009 · hooks/*.md)
+└── docs/ (agent-layer.md · adr/0001..0011 · hooks/*.md)
 ```
