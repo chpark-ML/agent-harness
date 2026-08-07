@@ -75,11 +75,16 @@
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
 | 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복. 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
 | Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 한국어 트리거와 negative routing (영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
+| 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
 | 매니페스트 | `claude plugin validate --strict` — 별도 CI job. 나머지 검증은 CLI 없이 돈다 |
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12 — 합계 356. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 50 파일 + 자체 케이스 19 — 합계 425. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+
+**문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
+
+**그리고 오탐 셋을 먼저 냈다.** 동결 코퍼스(`evals/prose-corpus.md`)는 과거 문서의 사본이라 링크가 원본 위치 기준이고, `declarative/` 페이로드의 상대 링크는 *설치 후* 위치 기준으로 맞다. 셋 다 검사기를 고쳐서 없앴다 — 문서를 고치는 방향으로 갔으면 맞는 것을 틀리게 만들었을 것이다. 마지막 하나가 특히 그렇다: 원장이 깨진 링크를 *증거로 인용* 하고 있었는데, 인라인 코드를 벗기지 않아 그 인용을 진짜 링크로 셌다. **가드를 넓힐 때 반대 방향 케이스를 같이 넣으라는 규율이 여기서도 그대로 적용된다.**
 
 **컨텍스트 비용** (`claude plugin details` 실측, 2026-08-07):
 
