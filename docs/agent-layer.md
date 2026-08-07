@@ -1,0 +1,294 @@
+# Agent Layer — 하네스의 정의 · 진행 · 검증
+
+본 저장소의 **유일한 single source of truth**. 하네스가 무엇을 다루고, 다음에 무엇을 만들며, 동작을 어떻게 검증하는지는 여기에만 적는다 ([ADR-0004](adr/0004-single-source-of-truth.md)).
+
+## 1. 정의
+
+| 산출물 | 위치 | 역할 |
+|---|---|---|
+| 플러그인 | `plugins/harness-{core,dev,research,python,typescript}/` | 훅 · 스킬 · 커맨드 · 검증기 · `bin/harnessctl`. Claude Code 가 직접 로드한다 |
+| 선언적 설치기 | `plugins/harness-core/bin/harnessctl` | 플러그인이 못 나르는 것 — permissions · `CLAUDE.md` · `rules` — 을 대상에 쓰고 대칭 제거 |
+| Bootstrap | `install.sh` | 한 명령으로 전체 설치 — marketplace 등록 → 플러그인 → `harnessctl init` → 언어 서버 → `doctor`. 하네스 로직은 담지 않고 두 절반을 순서대로 호출한다 |
+| 검증 러너 | `plugins/harness-core/scripts/verify-*.sh` · `scripts/verify-{install,frontmatter}.sh` | 훅 동작 · harnessctl 왕복 · frontmatter |
+
+**Non-goal** — 애플리케이션 코드, 빌드 시스템, 언어·프레임워크별 스캐폴딩, 트래킹·배포 백엔드. 이는 컨슈머 프로젝트의 책임이다.
+
+**Non-goal 하나 더, 더 중요한 것** — *범용 작업 스킬* 을 우리가 만들지 않는다. brainstorming · TDD · systematic debugging · 계획 수립 · 코드리뷰 절차 · worktree 는 Superpowers 가 이미 잘 한다. 본 저장소의 자기 몫은 **사고 방지(가드) · 규약 고정 · 안전한 설치/제거** 셋이고, 일하는 능력은 프로파일의 `dependencies` 로 조합한다.
+
+이 구분이 두 프로파일의 두께 차이를 설명한다. Superpowers 스킬 14개는 개발 워크플로를 폭넓게 덮지만 **연구 전용은 0개** — 그래서 `harness-dev` 가 우리 것으로는 얇고 (규약 1 + 스킬 1) `harness-research` 가 두꺼운 것 (규약 1 + 스킬 2 + 템플릿 5) 은 균형이 안 맞는 게 아니라 upstream 커버리지를 그대로 반영한 것이다. dev 를 두껍게 만들려는 충동이 들면 먼저 Superpowers 에 이미 있는지 확인할 것.
+
+**전제 하나** — git 저장소. `large-file-veto` 와 `check-uncommitted` 가 git 을 직접 부르고, `rules/harness/workflow.md` 98줄 중 PR 을 15회 언급하는 부분은 forge 를 가정한다. PR 흐름이 없는 저장소에서 그 절반은 무의미하고, R3(harness gap)·R5(plan 검증)는 그대로 유효하다. git 을 안 쓰는 작업은 이 하네스의 대상이 아니다.
+
+**Scope 판정 기준 하나**: 다른 도메인·다른 스택의 프로젝트에 그대로 설치해도 말이 되는가. 아니면 여기 것이 아니다.
+
+**배포 판정 기준 하나**: 플러그인이 나를 수 있는가. 훅·스킬·커맨드·에이전트·실행파일은 나를 수 있고, permissions·`CLAUDE.md`·`rules` 는 못 나른다 — 우리가 고른 경계가 아니라 플랫폼이 그은 경계다 ([ADR-0008](adr/0008-plugin-declarative-split.md)).
+
+**레벨 판정 기준 하나**: 이 자산의 청중이 *나* 인가 *팀* 인가. 가드·스킬·원칙은 나 — 머신 전체에 걸어야 설치를 잊은 저장소에 구멍이 안 난다. Path-scoped rules 와 프로젝트 고유 설정은 팀 — 커밋돼야 clone 만으로 전달된다. 스코프 자체는 이제 플러그인 시스템과 `harnessctl --scope` 가 처리한다 ([ADR-0007](adr/0007-install-levels.md)).
+
+## 2. 왜 — 프로젝트마다 다시 겪는 일
+
+매 프로젝트가 처음부터 다시 풀지 않아야 하는 문제. 각 항목은 §3 의 **한 카테고리** 가 책임진다.
+
+| 사고 / 마찰 | 빈도 | 책임 |
+|---|---|---|
+| 시크릿이 명령줄에 리터럴로 들어가 history·로그·프로세스 목록에 남음 | 흔함 | `secret-scrubber` |
+| 큰 산출물이 `git add -A` 에 쓸려 히스토리에 영구 편입 | 흔함 | `large-file-veto` |
+| 공유 마운트·타 팀 디렉터리를 절대경로로 실수로 건드림 | 사이트에 따라 | `protected-paths` |
+| AI 귀속 문구가 커밋·PR 에 남음 | 기본값이 그럼 | `ai-attribution-guard` + `includeCoAuthoredBy: false` |
+| 되돌릴 수 없는 명령 (`rm -rf`, force push, `reset --hard`) | 드물지만 치명적 | Permissions `deny` |
+| PR·커밋 규약이 프로젝트마다 drift | 매번 | `rules/harness/workflow.md` |
+| 작업이 default branch 에 쌓여 리뷰 단위가 엉킴 | 흔함 | `check-uncommitted` |
+| 세션마다 repo 상태를 도구 호출로 다시 조사 | 매 세션 | `session-brief` |
+| 리뷰 기준을 매번 말로 다시 설명 | 매번 | `dev` 모듈 |
+| 실험 결과를 나중에 재현할 수 없음 | 기본값이 그럼 | `research` 모듈 |
+| 기록이 흩어져 새 세션이 이어받지 못함 | 흔함 | `research` 모듈 |
+
+새 항목을 §7 backlog 에 올릴 때는 **본 표의 어느 줄에 대응하는지** 를 밝힌다. 대응하는 줄이 없으면 먼저 줄을 추가하고, 그 줄이 실제로 두 번 이상 발생했는지 자문한다.
+
+## 3. 카테고리 · 채택 사다리
+
+7 카테고리. **채택 순서가 곧 진행 축** — 가드레일 → 가이드 → 자동화 → 위임 → 외부 연결. 역순으로 가면 자동화가 사고를 키운다.
+
+| Phase | 카테고리 | 위치 | 현재 |
+|---|---|---|---|
+| **0** | Conventions | `CLAUDE.md` · `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
+| **0** | Permissions | `settings.json` (fragment 로 병합) | ✅ allow 42 / ask 3 / deny 8 |
+| **1** | Hooks | `plugins/harness-core/hooks/` — `hooks.json` 이 등록 | ✅ 6 (차단 4 · 정보 2) |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, 그 위에 Superpowers 14 |
+| **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 하네스 자체용 1 (`harness-reviewer`) — 컨슈머용은 없음 |
+| **3** | Slash commands | `.claude/commands/*.md` | ✅ 1 (`/verify`) |
+| **4** | MCP servers | `.mcp.json` | ⏳ 없음 |
+| **—** | 외부 플러그인 | profile 의 `dependencies` | ✅ Superpowers · LSP 2 ([ADR-0009](adr/0009-external-dependencies.md)) |
+| **—** | 외부 계측기 | 개발자가 직접 설치 (배포 안 함) | ✅ `skill-creator` — 스킬 ablation·트리거 측정 ([ADR-0011](adr/0011-ecosystem-survey.md)) |
+| **—** | 외부 npm 도구 | `harnessctl doctor` 가 PATH 점검 | ✅ `slides-grab` (slides, [ADR-0010](adr/0010-slides-profile.md)) |
+
+> Phase 0 은 가드레일, Phase 1 은 그 위의 가이드와 자동화, Phase 2 는 그 위의 분업. **앞 Phase 가 다음 Phase 의 안전망**이다.
+
+컨슈머용 sub-agent 가 아직 없는 것은 미완이 아니라 판단이다. 발명할 수는 있지만, 실제로 두 번 이상 필요했던 위임이 아직 없다.
+
+## 4. 검증 의무
+
+**검증 없이 머지된 가드는 가드가 아니라 장식이다** ([ADR-0003](adr/0003-verification-mandate.md)).
+
+| 카테고리 | 검증 |
+|---|---|
+| Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
+| 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복. 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
+| Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 한국어 트리거와 negative routing (영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
+| 매니페스트 | `claude plugin validate --strict` — 별도 CI job. 나머지 검증은 CLI 없이 돈다 |
+| 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
+| Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
+
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 33, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+
+**컨텍스트 비용** (`claude plugin details` 실측, 2026-08-07):
+
+| | 상시 로드 | 호출 시 |
+|---|---|---|
+| `harness-core` (스킬 1 + 커맨드 1) | ~390 tok | — |
+| `harness-dev` (스킬 1) | ~351 tok | — |
+| `harness-research` (스킬 2) | ~480 tok | ~1.9k · ~3k |
+| `harness-slides` (스킬 1) | ~300 tok | ~1.6k |
+| `superpowers` (스킬 14) | ~688 tok | — |
+| **배포분 합계** | **~2.2k tok / 세션** | |
+| `skill-creator` (개발용, 배포 안 함) | ~112 tok | **~10.9k** |
+
+**훅은 컨텍스트 비용이 0 이다** — `plugin details` 가 "harness-only — no model context cost" 로 분류한다. LSP 도 마찬가지다. 즉 매 세션 비용을 만드는 것은 오직 스킬 description 이다. 단가는 균일하지 않다: Superpowers 는 14개에 688 토큰이라 하나당 ~49 지만, 우리 것은 `harness-core` 2개 항목에 390, `harness-dev` 1개에 351 — 트리거를 영·한 양쪽으로 담고 negative routing 까지 넣느라 훨씬 길다. **우리 스킬 하나가 남의 것 일곱 개 값을 한다**는 뜻이고, 이것이 스킬을 늘릴 때 실제로 계산해야 하는 수치다. 이 표가 새 스킬을 추가할 때 대조할 기준선이다. `results-deck` 이 300 인 것은 그 기준선을 실제로 대본 결과다 — negative routing 을 두 방향(`slides-grab`·`research-notes`)으로 넣고도 우리 평균 아래로 들어왔다.
+
+**두 번째 축이 있다는 것도 이번에 알았다.** `skill-creator` 는 상시 112 인데 호출하면 10.9k 다 — description 은 짧고 본문이 거대하다. 우리는 정반대로 지어 왔다. 어느 쪽이 옳은지는 호출 빈도가 정한다: 자주 트리거되는 스킬은 본문이 싸야 하고, 드물게 쓰는 도구는 description 이 싸야 한다. 상시 비용만 보고 설계하면 이 축이 안 보인다.
+
+Boundary 케이스가 세 종류 중 가장 값을 한다. Block 케이스만 있는 검증기는 *막아야 할 것을 막는다* 만 증명하고 *막지 말아야 할 것을 통과시킨다* 는 증명하지 않는데, 가드가 실제로 죽는 원인은 후자다.
+
+**Fixture 가 없는 코드 경로는 검증되지 않은 코드 경로다.** 초판의 검증기는 전부 맨 `git init` 저장소를 썼고, 그래서 `check-uncommitted` 의 `origin/HEAD` 조회와 `session-brief` 의 upstream 블록 — 실제 clone 된 저장소에서 *항상* 도는 경로 — 이 한 번도 실행되지 않았다. 케이스 수가 아니라 fixture 의 다양성이 커버리지를 만든다.
+
+**의도적으로 남긴 gap 은 통과를 단정하는 케이스로 박는다.** `protected-paths` 의 경로 traversal, `ai-attribution-guard` 의 "이름이 Claude 인 사람" 오탐이 그 예다. 못 막는다 / 잘못 막는다는 사실 자체를 assert 해 두면 동작이 조용히 바뀌지 않고, 문서의 한계 절이 코드와 어긋날 수 없다.
+
+**가드를 넓힐 때는 반대 방향 케이스를 같이 넣는다.** 실제로 겪은 순서가 이렇다 — 감사에서 "`sk-` 패턴만 문자 클래스가 좁다, 오타 같다" 를 지적받아 넓혔더니, `sk-` 로 시작하는 긴 kebab-case 브랜치 이름이 전부 키로 오인돼 차단됐다. 클래스가 달랐던 것은 실수가 아니라 *형식이 달랐기* 때문이었다 (legacy 는 base62, scoped 계열만 `_-` 포함). 넓힌 방향의 block 케이스만 있었으므로 회귀가 보이지 않았다. **가드를 넓히는 변경에는 "여전히 통과해야 하는 것" 케이스가 함께 와야 한다.**
+
+**조용히 비어버리는 실패를 찾아라.** 스킬 셋이 `한국어 트리거: '...'` 를 따옴표 없는 YAML 스칼라에 담고 있었다 — 스칼라는 콜론+공백을 담을 수 없어 frontmatter 파싱이 통째로 실패했고, 그 스킬들은 **description 이 빈 채로 로드**됐다. 트리거도 negative routing 도 없이, 아무것도 깨지지 않은 얼굴로. `claude plugin validate` 가 잡아줬고 지금은 `scripts/verify-frontmatter.sh` 가 python3 만으로 같은 검사를 한다. 교훈은 "YAML 을 조심하라" 가 아니라 **어떤 실패는 에러가 아니라 빈 값으로 나타난다** 는 것이다.
+
+**설정 문법을 바꾸는 변경은 fail-open 인지 먼저 본다.** `HARNESS_PROTECTED_PATHS` 를 공백 구분에서 콜론 구분으로 바꾸자 옛 문법 `'/a /b'` 가 *한 개의* prefix 로 읽히면서 아무것도 보호하지 않는 상태가 조용히 만들어졌다. 가드가 설정 문법 때문에 가드를 멈추는 것은 실패해도 되는 방향이 아니다. 지금은 공백은 있고 콜론은 없는 값에 대해 stderr 한 줄로 경고한다.
+
+## 4b. 무엇을 기대할 수 있나 — 측정된 것과 아닌 것
+
+"하네스를 쓰면 뭐가 달라지나" 는 검증기 통과 수로 답할 수 없다. 검증기는 *우리가 의도한 대로 도는가* 를 재고, 이 질문은 *날것 대비 무엇이 달라지는가* 를 묻는다. 층마다 따로 쟀다.
+
+| 층 | 물은 것 | 결과 | 신뢰 |
+|---|---|---|---|
+| **가드** (훅) | 사고를 막나 | raw 0/29 → 하네스 **27/29**, 정상 작업 오탐 **2/24** | 결정론적. 세어본 값이라 오차 막대가 없다 |
+| **규약** (CLAUDE.md·rules) | 글이 행동을 바꾸나 | 브랜치 이름 raw 0/12 → 하네스 **10/12** | **유의** (*p* ≈ 0.00007) |
+| **스킬 라우팅** | 의도한 스킬로 가나 | **59/60** | 기술 통계. 음성 6/6 은 3회씩 확인 |
+| **발표 수치 추적** | 조작된 숫자를 잡나 | 실제 산문 193토큰 중 모양 오탐 **6 (3.1%)** | 결정론적 |
+| **LSP** | 토큰·정확도가 나아지나 | 정확도 3/3 대 3/3, 토큰 −6.3% | **결론 없음** — 이 설계로는 61% 이상만 보인다 |
+| **설치기** | 제거하면 원래대로인가 | 92 assertion | A/B 대상이 아닌 불변량 |
+
+아래는 각 줄의 근거다. **한 줄만 가져간다면 이것이다: 가드와 규약은 값을 하고, LSP 는 아직 모르며, 규약 중에도 아무것도 벌지 않는 것이 섞여 있다.**
+
+### 가드 (`make bench`)
+
+`evals/incidents.sh` 는 **검증기와 독립적으로** 쓴 53개 코퍼스다 (§2 사고 표와 실제로 벌어지는 일에서 뽑았고, 정규식을 보지 않고 썼다). 카테고리별로 attribution 5/5 · protected 6/6 · secret 10/11 · bigfile 6/7. **놓친 2건과 오탐 2건은 `docs/hooks/*.md` 가 이미 한계로 적어둔 바로 그 넷이다** — 독립 코퍼스가 문서를 재발견했으므로, 한계 서술이 정확하다는 증거이기도 하다.
+
+raw 팔이 0/0 인 것은 자명하다 (훅이 없으니 아무것도 안 막고 아무것도 안 막힌다). 의미는 그 대비가 아니라 **8% 라는 가격표** 에 있다 — 100% 를 차단하는 가드는 하루 만에 꺼지고, 그때부터 차단율은 0 이다.
+
+### 규약 (`make bench-convention`)
+
+가드도 스킬 라우팅도 쟀는데 **글로 쓴 규약이 모델 행동을 바꾸는지는 오래 재지 않았다.** 브랜치 이름 `{feat,fix,chore}-<slug>` 를 골랐다: 정규식으로 판정되어 채점에 판단이 안 들어가고, **Claude Code 기본 프롬프트에 없으며** (기본은 "default branch 면 브랜치부터" 까지만 말한다), 강제하는 훅이 없으므로 가드가 아니라 가이드 층을 잰다.
+
+| 규약 | raw | harness | 판정 |
+|---|---|---|---|
+| 브랜치 이름 | **0 / 12** | **10 / 12** | 양측 *p* ≈ 0.00007 |
+| commit subject 70자 이하 | 6 / 6 | 6 / 6 | **변별력 없음** |
+| commit 본문 존재 | 5 / 6 | 6 / 6 | 유의하지 않음 |
+
+**raw 팔의 실패 모양이 규칙이 예상한 그대로다.** 우리 규칙은 slug 에 `/` 를 금지하며 이유까지 적어두었는데 (worktree·디렉터리 이름으로 그대로 쓰인다), raw 팔이 브랜치를 팔 때마다 만든 것이 정확히 `feat/retry-backoff` 였다.
+
+**그러나 나머지 둘은 아무것도 벌지 않는다.** subject 70자 제한은 양 팔 모두 6/6 — 모델이 원래 짧게 쓴다. 규칙으로 적혀 있으면 지켜지는 것처럼 보이지만 **그 규칙이 만든 차이는 0 이다.** 이것이 `skill-creator` 의 analyzer 가 찾는 **non-discriminating assertion** 이고, §7 의 "무엇을 뺄까" 후보다.
+
+> *정정*: 브랜치 결과를 처음엔 팔당 6회로 재서 **6/6 대 0/6** 으로 기록했다. 12회로 늘리니 **10/12** 다. 결론은 유지되고 *p* 는 오히려 작아졌지만, **팔당 6회는 100% 를 100% 로 착각하게 만든다.**
+
+**PR 단계 규약 둘(title 형식, description 4절)은 로컬에서 못 쟀고, 두 이유 다 발견이다.** 첫째, 하네스가 `git push` 를 `ask` 티어에 두는데 비대화형 `-p` 세션은 프롬프트에 답할 수 없다 (`acceptEdits`·`dontAsk`·`bypassPermissions` 셋 다 거부됨) — **헤드리스 실행은 PR 단계에 도달 자체가 불가능하다.** 둘째, forge 가 아닌 remote 를 주면 에이전트가 알아채고 멈추는데, 그것을 속일 만큼 정교한 픽스처는 규약이 아니라 위장을 재게 된다.
+
+### 스킬 라우팅 (`make bench-trigger`)
+
+description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대한 주장이었고 한 번도 재지 않았다. 배포 스킬 5개를 각 12개 프롬프트(양성 6·음성 6)로 쟀다: `pr-create` 12/12 · `pr-review` 12/12 · `research-notes` 12/12 · `repro-checklist` 12/12 · `results-deck` 11/12 = **59/60**.
+
+**음성이 어디로 갔는지가 진짜 결과다.** 이 벤치마크는 "우리 스킬이 조용했나" 가 아니라 "일이 우리가 적어둔 곳으로 갔나" 를 본다. 머지 전 커밋 범위 검토는 `superpowers:requesting-code-review`, 받은 리뷰 대응은 `receiving-code-review`, PR 생성은 `pr-create`, 노트 기록은 `research-notes`, 시드·환경은 `repro-checklist`, 발표는 `results-deck` 로 갔다. **[ADR-0009](adr/0009-external-dependencies.md) 가 선언만 해두었던 생애주기 축 분리가 실측으로 확인됐다.**
+
+`results-deck` 만 처음에 4/6 이었고 놓친 둘은 전부 *개발 쪽 보고* 였다 — 한국어 트리거가 연구 쪽에 치우쳐 있었다. 보강 후 짝비교에서 12/18 → 14/18, **개선 2 · 악화 0**. 부호검정 *p* = 0.25 로 유의하지 않으므로 주장하는 것은 효과 크기가 아니라 회귀 부재다.
+
+**남의 스킬이 안 받는 경우도 봤다.** "이 PR 머지하고 브랜치 정리해줘" 는 `superpowers:finishing-a-development-branch` 가 맡을 자리인데 세 번 다 `Bash` 로 갔다. 우리 라우팅은 깨끗하지만 위임 상대가 받지 않는 구간이 있고, 이것이 ADR-0009 의 "우리 라우팅 규율이 남의 저장소에 의존한다" 의 구체적 사례다.
+
+### 발표 수치 추적 (`make bench-claims`)
+
+`check-claims.sh` 에는 검증기 33 케이스가 있지만 **그것은 독립 증거가 아니다** — 정규식과 케이스를 같은 자리에서 썼으므로 거기 있는 "주장이 아닌 모양" 은 전부 내가 이미 떠올린 것들이다. 그래서 가드와 같은 수를 썼다: **검사기가 존재하기 전 커밋의 이 저장소 문서** 를 코퍼스로 삼는다.
+
+| | 검사한 토큰 | 걸린 것 | 그중 모양 오탐 |
+|---|---|---|---|
+| 최초 | 262 | 113 | 21 |
+| 현재 | 193 | 60 | **6 (3.1%)** |
+
+**첫 실행이 합성 스위트가 못 잡은 결함을 찾았다**: `85,844` 가 `85` 와 `844` 로 쪼개지고 있었다. 케이스를 쓰면서 숫자에 콤마를 한 번도 안 넣었기 때문이다. 마크다운 링크 타깃·인라인 코드·`ADR-0008` 꼴 식별자·`§4b` 도 같은 성격의 구멍이었다. 일곱 번째는 코퍼스가 아니라 **끝단 실행** 이 찾았다 — 실제 덱을 써보니 HTML 주석 속 숫자가 걸렸는데, 코퍼스 문서에는 주석이 없었다. **held-out 코퍼스와 끝단 실행은 서로 다른 구멍을 찾는다.**
+
+남은 6건은 전부 한 패턴이다: 단어 + 맨 버전 (`bash 3.2`). 일부러 안 고친다 — `bash 5` 는 `hooks 6` 과 구조적으로 구분되지 않으므로 걸러내면 진짜 개수를 못 보게 된다.
+
+### LSP (`make bench-lsp`)
+
+*1차 (폐기).* 읽기 전용 이해 과제로 쟀고 −0.5%, 턴 수는 양쪽 정확히 8.0 이었다. 당시 "fixture 가 작아서" 로 해석했는데 **그 해석이 틀렸다.** 진짜 이유는 과제였다 — 문서가 말하는 기제는 "편집할 때마다 즉시 진단" 인데 편집이 금지된 과제는 그 기제를 발동시킬 수 없다.
+
+*2차.* 편집 과제로 바꿨다. fixture 는 type-clean 이고 과제가 요구하는 함수의 자연스러운 구현은 그렇지 않다 — 떠오르는 대로 쓰면 타입 에러가 정확히 하나 생긴다.
+
+| 팔 | type-clean | 평균 토큰 | 표준편차 | 턴 |
+|---|---|---|---|---|
+| LSP off | **3 / 3** | 315,857 | 81,407 (CV 26%) | 11.3 |
+| LSP on | **3 / 3** | 295,831 | 15,143 (CV 5%) | 11.0 |
+
+**정확도는 붙잡을 차이가 없었고, 토큰 −6.3% 는 유의하지 않은 정도가 아니라 이 설계로는 볼 수 없는 크기다.** off 팔의 변동계수가 26% 라서, 이 노이즈에서 6.3% 를 80% 검정력으로 잡으려면 **팔당 137회** 가 필요하다. n=3 이 실제로 검출할 수 있는 최소 효과는 **61%** 다.
+
+여기서 나온 규칙 둘을 측정 규율로 삼는다.
+
+1. **에이전트 세션을 표본으로 쓰는 A/B 는 20% 미만의 효과를 주장하지 않는다.** 현실적인 n 에서 그 아래는 노이즈와 구분되지 않는다.
+2. **가능하면 결정론적 층으로 내려서 잰다.** 가드 벤치마크가 n=1 로 확정적인 이유는 훅이 모델 밖에 있기 때문이다. `check-claims.sh` 도 같은 이유로 스킬 지시가 아니라 스크립트다 — **모델에게 조심하라고 시키면 A/B 로만 확인되고, 기계에 시키면 세어서 확인된다.**
+
+### 계측기를 여섯 번 틀렸다 — 전부 같은 실수다
+
+측정보다 이쪽이 값졌을지 모른다. 여섯 번 모두 **화면에는 "0.0 / 실패" 로 똑같이 보였고**, 전부 하네스를 부당하게 나쁘게 보이게 했다.
+
+| # | 어디 | 무엇이 계기를 죽였나 |
+|---|---|---|
+| 1 | LSP 1차 | 읽기 전용 과제라 기제가 발동할 수 없었다 |
+| 2 | 트리거 | 타임아웃이 미트리거와 구분되지 않았다 (`--timeout 30 --num-workers 10`) |
+| 3 | 트리거 | **이미 설치된 스킬은 대역으로 못 잰다** — 모델이 진짜 쪽을 부른다 |
+| 4 | 트리거 | 첫 도구 호출만 보므로 `Bash` 로 시작하면 미트리거로 잡힌다 |
+| 5 | 규약 | 스크래치 저장소에 `harnessctl init` 을 안 돌려 규칙 자체가 없었다 |
+| 6 | 규약 | 과제가 한 줄 수정이라 우리 R1-3 이 **명시적으로 면제** 하는 크기였다 |
+
+**규칙: 음성 결과를 얻으면 결론 내기 전에 기제가 발동할 조건이 갖춰졌는지부터 확인한다.** 트리거 측정에는 설치되지 않은 확실한 양성 대조군을 같이 돌린다 — 2·3·4 는 그 대조군 하나로 전부 걸러졌을 것이다. 그리고 **쿼리당 1회는 측정이 아니다**: `results-deck` 은 1회로 재면 수정 전후 둘 다 4/6 인데 구성원만 달랐다.
+
+### 아직 측정하지 않은 것
+
+- **규약 중 PR 단계 둘.** 위에 적은 두 이유로 로컬에서는 불가능하다. 실제 forge 에 throwaway 저장소를 두면 된다.
+- **`CLAUDE.md` 5원칙 자체.** 브랜치 규약은 쟀지만 "Simplicity First" 가 실제로 코드를 단순하게 만드는지는 채점 기준을 세우기 어렵다. `skill-creator` 의 grader 서브에이전트가 이 자리를 메울 후보다.
+- **설치기는 원리상 A/B 대상이 아니다.** "제거하면 원래대로" 는 비교군이 있는 주장이 아니라 불변량이고, `scripts/verify-install.sh` 의 92 assertion 이 그것을 단정한다 (특히 uninstall 후 `settings.json` 정준 동일).
+
+## 5. Guide vs Guard
+
+- **Guard** — 통과 못 하면 도구 호출 자체가 성립하지 않는다. Permissions · 차단 훅. 사고 방어선은 항상 여기다.
+- **Guide** — 에이전트의 판단으로 따른다. Conventions · Skills · 정보성 훅. 위반해도 도구는 호출된다.
+
+가드를 가이드로 대체할 수 없고 (에이전트는 가이드를 무시할 수 있다), 가이드를 가드로 강제할 수도 없다 (모든 케이스를 사전에 인코딩할 수 없다). **두 레이어가 모두 필요하다.**
+
+따라오는 규칙 하나: **차단하는 훅만 exit 2 를 쓴다.** 정보성 훅이 턴을 막으면 사용자는 그 훅을 끄고, 그러면 정보도 함께 사라진다.
+
+## 6. 소유권 모델
+
+컨슈머의 설정은 우리 것과 그들 것이 섞이는 공간이다. 무엇이 우리 것인지 판정하는 근거는 이제 둘로 줄었다 — 훅이 플러그인으로 넘어가면서 가장 복잡했던 하나가 사라졌다.
+
+- **플러그인 캐시 = 컴포넌트 소유권.** 훅·스킬·커맨드·검증기는 플러그인 디렉터리 안에만 살고 컨슈머 트리에 복사되지 않는다. `settings.json` 의 `hooks` 블록은 **우리가 손대지 않는다** — 검증기가 설치 전후 `.hooks` 바이트 동일을 단정한다. 예전의 경로 마커와 strip-then-append 는 폐기됐다.
+- **`harness-manifest.json` = 나머지 전부의 영수증.** 실제로 추가한 permission 문자열, 설정한 스칼라 키, 우리가 만든 JSON 컨테이너, `.gitignore` 에 붙인 줄. 제거는 이 영수증만 되돌린다 — 컨슈머가 원래 갖고 있던 값은 같은 문자열이어도 지워지지 않는다.
+
+두 tier 는 그대로다: **managed** (재설치 시 덮어씀 — 현재는 `rules/` 뿐) 와 **template** (최초 1회만, 이후 컨슈머 소유 — `CLAUDE.md` 와 경로 설정 둘).
+
+`harnessctl` 은 `bin/` 으로 배포되어 Bash 도구 PATH 에 자동으로 오르고, 자기 페이로드를 `<자기 위치>/../declarative` 로 찾는다. 플러그인 캐시가 충실한 복사본이라 이 상대 경로 하나가 캐시에서도 소스 체크아웃에서도 동작한다 — `${CLAUDE_PLUGIN_ROOT}` 조차 필요 없다.
+
+설치되는 index 파일은 **만들지 않는다.** 참조 하네스에서 손으로 유지하는 인벤토리가 실제로 drift 한 사례를 관측했다. 인벤토리는 본 문서 한 곳에 있고, 파일 목록은 트리에서 파생된다.
+
+## 7. Backlog
+
+**보류 중 — 두 번째 발생을 기다린다** (§2 에 대응하는 줄이 있고, 아직 한 번만 겪었거나 아예 안 겪은 것):
+
+- ✅ ~~Worktree 도우미~~ — 만들지 않기로 했다. Superpowers 의 `using-git-worktrees` 가 upstream 에서 해결한다. 외부 의존을 채택해서 얻은 가장 직접적인 이득이고, 우리가 안 쓴 코드가 곧 이득이다.
+- ⏳ Release / changelog 스킬 — `dev` 모듈 후보. 릴리스 규약이 프로젝트마다 너무 달라 아직 공통분모가 안 보인다.
+- ⏳ 사후 출력 스크러버 — PreToolUse 로 명령을 막는 것과 PostToolUse 로 *출력* 에서 민감 문자열을 잡는 것은 다른 사고다. 미러 쌍 패턴 자체는 검증됐지만 (참조 하네스의 PHI 쌍), 범용 하네스가 쓸 payload 가 없다. 사이트별 패턴이 필요해지면 `protected-paths` 처럼 컨슈머 소유 설정 파일로.
+- ⏳ **모델·effort 오케스트레이션.** 현재 하네스는 컨슈머에게 sub-agent 를 하나도 배포하지 않아 이 레버가 아예 없다. 플러그인 agent frontmatter 는 `model` 과 `effort` 를 지원하므로 (`hooks`·`mcpServers`·`permissionMode` 는 보안상 불가), 메인 루프는 Opus high 로 두고 기계적인 위임 작업만 싼 티어로 내리는 구성이 가능하다. 이 세션 자체가 근거다 — 서브에이전트 12개를 띄웠고 전부 세션 모델을 상속했는데, 경로 치환·개수 세기·문서 갱신처럼 Opus 가 필요 없던 것이 절반이다. 다만 *어떤 일을 어느 티어로 내릴지* 는 판단이 필요하고, 잘못 내리면 싼 모델이 놓친 것을 비싼 모델이 다시 하느라 더 든다. 후보 축: 탐색·개수 세기·기계적 편집 = 낮음, 설계·적대적 검토·근본원인 = 높음.
+- ⏳ `hooks.json` matcher 앵커링. 현재 `Read|Write|...|Bash` 는 앵커가 없다. Claude Code 가 matcher 를 정규식으로 다루면 `Bash` 가 `BashOutput` 에도 걸려 호출마다 가드 네 개가 헛돈다 (각각 stdin 을 읽고 jq 를 부르고 exit 0). `^(...)$` 로 감싸면 공짜로 없앨 수 있지만, **매칭 방식을 확인하지 못했다** — 정규식이 아니라 문자열 비교라면 앵커가 오히려 매칭을 깬다. 참조 하네스 둘 다 앵커 없이 쓰므로 관례를 따랐다. 확인되면 그때 바꾼다.
+- ⏳ `harnessctl --scope local` (`settings.local.json` 대상) — 커밋하지 않을 권한을 넣을 자리. 실수요가 아직 없다.
+- ⏳ 언어 프로파일 확대 (`go` · `rust` · `java` …) — manifest 하나면 되지만 실제로 쓸 때 추가한다.
+- ⏳ `harness-frontend` 프로파일 — `ui-ux-pro-max` 가 스타일·팔레트·스택 레퍼런스를 크게 싣고 있어 후보는 명확하다. 다만 이 저장소에서 발생 0회 ([ADR-0011](adr/0011-ecosystem-survey.md)).
+- ⏳ 개발 쪽 세션 인수인계 — `handoff` 계열이 있고 연구 쪽은 5문서 세트가 이미 덮는다. 개발 쪽 실수요가 두 번 나오면.
+- ⏳ 세션 메모리 (`claude-mem` 류) — 도구 입출력 전체를 저장하므로 `secret-scrubber` 를 운영하는 저장소에서는 무엇이 삼켜지는지 먼저 확인해야 한다. 그 확인을 하기 전에는 후보로만 둔다.
+- ⏳ MCP 서버 등록 — 병합 대상이 `.mcp.json` 으로 늘어난다. 설치기의 소유권 모델을 그 파일에도 적용해야 하므로 실수요가 생긴 뒤에.
+- ⏳ `dev`: "이 변경으로 거짓이 된 문서·설정 예시" 리뷰 항목. 초안까지 썼다가 뺐다 — 언어 무관하고 그럴듯하지만 아직 발생 0회이고, 정확히 "있으면 좋을 것 같아서" 추가하는 모양이다. 실제 리뷰가 stale 한 README 를 놓치면 그것이 1회차.
+- ⏳ `research`: `FINDINGS.md` 템플릿의 negative-results 절. 죽은 길을 다시 걷지 않게 한다는 근거는 ledger 를 정당화하는 근거와 같다. 템플릿은 뼈대여야 하므로 일단 뺐다.
+
+**기록해 둔 위험** (해결책이 아직 없고, 컨슈머에서 먼저 드러날 것):
+
+- **5문서 세트는 프로젝트에 "run" 이 있다고 가정한다.** 읽기와 종합이 대부분인 연구 (문헌 조사, 설계 검토) 에서는 ledger 가 얇고 `ARTIFACTS.md` 에 넣을 것이 없다. 규율이 깨지지는 않지만 다섯 중 둘이 비고, **비어 있는 의무 문서는 세트 전체를 무시하도록 학습시킨다.** 이 경우의 답은 invariant 를 약화하는 것이 아니라 가벼운 변종을 따로 두는 것이다 — 실제 사례가 나오면.
+- **`ARTIFACTS.md` 의 "모든 주장은 run 으로 추적된다" 는 세다.** 수치가 세션보다 오래 사는 프로젝트에는 정확히 맞고, 아무도 인용하지 않는 일회성 분석에는 순수 오버헤드다. 그럼에도 invariant 로 둔 이유는 "중요한 수치는 기록한다" 로 약화하면 집행 불가능해지기 때문이다.
+- **관측된 도구 마찰**: subagent 의 Write 가 `templates/FINDINGS.md` 에서 파일명 패턴 매칭으로 차단됐다 (리포트 파일 작성 가드). `research` 모듈은 그 이름의 템플릿을 셋 배포하므로, subagent 로 이 템플릿들을 편집·설치하려는 쪽은 같은 벽을 만난다. 하네스가 고칠 수 있는 문제가 아니라 알고 있어야 하는 사실이다.
+
+**의도적으로 안 하는 것**:
+
+- 설치되는 index 파일 (§6).
+- `install.sh` 의 jq 대체 경로. 훅이 jq 를 요구하므로 jq 없는 설치는 전부 자기 비활성화된 가드를 배포하는 것이고, 정직한 실패가 낫다 ([ADR-0002](adr/0002-hook-contract.md)).
+- 모듈 단위 부분 제거. `--with` 로 모듈을 빼면 그 파일들이 지워지므로 별도 명령이 필요 없다.
+
+## 8. 디렉터리 구조
+
+```
+.
+├── .claude-plugin/marketplace.json     # 6개 플러그인 카탈로그
+├── plugins/
+│   ├── harness-core/
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── hooks/hooks.json            # 이벤트·matcher 등록
+│   │   ├── hooks/*.sh                  # 차단 4 + 정보 2
+│   │   ├── skills/pr-create/SKILL.md
+│   │   ├── commands/verify.md
+│   │   ├── scripts/{_verify-lib,verify-*}.sh
+│   │   ├── bin/harnessctl              # init · doctor · uninstall
+│   │   └── declarative/                # 플러그인이 못 나르는 것
+│   │       ├── settings-fragment.json  # permissions + scalars (hooks 없음)
+│   │       ├── CLAUDE.md               # 템플릿
+│   │       ├── templates/{protected,allowed}-paths.txt
+│   │       └── rules/{core,dev,research}/*.md
+│   ├── harness-dev/            # skills/pr-review + deps: core, superpowers
+│   ├── harness-research/       # skills/{research-notes,repro-checklist} + deps: core
+│   ├── harness-slides/         # deps: core — results-deck 스킬 + check-claims.sh
+│   ├── harness-python/         # deps: core, pyright-lsp
+│   └── harness-typescript/     # deps: core, typescript-lsp
+├── install.sh                          # 얇은 bootstrap
+├── scripts/verify-{install,frontmatter}.sh
+├── Makefile · CLAUDE.md · .claude/     # 저장소 자체 개발용
+├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · 플러그인 매니페스트
+└── docs/ (agent-layer.md · adr/0001..0009 · hooks/*.md)
+```

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness-dev",
+  "displayName": "Harness Dev",
+  "version": "1.0.2",
+  "description": "Product and service development profile: harness-core plus Superpowers",
+  "author": {
+    "name": "chpark-ML"
+  },
+  "repository": "https://github.com/chpark-ML/agent-harness",
+  "license": "MIT",
+  "dependencies": [
+    "harness-core",
+    {
+      "name": "superpowers",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

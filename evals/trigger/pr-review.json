@@ -1,0 +1,15 @@
+[
+  {"query": "https://github.com/chpark-ML/agent-harness/pull/12 이거 리뷰해줘. 훅 하나 추가한 건데 놓친 거 없나 봐줘", "should_trigger": true},
+  {"query": "PR #47 봐줘. 다른 팀이 올린 거라 우리 컨벤션 지켰는지도 같이 확인해줬으면 좋겠어", "should_trigger": true},
+  {"query": "there's an open PR on the repo adding retry logic to the client — can you read the diff and tell me what would block a merge?", "should_trigger": true},
+  {"query": "머지해도 되나 이거? PR 열려있는데 CI 는 통과했고 diff 가 좀 커서 눈으로 보기 부담스러워", "should_trigger": true},
+  {"query": "i opened a pull request yesterday for the config refactor and nobody has looked at it. give me a punch list of what a reviewer would flag, worst first", "should_trigger": true},
+  {"query": "PR 점검해줘. blocking 인 것만 먼저 알려주고 나머지는 나중에 봐도 되는 걸로 분리해줘", "should_trigger": true},
+
+  {"query": "머지하기 전에 내 커밋들 좀 스스로 검토하고 싶어. 아직 PR 은 안 만들었고 main..HEAD 범위야", "should_trigger": false},
+  {"query": "before i push this branch, review the commits i've made since branching off main. no PR exists yet", "should_trigger": false},
+  {"query": "리뷰어가 코멘트 다섯 개 남겼는데 어떻게 대응할지 같이 정리해줘. 두 개는 동의 안 되는 내용이야", "should_trigger": false},
+  {"query": "이 작업 PR 로 올려줘. 브랜치 만들고 커밋 나눠서 푸시까지 해줘", "should_trigger": false},
+  {"query": "PR 본문에 들어갈 설명 문구만 다듬어줘. 리뷰는 이미 끝났고 머지 직전이야", "should_trigger": false},
+  {"query": "우리 리뷰 체크리스트 자체를 손보고 싶어. .claude/rules/harness/dev/review.md 에 항목 두 개 추가하려고", "should_trigger": false}
+]

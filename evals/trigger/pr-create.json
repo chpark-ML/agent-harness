@@ -1,0 +1,15 @@
+[
+  {"query": "이 작업 PR 로 올려줘. 훅 하나 고쳤고 검증기 케이스도 같이 추가했어", "should_trigger": true},
+  {"query": "커밋하고 푸시해줘. 지금 main 에서 작업했는데 브랜치부터 따야 할 것 같아", "should_trigger": true},
+  {"query": "i'm done with the retry-backoff work. turn it into a pull request — split the commits sensibly and follow whatever conventions this repo has", "should_trigger": true},
+  {"query": "PR 만들어줘. 제목이랑 본문은 이 저장소 규약대로 써주고, 머지는 하지 말고 열어만 둬", "should_trigger": true},
+  {"query": "변경사항 세 덩어리인데 커밋 나눠서 올리고 PR 하나로 묶어줘", "should_trigger": true},
+  {"query": "this branch is ready. push it and open the PR — i'll handle the review request myself", "should_trigger": true},
+
+  {"query": "PR #47 리뷰해줘. 열려 있는 거고 머지해도 되는지 보고 싶어", "should_trigger": false},
+  {"query": "머지 전에 main..HEAD 커밋 범위를 스스로 검토하고 싶어. PR 은 아직 없어", "should_trigger": false},
+  {"query": "이 PR 머지하고 브랜치 정리해줘. squash 로 넣고 원격 브랜치도 지워줘", "should_trigger": false},
+  {"query": "리뷰에서 지적받은 세 가지 고쳐서 같은 PR 에 푸시해줘", "should_trigger": false},
+  {"query": "git log 좀 보여줘. 지난주에 뭐 했는지 확인하려고", "should_trigger": false},
+  {"query": "우리 PR 제목 규약이 뭐였지? rules 파일 어디에 적혀 있는지만 알려줘", "should_trigger": false}
+]

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "agent-harness",
+  "owner": {
+    "name": "chpark-ML"
+  },
+  "description": "Project-agnostic Claude Code harness: guards, conventions and profiles",
+  "allowCrossMarketplaceDependenciesOn": [
+    "claude-plugins-official"
+  ],
+  "plugins": [
+    {
+      "name": "harness-core",
+      "displayName": "Harness Core",
+      "description": "Guard hooks, PR skill, verifiers, and harnessctl — the declarative installer for permissions, CLAUDE.md and rules",
+      "source": "./plugins/harness-core",
+      "category": "development"
+    },
+    {
+      "name": "harness-dev",
+      "displayName": "Harness Dev",
+      "description": "Product and service development profile: core plus Superpowers and PR review conventions",
+      "source": "./plugins/harness-dev",
+      "category": "development"
+    },
+    {
+      "name": "harness-research",
+      "displayName": "Harness Research",
+      "description": "Research profile: core plus the five-document note discipline and a reproducibility checklist",
+      "source": "./plugins/harness-research",
+      "category": "development"
+    },
+    {
+      "name": "harness-python",
+      "displayName": "Harness Python",
+      "description": "Core plus the Pyright language server. Requires pyright-langserver on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-python",
+      "category": "development"
+    },
+    {
+      "name": "harness-typescript",
+      "displayName": "Harness TypeScript",
+      "description": "Core plus the TypeScript/JavaScript language server. Requires the server on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-typescript",
+      "category": "development"
+    },
+    {
+      "name": "harness-slides",
+      "displayName": "Harness Slides",
+      "description": "Results-to-deck narrative with a traceability check. Rendering is delegated to slides-grab (npm)",
+      "source": "./plugins/harness-slides",
+      "category": "development"
+    }
+  ]
+}

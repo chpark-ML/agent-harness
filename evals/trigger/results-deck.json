@@ -1,0 +1,15 @@
+[
+  {"query": "이번 스프린트에서 가드 훅 벤치마크 돌린 결과가 evals/results 밑에 있는데, 팀 데모 때 쓸 발표자료로 정리해줘. 수치는 다 근거 있는 것만 썼으면 좋겠어", "should_trigger": true},
+  {"query": "we just wrapped the pyright LSP ablation study — 3 runs an arm, results are in scripts/bench-lsp.sh output. i need to present this to the research group thursday. can you put together the deck?", "should_trigger": true},
+  {"query": "FINDINGS.md 랑 experiment_plan.md 다 써놨거든. 이거 기반으로 발표용으로 한번 정리해줄래? 한 장에 한 주장씩으로", "should_trigger": true},
+  {"query": "v1.4 릴리스 나갔는데 changelog 랑 PR 목록 보고 스테이크홀더 리뷰용 자료 좀 만들어줘. 뭐가 바뀌었고 왜 바꿨는지 위주로", "should_trigger": true},
+  {"query": "my manager wants a readout on the caching work from last month. the benchmark numbers are in bench/latency.json and the design rationale is in docs/adr/0004. what would a good narrative look like for a 15 minute slot", "should_trigger": true},
+  {"query": "연구 결과 정리해서 보여줘. 실험 3개 돌렸고 두 개는 음성 결과였는데 그것도 포함해야 할 것 같아", "should_trigger": true},
+
+  {"query": "여기 deck-outline.md 있는데 이걸 실제 HTML 슬라이드로 렌더링해줘. 테마는 다크로 하고 폰트는 Pretendard 썼으면 좋겠어", "should_trigger": false},
+  {"query": "the slides look cramped — can you fix the layout on slide 4 and 7, the bullet text is overflowing the container. also bump the heading size", "should_trigger": false},
+  {"query": "이 슬라이드 덱 PDF 로 뽑아줘. 인쇄해서 나눠줄 거라 여백 좀 넉넉하게", "should_trigger": false},
+  {"query": "실험 노트 좀 정리하자. experiment_plan.md 에 이번 ablation 설계 적어두고 ARTIFACTS.md 에 방금 돌린 run 행 추가해줘", "should_trigger": false},
+  {"query": "can you just tell me in chat what the headline number from the guard benchmark was? i don't need a document, i'm about to hop on a call", "should_trigger": false},
+  {"query": "발표 자료에 넣을 아키텍처 다이어그램 하나 그려줘. 서비스 3개랑 큐 하나 있고 화살표로 데이터 흐름 보여주면 돼", "should_trigger": false}
+]

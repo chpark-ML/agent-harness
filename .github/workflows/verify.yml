@@ -1,0 +1,52 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linux:
+    name: linux (bash 5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: report the environment
+        run: |
+          bash --version | head -1
+          jq --version
+          git --version
+          python3 --version
+      - run: make verify
+
+  macos-bash32:
+    # The floor is stock macOS /bin/bash 3.2. Running the same suite under it is
+    # the only thing that keeps a bash-4-ism from reaching a consumer's Mac.
+    name: macos (bash 3.2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: report the environment
+        run: |
+          /bin/bash --version | head -1
+          jq --version
+          git --version
+      - run: make verify BASH=/bin/bash
+
+  plugins:
+    # The only job that needs the Claude CLI. It is separate so that a CLI or
+    # registry problem reads as a plugin-manifest failure rather than taking the
+    # behavioural suite down with it — the other two jobs cover behaviour and
+    # need nothing but jq, git and python3.
+    name: plugin manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: install the Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: report the environment
+        run: claude --version
+      - run: make verify-plugins
