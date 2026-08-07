@@ -5,6 +5,7 @@
 #   ./install.sh --profile dev,python             # profiles compose
 #   ./install.sh --profile dev --scope project    # this repo only
 #   ./install.sh --profile python --with-tools    # also install the language server
+  ./install.sh --profile research,slides        # research notes + results decks
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The
@@ -38,7 +39,7 @@ usage() {
   sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 
-  --profile <list>   comma-separated: core, dev, research, python, typescript
+  --profile <list>   comma-separated: core, dev, research, slides, python, typescript
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
   --ref <ref>        pin the marketplace to a git tag or branch
@@ -65,11 +66,12 @@ case "$SCOPE" in user|project) ;; *) die "--scope 는 user 또는 project 입니
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
 for p in $PROFILE_LIST; do
-  case "$p" in core|dev|research|python|typescript) ;; *) die "알 수 없는 profile: $p" ;; esac
+  case "$p" in core|dev|research|slides|python|typescript) ;; *) die "알 수 없는 profile: $p" ;; esac
 done
 
-# Only dev and research carry declarative rules; the language profiles are
-# dependency bundles with nothing for harnessctl to install.
+# Only dev and research carry declarative rules. The language profiles are
+# dependency bundles, and slides ships a skill and a script but no rules, so
+# none of the three give harnessctl anything to install.
 WITH=""
 for p in $PROFILE_LIST; do
   case "$p" in dev|research) WITH="${WITH:+$WITH,}$p" ;; esac

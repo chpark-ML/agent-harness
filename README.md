@@ -1,38 +1,98 @@
-# agent-harness
+<h1 align="center">agent-harness</h1>
 
-**연구와 개발을 위한 범용 Claude Code 하네스 — 쓸 만한 플러그인을 검토하고 조합해, 한 줄로 설치되고 한 줄로 되돌아가는 한 벌로 유지한다.**
+<p align="center">
+  <strong>연구와 개발을 위한 범용 Claude Code 하네스</strong><br>
+  쓸 만한 플러그인을 검토하고 조합해, 한 명령으로 설치되고 한 명령으로 되돌아가는 한 벌로 유지한다.
+</p>
 
-주장하지 않고 잰다. 이 저장소의 모든 층은 stock Claude Code 와 대조해 숫자가 붙어 있고, 아무것도 벌지 못한 규칙은 그렇다고 적혀 있다.
+<p align="center">
+  <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
+  <img alt="checks" src="https://img.shields.io/badge/checks-356-blue">
+  <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
+</p>
+
+<p align="center">
+  <em>주장하지 않고 잰다.</em> 모든 층이 stock Claude Code 와 대조해 숫자가 붙어 있고,<br>
+  아무것도 벌지 못한 규칙은 <a href="#어떻게-점검하나--테스트와-결과">그렇다고 적혀 있다</a>.
+</p>
 
 ---
 
-## Quick Start
+## 시작하기
 
-### 설치 — 한 줄
-
-```bash
-git clone https://github.com/chpark-ML/agent-harness ~/agent-harness
-~/agent-harness/install.sh --profile dev,python --with-tools
-```
-
-끝이다. 스크립트가 marketplace 등록 → 플러그인 설치 → `harnessctl init` → 언어 서버 설치 → `doctor` 까지 한 번에 진행한다.
-
-| 옵션 | 뜻 |
-|---|---|
-| `--profile dev,python` | 프로파일 조합. 생략하면 `core` 만 |
-| `--scope project` | 이 저장소에만. 생략하면 머신 전체(`user`) |
-| `--with-tools` | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
-
-설치 후 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
+먼저 저장소를 받는다.
 
 ```bash
-harnessctl doctor        # 무엇이 설치됐고 무엇이 빠졌는지
+git clone https://github.com/chpark-ML/agent-harness ~/agent-harness && cd ~/agent-harness
 ```
 
-`install.sh` 가 `~/.local/bin/harnessctl` 에 shim 을 깔아 어느 셸에서든 쓸 수 있게 한다. `~/.local/bin` 이 PATH 에 없으면 쓰는 셸에 맞는 한 줄을 알려준다. 직접 부르려면 `BIN_DIR=~/bin ./install.sh ...` 로 위치를 바꿀 수 있다.
+그다음은 무엇을 하는 사람인지에 따라 한 줄이면 된다. 전부 조합 가능하고 나중에 더해도 된다.
+
+#### 개발 — 가장 흔한 조합
+
+```bash
+./install.sh --profile dev,python --with-tools
+```
+
+가드 6개, [Superpowers](https://github.com/obra/superpowers) 스킬 14개, `pr-create`·`pr-review`, Python 언어 서버까지. TypeScript 면 `python` 대신 `typescript`, 둘 다면 둘 다 쓴다.
+
+#### 연구
+
+```bash
+./install.sh --profile research
+```
+
+가드 6개, 5문서 노트 규율, `research-notes`·`repro-checklist`. 실험을 돌리고 결과를 기록하는 흐름에 맞춰져 있다.
+
+#### 연구 + 발표
+
+```bash
+./install.sh --profile research,slides
+```
+
+위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고, **덱의 모든 수치가 근거로 추적되는지 기계로 검사** 한다. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다.
+
+#### 이 저장소에만
+
+```bash
+./install.sh --profile dev --scope project
+```
+
+머신 전체를 건드리지 않는다. 현재 git 저장소의 `.claude/` 와 `settings.json` 만 바뀌고, 그 저장소를 쓰는 팀 전체가 같은 규약을 받는다.
+
+#### 최소 — 가드만
+
+```bash
+./install.sh
+```
+
+가드 6개, 권한 3티어, 5원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나. 나머지는 나중에 같은 명령에 프로파일만 더해서 올리면 된다.
+
+설치가 끝나면 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
+
+### 옵션
+
+| 옵션 | 기본값 | 설명 |
+|---|---|---|
+| `--profile <list>` | `core` | `core` · `dev` · `research` · `slides` · `python` · `typescript`, 콤마로 조합 |
+| `--scope user\|project` | `user` | `user` 는 머신 전체, `project` 는 현재 저장소만 |
+| `--with-tools` | 꺼짐 | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
+| `--ref <tag\|branch>` | — | marketplace 를 특정 리비전에 고정 |
+| `BIN_DIR=<dir>` | `~/.local/bin` | `harnessctl` shim 을 놓을 곳 |
+
+설치기가 marketplace 등록 → 플러그인 설치 → `harnessctl init` → 언어 서버 → shim → `doctor` 를 순서대로 진행한다.
+
+### 확인
+
+```bash
+harnessctl doctor
+```
+
+무엇이 설치됐고 무엇이 빠졌는지 알려준다. `harnessctl` 은 `~/.local/bin` 의 shim 으로 어느 셸에서든 부를 수 있고, `~/.local/bin` 이 PATH 에 없으면 설치기가 **쓰는 셸에 맞는 한 줄** 을 알려준다.
 
 <details>
-<summary>손으로 하려면 — 두 단계가 전부다</summary>
+<summary><b>플러그인 명령으로 직접 하려면</b></summary>
 
 ```bash
 claude plugin marketplace add chpark-ML/agent-harness
@@ -45,18 +105,25 @@ harnessctl init --scope user --with dev
 
 </details>
 
-### 롤백 — 두 줄
+### 되돌리기
 
 ```bash
-harnessctl uninstall --scope user                        # 설정·규칙·CLAUDE.md 되돌리기
-claude plugin uninstall harness-dev@agent-harness --prune # 플러그인 제거
+harnessctl uninstall --scope user                          # 설정·규칙·CLAUDE.md
+claude plugin uninstall harness-dev@agent-harness --prune  # 플러그인
 ```
 
-**검증된 성질**: 제거 후 `settings.json` 은 설치 전과 **정준 동일** 하다 (`jq -S` 기준). 설치기는 자기가 쓴 것의 영수증(`harness-manifest.json`)만 되돌리고, 그 외에는 아무것도 건드리지 않는다. `--purge-templates` 를 주지 않으면 프로젝트 소유가 된 템플릿(`CLAUDE.md` 등)은 남긴다.
+**검증된 성질**: 제거 후 `settings.json` 은 설치 전과 **정준 동일** 하다 (`jq -S` 기준). 설치기는 자기가 쓴 것의 영수증(`harness-manifest.json`)만 되돌리고 그 외에는 손대지 않는다. 프로젝트 소유가 된 템플릿(`CLAUDE.md` 등)은 남기며, 함께 지우려면 `--purge-templates`. 무엇이 지워질지 먼저 보려면 `--dry-run`.
 
-되돌리기 전에 무엇이 지워질지 보려면 `--dry-run`.
+<details>
+<summary><b>부수효과 하나</b></summary>
 
-**부수효과 하나**: `settings.json` 이 jq 로 재직렬화되므로 들여쓰기가 2칸으로 정규화된다 (키 순서는 보존). 재실행은 멱등이라 아무것도 쓰지 않지만, Claude Code 가 자기 포맷으로 파일을 다시 쓴 뒤에는 (UI 에서 설정을 바꿨을 때 등) 처음 한 번 재정규화가 일어나고 스냅샷이 하나 남는다.
+`settings.json` 이 jq 로 재직렬화되므로 들여쓰기가 2칸으로 정규화된다 (키 순서는 보존). 재실행은 멱등이라 아무것도 쓰지 않지만, Claude Code 가 자기 포맷으로 파일을 다시 쓴 뒤에는 (UI 에서 설정을 바꿨을 때 등) 처음 한 번 재정규화가 일어나고 스냅샷이 하나 남는다.
+
+</details>
+
+### 요구 사항
+
+bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그인을 지원하는 Claude Code. 전제는 하나 더 있다 — **git 저장소**. 가드 둘과 규약 대부분이 git 과 forge(PR) 를 가정한다.
 
 ---
 
@@ -69,9 +136,6 @@ claude plugin uninstall harness-dev@agent-harness --prune # 플러그인 제거
 3. **한 줄로 설치되는 한 벌로 유지한다** — 설치·제거·진단이 명령 하나씩이고, 제거하면 원래대로 돌아간다.
 
 여기에 하나가 더 붙는다. **넣은 것이 실제로 값을 하는지 잰다.** 규칙은 적어두면 지켜지는 것처럼 보이지만, 재보면 절반은 아무것도 벌지 않는다.
-
-**전제**: git 저장소. 가드 둘과 규약 대부분이 git 과 forge(PR) 를 가정한다.
-**요구 사항**: bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그인을 지원하는 Claude Code.
 
 ---
 
@@ -241,10 +305,11 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 6종 동작 | **198** |
 | 설치기 왕복 | **92** assertion |
-| 발표 수치 검사기 | **33** |
+| 발표 수치 검사기 | **36** |
 | frontmatter 파싱 | **11** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **12** |
+| **합계** | **356** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
