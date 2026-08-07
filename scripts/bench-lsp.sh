@@ -60,7 +60,7 @@ arm() {
     local fx="$WORK/$label-$n"
     bash "$REPO/evals/fixture-python.sh" "$fx"
     out="$(cd "$fx" && printf '%s' "$PROMPT" \
-      | claude -p --output-format json --permission-mode acceptEdits 2>/dev/null)"
+      | claude -p $BENCH_CLAUDE_ARGS --output-format json --permission-mode acceptEdits 2>/dev/null)"
     printf '%s' "$out" | jq -e '.usage' >/dev/null 2>&1 || { echo "    run $n: no usage — skipped"; continue; }
     local t tn e
     t="$(printf '%s' "$out" | jq '[.usage.input_tokens, .usage.cache_creation_input_tokens,

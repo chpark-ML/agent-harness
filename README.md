@@ -226,6 +226,8 @@ claude plugin uninstall harness-dev@agent-harness --prune # 플러그인 제거
 
 ## 어떻게 점검하나 — 테스트와 결과
 
+**측정 설정**: 에이전트 세션을 쓰는 벤치는 전부 `model=opus` · `effort=high` 로 **고정** 한다 (`BENCH_MODEL`·`BENCH_EFFORT` 로 변경, 시작할 때 출력). 설정을 바꾸면 숫자도 달라질 수 있고, 특히 effort 를 올리면 raw 팔이 좋아져 하네스의 효과가 작게 나올 수 있다 — `xhigh` 에서는 재보지 않았다.
+
 두 종류가 있다. **`verify` 는 공짜이고 CI 가 돌린다. `bench` 중 셋은 모델 세션을 태우므로 실비가 들고 손으로 돌린다** — 나머지 둘(`bench`·`bench-claims`)은 훅과 검사기를 직접 구동할 뿐이라 공짜다.
 
 ### 1. `make verify` — 의도대로 도는가 (공짜, CI)

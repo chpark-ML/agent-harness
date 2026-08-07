@@ -14,6 +14,13 @@
 # precondition is the cheapest of those to rule out.
 #
 # Set BENCH_YES=1 (or pass --yes) to skip the prompt in an unattended run.
+#
+# Model and effort are pinned, not inherited. The first round of measurements
+# passed neither flag, so every `claude -p` picked up whatever was in the
+# caller's settings.json — opus[1m] at effort high, as it happened. Nothing
+# recorded that, which means the numbers could not be compared against a run on
+# a different machine, and a reader had no way to know which configuration the
+# results describe. BENCH_MODEL and BENCH_EFFORT override; both are printed.
 
 bench_need() { # bench_need <command> <how to get it>
   command -v "$1" >/dev/null 2>&1 && return 0
@@ -30,8 +37,15 @@ bench_need_plugin() { # bench_need_plugin <plugin@marketplace>
   fi
 }
 
+# Every bench passes "$BENCH_CLAUDE_ARGS" to claude -p so the configuration is
+# explicit and identical across arms.
+BENCH_MODEL="${BENCH_MODEL:-opus}"
+BENCH_EFFORT="${BENCH_EFFORT:-high}"
+BENCH_CLAUDE_ARGS="--model $BENCH_MODEL --effort $BENCH_EFFORT"
+
 bench_confirm() { # bench_confirm <line about cost> [line about what it touches...]
   printf '\n=== %s ===\n' "${BENCH_NAME:-benchmark}"
+  printf '  model=%s  effort=%s   (BENCH_MODEL / BENCH_EFFORT to change)\n' "$BENCH_MODEL" "$BENCH_EFFORT"
   for l in "$@"; do printf '  %s\n' "$l"; done
   printf '\n'
   [ "${BENCH_YES:-0}" = 1 ] && { echo "  (BENCH_YES=1 — proceeding)"; return 0; }

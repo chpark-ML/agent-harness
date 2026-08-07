@@ -128,7 +128,7 @@ while [ "$i" -lt "$N" ]; do
       || { echo "  !! harnessctl init failed — arm invalid" >&2; exit 1; }
   fi
 
-  ( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p \
+  ( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p $BENCH_CLAUDE_ARGS \
       --permission-mode acceptEdits >/dev/null 2>&1 )
 
   br="$(cd "$R" && git branch --show-current 2>/dev/null)"

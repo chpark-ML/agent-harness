@@ -49,8 +49,13 @@ def first_tool_call(prompt: str, timeout: int) -> tuple[str | None, str]:
     """Run one prompt and return (tool_name, raw_input_json) for the first tool
     call, or (None, reason). Kills the agent as soon as it has an answer — we
     only care about the opening move, and a full run costs real money."""
+    # Pinned, not inherited: the first round of measurements let each subprocess
+    # pick up the caller's settings.json, so the numbers silently described one
+    # machine's configuration and nothing recorded which.
     cmd = [
         "claude", "-p", prompt,
+        "--model", os.environ.get("BENCH_MODEL", "opus"),
+        "--effort", os.environ.get("BENCH_EFFORT", "high"),
         "--output-format", "stream-json",
         "--verbose", "--include-partial-messages",
     ]
@@ -129,7 +134,10 @@ def main() -> int:
               file=sys.stderr)
         return 1
     print(f"=== trigger benchmark — {a.skill} ===")
-    print(f"{len(cases)} prompts x {a.runs} runs, serial, {a.timeout}s cap\n")
+    print(f"{len(cases)} prompts x {a.runs} runs, serial, {a.timeout}s cap")
+    print(f"model={os.environ.get('BENCH_MODEL','opus')} "
+          f"effort={os.environ.get('BENCH_EFFORT','high')}   "
+          f"(BENCH_MODEL / BENCH_EFFORT to change)\n")
 
     rows, timeouts = [], 0
     for c in cases:
