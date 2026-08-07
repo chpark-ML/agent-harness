@@ -24,6 +24,8 @@
 #   - markdown link targets             ](adr/0008-split.md)
 #   - anything inside `inline code`     `bash-3.2`, `--runs 5`
 #   - anything inside an html comment   it does not render, so it is not a claim
+#     (including one that spans lines — a `<!--` opens a skip that runs until
+#      the matching `-->`; the single-line-only version missed those entirely)
 #
 # Thousands separators are part of the number: `85,844` is one token, not two,
 # and it is compared with commas stripped so it matches an artifacts row written
@@ -67,10 +69,24 @@ ART_NUMS="$(grep -oE "$NUM_RE" "$ART" 2>/dev/null | tr -d ',' | sort -u)"
 untraceable=""
 checked=0
 lineno=0
+in_comment=0
 
 while IFS= read -r line || [ -n "$line" ]; do
   lineno=$((lineno + 1))
   case "$line" in *"<!-- no-claim -->"*) continue ;; esac
+
+  # A multi-line html comment: skip until it closes. Checked before anything
+  # else so an opener on this line suppresses the rest of the block.
+  if [ "$in_comment" -eq 1 ]; then
+    case "$line" in *"-->"*) in_comment=0; line="${line#*-->}" ;; *) continue ;; esac
+  fi
+  case "$line" in
+    *"<!--"*)
+      case "${line#*<!--}" in
+        *"-->"*) ;;                       # opens and closes here; the sed below strips it
+        *) in_comment=1; line="${line%%<!--*}" ;;
+      esac ;;
+  esac
 
   # Strip the shapes that are never claims before extracting.
   clean="$line"

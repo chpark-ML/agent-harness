@@ -31,9 +31,16 @@ RUNS="${1:-3}"
 PLUG_LSP="pyright-lsp@claude-plugins-official"
 PLUG_PY="harness-python@agent-harness"
 
-for t in jq claude pyright; do
-  command -v "$t" >/dev/null 2>&1 || { echo "bench-lsp: $t required" >&2; exit 1; }
-done
+. "$(cd "$(dirname "$0")" && pwd)/_bench-lib.sh"
+BENCH_NAME="bench-lsp ($RUNS runs an arm)"
+for a in "$@"; do [ "$a" = --yes ] && BENCH_YES=1; done
+bench_need jq "brew install jq"
+bench_need claude "install Claude Code"
+bench_need pyright "npm install -g pyright"
+bench_need_plugin "pyright-lsp@claude-plugins-official"
+bench_confirm \
+  "Cost: $((RUNS * 2)) full agent sessions. Real money." \
+  "Toggles pyright-lsp and harness-python off and on, and restores them on exit."
 
 WORK="$(mktemp -d)" || exit 1
 restore() {

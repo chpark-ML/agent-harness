@@ -1,15 +1,53 @@
-[
-  {"query": "이 벤치마크 돌리기 전에 재현성 점검 좀 하자. 결과가 인용될 것 같아서", "should_trigger": true},
-  {"query": "재현이 안 돼. 지난주랑 같은 커맨드인데 정확도가 0.02 씩 왔다갔다 해", "should_trigger": true},
-  {"query": "시드 고정 어떻게 해야 제대로 되는 거야? torch 랑 numpy 둘 다 쓰는데 여전히 흔들려", "should_trigger": true},
-  {"query": "i'm about to kick off a training run that will take nine hours. what do i need to record now so someone can re-run this in three months?", "should_trigger": true},
-  {"query": "로드 테스트 셋업 검증해줘. 환경이랑 config 가 실행마다 같은지 확신이 안 서", "should_trigger": true},
-  {"query": "실험 환경 기록을 어떻게 남겨야 나중에 그대로 복원돼? 도커 이미지 태그만으로 충분한가", "should_trigger": true},
-
-  {"query": "이 결과 기록해줘. FINDINGS 에 넣을지 ARTIFACTS 에 넣을지 모르겠어", "should_trigger": false},
-  {"query": "연구 노트 세팅해줘. 다섯 문서 세트로", "should_trigger": false},
-  {"query": "실험 결과 발표자료로 만들어줘. 수치는 근거 있는 것만", "should_trigger": false},
-  {"query": "학습 스크립트가 CUDA out of memory 로 죽어. 배치 사이즈 줄이는 것 말고 방법 있나", "should_trigger": false},
-  {"query": "이 랜덤 샘플링 함수에 유닛 테스트 좀 써줘", "should_trigger": false},
-  {"query": "requirements.txt 에 있는 패키지들 최신 버전으로 올려줘", "should_trigger": false}
-]
+{
+ "skill": "harness-research:repro-checklist",
+ "cases": [
+  {
+   "query": "이 벤치마크 돌리기 전에 재현성 점검 좀 하자. 결과가 인용될 것 같아서",
+   "should_trigger": true
+  },
+  {
+   "query": "재현이 안 돼. 지난주랑 같은 커맨드인데 정확도가 0.02 씩 왔다갔다 해",
+   "should_trigger": true
+  },
+  {
+   "query": "시드 고정 어떻게 해야 제대로 되는 거야? torch 랑 numpy 둘 다 쓰는데 여전히 흔들려",
+   "should_trigger": true
+  },
+  {
+   "query": "i'm about to kick off a training run that will take nine hours. what do i need to record now so someone can re-run this in three months?",
+   "should_trigger": true
+  },
+  {
+   "query": "로드 테스트 셋업 검증해줘. 환경이랑 config 가 실행마다 같은지 확신이 안 서",
+   "should_trigger": true
+  },
+  {
+   "query": "실험 환경 기록을 어떻게 남겨야 나중에 그대로 복원돼? 도커 이미지 태그만으로 충분한가",
+   "should_trigger": true
+  },
+  {
+   "query": "이 결과 기록해줘. FINDINGS 에 넣을지 ARTIFACTS 에 넣을지 모르겠어",
+   "should_trigger": false
+  },
+  {
+   "query": "연구 노트 세팅해줘. 다섯 문서 세트로",
+   "should_trigger": false
+  },
+  {
+   "query": "실험 결과 발표자료로 만들어줘. 수치는 근거 있는 것만",
+   "should_trigger": false
+  },
+  {
+   "query": "학습 스크립트가 CUDA out of memory 로 죽어. 배치 사이즈 줄이는 것 말고 방법 있나",
+   "should_trigger": false
+  },
+  {
+   "query": "이 랜덤 샘플링 함수에 유닛 테스트 좀 써줘",
+   "should_trigger": false
+  },
+  {
+   "query": "requirements.txt 에 있는 패키지들 최신 버전으로 올려줘",
+   "should_trigger": false
+  }
+ ]
+}

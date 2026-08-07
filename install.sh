@@ -155,6 +155,52 @@ for p in $PROFILE_LIST; do
   esac
 done
 
+# ---- 5b. shim for the user's own shell -----------------------------------------
+# The plugin's bin/ lands on the PATH of Claude Code's *Bash tool*, not on the
+# PATH of the terminal the user is sitting in. Typing `harnessctl` in zsh finds
+# nothing, which reads as a broken install.
+#
+# A symlink would not survive either: the plugin cache is versioned
+# (.../harness-core/1.6.0/bin/harnessctl) and every `claude plugin update`
+# creates a new directory, so anything pinned to today's path breaks tomorrow.
+# So this writes a shim that resolves the newest version at run time. It is a
+# plain executable, which means it works the same in zsh, bash and fish.
+BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
+say "shell shim"
+if mkdir -p "$BIN_DIR" 2>/dev/null; then
+  cat > "$BIN_DIR/harnessctl" <<'SHIM'
+#!/bin/sh
+# harnessctl shim — resolves the installed plugin at run time.
+# Installed by agent-harness/install.sh. Safe to delete; re-created on install.
+d=$(ls -d "$HOME"/.claude/plugins/cache/*/harness-core/*/bin 2>/dev/null | sort -V | tail -1)
+[ -n "$d" ] || { echo "harnessctl: harness-core plugin not found. Install it first:" >&2
+                 echo "  claude plugin install harness-core@agent-harness --scope user" >&2; exit 1; }
+exec "$d/harnessctl" "$@"
+SHIM
+  chmod +x "$BIN_DIR/harnessctl"
+  say "  $BIN_DIR/harnessctl"
+  case ":$PATH:" in
+    *":$BIN_DIR:"*) say "  PATH 에 이미 있습니다" ;;
+    *)
+      # Name the file for the shell the user actually runs, not for bash.
+      case "${SHELL##*/}" in
+        zsh)  rc="~/.zshrc" ;;
+        fish) rc="~/.config/fish/config.fish" ;;
+        *)    rc="~/.bashrc (또는 ~/.bash_profile)" ;;
+      esac
+      warn "  $BIN_DIR 가 PATH 에 없습니다. $rc 에 추가하세요:"
+      if [ "${SHELL##*/}" = fish ]; then
+        say "    fish_add_path $BIN_DIR"
+      else
+        say "    export PATH=\"$BIN_DIR:\$PATH\""
+      fi
+      ;;
+  esac
+else
+  warn "  $BIN_DIR 를 만들 수 없어 건너뜁니다 — 플러그인 경로로 직접 부르세요."
+fi
+echo
+
 # ---- 6. doctor ----------------------------------------------------------------
 say "harnessctl doctor"
 bash "$HCTL" doctor --scope "$SCOPE" 2>&1 | sed 's/^/    /'
@@ -168,7 +214,7 @@ cat <<EOF
   harnessctl 권한 · CLAUDE.md$([ "$SCOPE" = project ] && printf ' · rules')
 
 **Claude Code 를 재시작하세요.** 플러그인은 새 세션에서 로드되고, 그때부터
-가드가 동작하며 harnessctl 이 PATH 에 올라갑니다.
+가드가 동작합니다. harnessctl 은 위 shim 으로 어느 셸에서든 부를 수 있습니다.
 
 재시작 후 확인:  harnessctl doctor
 EOF

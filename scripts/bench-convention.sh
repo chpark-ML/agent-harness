@@ -60,7 +60,22 @@ set -uo pipefail
 ARM="${1:-}"
 N="${2:-5}"
 case "$ARM" in raw|harness) ;; *) echo "usage: bench-convention.sh raw|harness [trials]" >&2; exit 2 ;; esac
-command -v claude >/dev/null 2>&1 || { echo "bench-convention: claude required" >&2; exit 1; }
+. "$(cd "$(dirname "$0")" && pwd)/_bench-lib.sh"
+BENCH_NAME="bench-convention ($ARM arm, $N trials)"
+for a in "$@"; do [ "$a" = --yes ] && BENCH_YES=1; done
+bench_need claude "install Claude Code"
+bench_need git "install git"
+bench_need jq "brew install jq"
+if [ "$ARM" = harness ]; then
+  bench_need_plugin "harness-core@agent-harness"
+  bench_need_plugin "harness-dev@agent-harness"
+fi
+bench_confirm \
+  "Cost: $N full agent sessions. Real money." \
+  "Touches, for the raw arm only, and restores on every exit path:" \
+  "  - moves ~/.claude/CLAUDE.md aside" \
+  "  - disables harness-core and harness-dev" \
+  "Everything else happens in a temporary directory."
 
 USER_MD="$HOME/.claude/CLAUDE.md"
 STASH="$HOME/.claude/CLAUDE.md.bench-stashed"

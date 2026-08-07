@@ -80,7 +80,20 @@ EOF
 )"
 ```
 
-`git push` 와 `git merge` 는 `settings.json` 의 `ask` 티어라 승인 프롬프트가 뜬다. 정상이다.
+`git push` 와 `git merge` 는 `settings.json` 의 `ask` 티어라 승인 프롬프트가 뜬다. 대화형 세션에서는 정상이다.
+
+**비대화형 세션(`claude -p`·CI)에서는 push 가 반드시 거부된다.** 답할 사람이 없어서이고, `--permission-mode` 로는 못 뚫는다 (`acceptEdits`·`dontAsk`·`bypassPermissions` 셋 다 실측으로 거부됨). 그때 할 일은 정해져 있다.
+
+- **같은 명령을 다시 쏘지 않는다.** 두 번째도 거부된다.
+- **`main` 에 커밋하는 것으로 대체하지 않는다.** 규약 위반이 조용히 들어가는 경로다.
+- 커밋까지는 이미 끝났으므로 **거기서 멈추고**, 남은 두 명령을 그대로 출력한다:
+
+  ```bash
+  git push -u origin <branch>
+  gh pr create --title "..." --body "..."
+  ```
+
+- 자동화에서 끝까지 돌려야 한다면 그 프로젝트의 `settings.json` 에 `"Bash(git push:*)"` 를 `permissions.allow` 로 올리는 것이 유일한 방법이고, **그건 사람이 내릴 결정이지 이 스킬이 내릴 결정이 아니다.** 그렇게 안내만 한다.
 
 ## Step 6 — harness gap 원장 확인
 

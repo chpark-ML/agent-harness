@@ -97,12 +97,37 @@ def first_tool_call(prompt: str, timeout: int) -> tuple[str | None, str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("eval_set")
-    ap.add_argument("--skill", required=True, help="skill id as it appears in a Skill tool call")
+    ap.add_argument("--skill", help="skill id as in a Skill tool call; defaults to the eval set's own")
     ap.add_argument("--runs", type=int, default=2)
     ap.add_argument("--timeout", type=int, default=90)
     a = ap.parse_args()
 
-    cases = json.loads(Path(a.eval_set).read_text())
+    raw = json.loads(Path(a.eval_set).read_text())
+    # An eval set names the skill it is for. The Makefile used to hold that
+    # mapping in a case statement, which meant adding a skill required editing
+    # two files and forgetting the second was silent.
+    if isinstance(raw, dict):
+        cases = raw["cases"]
+        skill = a.skill or raw.get("skill")
+    else:
+        cases, skill = raw, a.skill
+    if not skill:
+        print("bench-trigger: no skill id — put one in the eval set or pass --skill", file=sys.stderr)
+        return 2
+    a.skill = skill
+
+    # A skill that is not installed cannot fire, and the run would score 0/6
+    # while looking like a finding. Refuse instead.
+    plugin = skill.split(":")[0]
+    try:
+        listed = subprocess.run(["claude", "plugin", "list"], capture_output=True, text=True, timeout=60).stdout
+    except Exception:
+        listed = ""
+    if plugin and plugin not in listed:
+        print(f"bench-trigger: plugin '{plugin}' is not installed — a missing skill would "
+              f"score zero and read as a result.\n  claude plugin install {plugin}@agent-harness --scope user",
+              file=sys.stderr)
+        return 1
     print(f"=== trigger benchmark — {a.skill} ===")
     print(f"{len(cases)} prompts x {a.runs} runs, serial, {a.timeout}s cap\n")
 

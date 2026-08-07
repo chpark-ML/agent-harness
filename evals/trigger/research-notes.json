@@ -1,15 +1,53 @@
-[
-  {"query": "새 연구 프로젝트 시작하는데 노트 세팅해줘. 아직 디렉터리에 아무것도 없어", "should_trigger": true},
-  {"query": "방금 ablation 세 개 돌렸는데 이 결과 어디에 기록해야 돼? 하나는 음성 결과야", "should_trigger": true},
-  {"query": "STATUS 갱신해줘. 지난주에 하던 캐싱 실험은 접었고 지금은 리트라이 쪽 보고 있어", "should_trigger": true},
-  {"query": "i've been running experiments for two weeks with nothing written down and now i can't remember which config produced the 0.82 number. help me set up notes properly", "should_trigger": true},
-  {"query": "FINDINGS 정리 좀 하자. 이번에 믿게 된 것 두 개랑 뒤집힌 것 하나가 있어", "should_trigger": true},
-  {"query": "체크포인트 남겨줘. 오늘 여기까지 했고 다음 사람이 이어받을 수 있게", "should_trigger": true},
-
-  {"query": "이 실험 다시 돌릴 수 있게 시드랑 환경 고정하는 법 알려줘. 어제 돌린 거랑 숫자가 달라", "should_trigger": false},
-  {"query": "재현이 안 돼. 같은 스크립트인데 결과가 매번 조금씩 달라서 원인을 못 찾겠어", "should_trigger": false},
-  {"query": "이번 연구 결과 팀 발표용 슬라이드로 정리해줘", "should_trigger": false},
-  {"query": "이 작업 PR 로 올려줘. 실험 스크립트 두 개 추가했어", "should_trigger": false},
-  {"query": "논문 관련 최신 서베이 좀 찾아서 요약해줘. transformer 효율화 쪽으로", "should_trigger": false},
-  {"query": "결과 CSV 를 pandas 로 읽어서 팔별 평균이랑 표준편차만 뽑아줘", "should_trigger": false}
-]
+{
+ "skill": "harness-research:research-notes",
+ "cases": [
+  {
+   "query": "새 연구 프로젝트 시작하는데 노트 세팅해줘. 아직 디렉터리에 아무것도 없어",
+   "should_trigger": true
+  },
+  {
+   "query": "방금 ablation 세 개 돌렸는데 이 결과 어디에 기록해야 돼? 하나는 음성 결과야",
+   "should_trigger": true
+  },
+  {
+   "query": "STATUS 갱신해줘. 지난주에 하던 캐싱 실험은 접었고 지금은 리트라이 쪽 보고 있어",
+   "should_trigger": true
+  },
+  {
+   "query": "i've been running experiments for two weeks with nothing written down and now i can't remember which config produced the 0.82 number. help me set up notes properly",
+   "should_trigger": true
+  },
+  {
+   "query": "FINDINGS 정리 좀 하자. 이번에 믿게 된 것 두 개랑 뒤집힌 것 하나가 있어",
+   "should_trigger": true
+  },
+  {
+   "query": "체크포인트 남겨줘. 오늘 여기까지 했고 다음 사람이 이어받을 수 있게",
+   "should_trigger": true
+  },
+  {
+   "query": "이 실험 다시 돌릴 수 있게 시드랑 환경 고정하는 법 알려줘. 어제 돌린 거랑 숫자가 달라",
+   "should_trigger": false
+  },
+  {
+   "query": "재현이 안 돼. 같은 스크립트인데 결과가 매번 조금씩 달라서 원인을 못 찾겠어",
+   "should_trigger": false
+  },
+  {
+   "query": "이번 연구 결과 팀 발표용 슬라이드로 정리해줘",
+   "should_trigger": false
+  },
+  {
+   "query": "이 작업 PR 로 올려줘. 실험 스크립트 두 개 추가했어",
+   "should_trigger": false
+  },
+  {
+   "query": "논문 관련 최신 서베이 좀 찾아서 요약해줘. transformer 효율화 쪽으로",
+   "should_trigger": false
+  },
+  {
+   "query": "결과 CSV 를 pandas 로 읽어서 팔별 평균이랑 표준편차만 뽑아줘",
+   "should_trigger": false
+  }
+ ]
+}

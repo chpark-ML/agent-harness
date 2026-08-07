@@ -83,6 +83,17 @@ case_ "a numbered list item → pass" 0 "4. Re-run the benchmark"
 case_ "a slide reference → pass" 0 "- See slide 12 for the raw output"
 case_ "an explicit no-claim marker → pass" 0 "- Roughly 40% faster <!-- no-claim -->"
 
+# --- multi-line html comments (found by the frozen prose corpus) ---
+printf '%s\n' '<!-- notes:' '  throughput was 3.7x in the draft' '  and 91% in the older one' '-->' '- Stops 27 of 29 incidents' > "$WORK/deck.md"
+"$BASH_BIN" "$CHECK" "$WORK/deck.md" "$WORK/ARTIFACTS.md" >/dev/null 2>&1
+[ $? -eq 0 ] && ok "numbers inside a multi-line comment → pass" || bad "numbers inside a multi-line comment → pass"
+printf '%s\n' '<!-- notes:' '  ignore 3.7x' '-->' '- Throughput rose 4.9x' > "$WORK/deck.md"
+"$BASH_BIN" "$CHECK" "$WORK/deck.md" "$WORK/ARTIFACTS.md" >/dev/null 2>&1
+[ $? -eq 1 ] && ok "a claim after a multi-line comment is still caught" || bad "a claim after a multi-line comment is still caught"
+printf '%s\n' '- Throughput rose 4.9x <!-- start' '  spillover 3.7x' '-->' > "$WORK/deck.md"
+"$BASH_BIN" "$CHECK" "$WORK/deck.md" "$WORK/ARTIFACTS.md" >/dev/null 2>&1
+[ $? -eq 1 ] && ok "a claim before an opener is still caught" || bad "a claim before an opener is still caught"
+
 # --- the report has to be actionable ------------------------------------------
 printf '%s\n' '- Improved latency by 42%' > "$WORK/deck.md"
 "$BASH_BIN" "$CHECK" "$WORK/deck.md" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1

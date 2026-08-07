@@ -7,9 +7,15 @@
 # is one I had already thought of.
 #
 # So this measures the checker against a held-out corpus, the way
-# `evals/incidents.sh` does for the guards: real documentation from this
-# repository, taken from a commit that predates the checker's existence. Nobody
-# was avoiding its regexes when they wrote it.
+# `evals/incidents.sh` does for the guards: real technical prose written with no
+# knowledge of these regexes, frozen at `evals/prose-corpus.md`.
+#
+# It used to rebuild that corpus from a git commit that predated the checker.
+# When the repository history was rewritten the commit vanished, the corpus came
+# out empty, and the benchmark went on producing no result while the README kept
+# quoting its last number as current. A fixture that depends on history is a
+# fixture history can delete — so the corpus is now a file, and the file says
+# not to regenerate it.
 #
 # The metric that decides whether the check survives contact with users is the
 # FALSE POSITIVE rate. A checker that flags `ADR-0009` or `bash 3.2` gets
@@ -39,11 +45,10 @@ set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK="$REPO/plugins/harness-slides/scripts/check-claims.sh"
 # Last commit before plugins/harness-slides existed.
-BASE="${BASE:-5ee8e84}"
-DOCS="README.md docs/agent-layer.md docs/adr/0005-installer.md docs/hooks/secret-scrubber.md"
+CORPUS="$REPO/evals/prose-corpus.md"
 
-command -v git >/dev/null 2>&1 || { echo "bench-claims: git required" >&2; exit 1; }
-[ -f "$CHECK" ] || { echo "bench-claims: $CHECK not found" >&2; exit 1; }
+[ -f "$CHECK" ]  || { echo "bench-claims: $CHECK not found" >&2; exit 1; }
+[ -s "$CORPUS" ] || { echo "bench-claims: corpus missing or empty: $CORPUS" >&2; exit 1; }
 
 WORK="$(mktemp -d)" || exit 1
 trap 'rm -rf "$WORK"' EXIT
@@ -69,52 +74,60 @@ cat > "$WORK/ARTIFACTS.md" <<'EOF'
 | hooks 6, blocking 4, informational 2 | hooks.json | repo |
 EOF
 
-n_docs=0
-for f in $DOCS; do
-  if git -C "$REPO" show "$BASE:$f" >> "$WORK/corpus.md" 2>/dev/null; then
-    printf '\n' >> "$WORK/corpus.md"; n_docs=$((n_docs + 1))
-  else
-    echo "  ! $f not present at $BASE — skipped" >&2
-  fi
-done
-[ "$n_docs" -gt 0 ] || { echo "bench-claims: no corpus (is $BASE reachable?)" >&2; exit 1; }
+cp "$CORPUS" "$WORK/corpus.md"
 
 lines="$(wc -l < "$WORK/corpus.md" | tr -d ' ')"
 echo "=== claim checker vs. held-out prose ==="
-echo "corpus:    $n_docs documents, $lines lines, from $BASE (predates the checker)"
+echo "corpus:    $lines lines, frozen at evals/prose-corpus.md"
 echo "artifacts: $(grep -c '^|' "$WORK/ARTIFACTS.md") rows of this repo's measured numbers"
 echo
 
 "$CHECK" "$WORK/corpus.md" "$WORK/ARTIFACTS.md" > "$WORK/out" 2>&1
 head -1 "$WORK/out"
+checked_n="$(head -1 "$WORK/out" | awk '{print $2}')"
 
-# Adjudication. A token is a "shape" miss when the line's own context shows it
-# was never a quantity: a cross-reference, an identifier, an exit code, a
-# requirement version. Everything else is a real untraceable quantity.
+# What this benchmark is for: finding shapes the filter list does not know
+# about. It is NOT for producing a false-positive percentage — two earlier
+# attempts tried and both were wrong, in opposite directions. Bucketing by line
+# context counted a real quantity as a miss because an ADR number sat beside it;
+# bucketing by `word + number` then counted "frontmatter 9" as a version. Those
+# two are not separable by shape, which is exactly the limitation the checker
+# already documents: `bash 5` cannot be told from `hooks 6`.
+#
+# So the output is a list, not a rate. Everything flagged falls into one of two
+# buckets, and only the second one is actionable:
+#   known    the `word + bare number` ambiguity, accepted and unfiltered
+#   other    a genuine quantity with no row in the deliberately small artifacts
+#            file — correct behaviour — OR a new shape nobody has filtered yet
+# A human reads the `other` list. Anything in it that is not a quantity is a
+# filter to add, with a regression case.
 sed -n '/^not found/,$p' "$WORK/out" | grep -E '^  .*:[0-9]+' > "$WORK/flags" 2>/dev/null
 
 total="$(wc -l < "$WORK/flags" | tr -d ' ')"
-shape=0; real=0
-: > "$WORK/shapes"
+known=0; other=0
+: > "$WORK/known"; : > "$WORK/other"
 while IFS= read -r f; do
   [ -n "$f" ] || continue
+  tok="$(printf '%s' "$f" | awk '{print $2}')"
   ctx="$(printf '%s' "$f" | cut -d' ' -f3-)"
-  case "$ctx" in
-    *"ADR-0"*|*"§"*|*"exit "*|*"bash 3.2"*|*"Phase "*|*"phase "*|*"[^"*)
-      shape=$((shape + 1)); printf '%s\n' "$f" >> "$WORK/shapes" ;;
-    *) real=$((real + 1)) ;;
-  esac
+  esc="$(printf '%s' "$tok" | sed 's/[.[\*^$]/\\&/g')"
+  if printf '%s' "$ctx" | grep -qE "[A-Za-z][A-Za-z+.#_-]* $esc([^0-9]|$)"; then
+    known=$((known + 1)); printf '%s\n' "$f" >> "$WORK/known"
+  else
+    other=$((other + 1)); printf '%s\n' "$f" >> "$WORK/other"
+  fi
 done < "$WORK/flags"
 
 echo
-printf 'flagged tokens: %s\n' "$total"
-printf '  shape misses (filter list has a hole): %s\n' "$shape"
-printf '  real untraceable quantities:           %s\n' "$real"
+printf 'flagged: %s of %s tokens checked\n' "$total" "$checked_n"
+printf '  known ambiguity (word + bare number, unfilterable): %s\n' "$known"
+printf '  everything else (read these):                      %s\n' "$other"
 echo
-echo "shape misses in full — each is a filter to add or a decision not to:"
-sort -u "$WORK/shapes" 2>/dev/null | head -40
+echo "--- the 'everything else' list. Each is either a quantity the small"
+echo "--- artifacts file legitimately lacks, or a shape nobody has filtered."
+sort -u "$WORK/other" 2>/dev/null | head -50
 echo
-echo "Adjudication is heuristic — read the flags before trusting the split. Note"
-echo "that a 'real' flag here is correct behaviour: the artifacts file above is"
-echo "deliberately small, so most quantities in the corpus legitimately lack a row."
-echo "The number that matters is the shape count."
+echo "There is no false-positive rate here on purpose. A token like 'bash 5' and"
+echo "a token like 'hooks 6' have the same shape, so no counter can separate them"
+echo "-- which is the checker's documented limitation, and it applies to any"
+echo "adjudicator too. Read the list."

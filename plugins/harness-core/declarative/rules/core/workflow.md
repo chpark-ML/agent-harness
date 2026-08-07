@@ -32,6 +32,7 @@ paths: ["**/*"]
 **불변량**:
 
 - **`main` (또는 default branch) 직접 push 금지.** 항상 feature branch 경유. `check-uncommitted` Stop 훅이 default branch 에 변경이 쌓이면 알린다.
+- **비대화형 실행은 push 에서 멈춘다.** `ask` 티어는 사람이 답해야 통과하므로 `claude -p` 와 CI 에서는 push 가 항상 거부된다. 설계상 그렇다 — 자동화에서 PR 까지 가야 한다면 그 프로젝트가 `Bash(git push:*)` 를 `allow` 로 올리는 결정을 내려야 한다.
 - **Force push 금지.** `git push --force` / `-f` 는 `settings.json` 의 `deny`.
 - **Branch 이름 = slug**, `{feat,fix,chore}-<short>` 형식. `/` 금지 — worktree·디렉터리 이름으로 그대로 쓰이는 경우가 흔하다.
 - **PR title** 은 `[<slug>] <description>`, 70자 이하. slug 가 이미 type prefix 를 포함하므로 description 에 `feat:` 를 다시 붙이지 않는다.
@@ -41,7 +42,10 @@ paths: ["**/*"]
 
 ## R2 — Commit
 
-- 제목은 **동사로 시작**, 70자 이하 1행. 본문에는 *what* 이 아니라 *why*.
+- 제목은 **동사로 시작** 하는 1행. 본문에는 *what* 이 아니라 *why*.
+  <!-- 글자 수 상한은 뺐다. 하네스 있고 없고를 6회씩 재보니 양쪽 다 6/6 이라
+       이 규칙이 만든 차이가 0 이었다. 모델이 원래 짧게 쓴다. 다시 넣으려면
+       먼저 재고, 차이가 있을 때만 넣는다. → docs/agent-layer.md §4b -->
 - Commit 과 PR description 은 다른 축이다. Commit 은 *그 changeset 의 why*, PR 은 *작업 단위 전체의 서사*.
 - **AI 귀속 금지.** `Co-Authored-By: Claude` trailer 도, `🤖 Generated with Claude Code` footer 도 남기지 않는다. `settings.json` 의 `includeCoAuthoredBy: false` 가 내장 부착을 끄고, PreToolUse 훅 `ai-attribution-guard` 가 명령 단계에서 차단한다. `CLAUDE.md` 파일명·`.claude/` 디렉터리·`anthropic` API 백엔드 같은 정당한 참조는 귀속이 아니므로 그대로 둔다.
 

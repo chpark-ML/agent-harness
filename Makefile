@@ -9,7 +9,7 @@ BASH ?= bash
 TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
-.PHONY: help verify syntax frontmatter verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention
+.PHONY: help verify syntax frontmatter verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + hooks + harnessctl + plugins"
@@ -26,7 +26,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter verify-hooks verify-install verify-plugins
+verify: syntax frontmatter verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -43,6 +43,9 @@ syntax:
 # every environment.
 frontmatter:
 	@$(BASH) scripts/verify-frontmatter.sh
+
+verify-benches:
+	@$(BASH) scripts/verify-benches.sh
 
 verify-hooks:
 	@$(BASH) plugins/harness-core/scripts/verify-hooks.sh
@@ -77,10 +80,7 @@ bench:
 # Spends real money on agent runs. Never wired into verify.
 bench-trigger:
 	@for f in evals/trigger/*.json; do \
-	  n=$$(basename $$f .json); \
-	  case "$$n" in pr-create) id=harness-core:pr-create ;; pr-review) id=harness-dev:pr-review ;; \
-	    results-deck) id=harness-slides:results-deck ;; *) id=harness-research:$$n ;; esac; \
-	  python3 scripts/bench-trigger.py $$f --skill $$id --runs $(TRIGGER_RUNS) || exit 1; \
+	  python3 scripts/bench-trigger.py $$f --runs $(TRIGGER_RUNS) || exit 1; \
 	done
 
 bench-convention:
