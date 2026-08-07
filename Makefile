@@ -9,12 +9,13 @@ BASH ?= bash
 TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
-.PHONY: help verify syntax frontmatter verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify syntax frontmatter doc-refs verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
-	@echo "make verify           syntax + frontmatter + hooks + harnessctl + plugins"
+	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
 	@echo "make syntax           parse every shipped script"
 	@echo "make frontmatter      YAML frontmatter of every skill, agent, rule, command"
+	@echo "make doc-refs         links, anchors and paths that documents point at"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
 	@echo "make verify-plugins   claude plugin validate (skipped when the CLI is absent)"
@@ -26,7 +27,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -43,6 +44,13 @@ syntax:
 # every environment.
 frontmatter:
 	@$(BASH) scripts/verify-frontmatter.sh
+
+# A dead link or a mistyped path in an instruction file is not an error — the
+# step just never runs, and nothing says so. Selftest first: this checker's own
+# risk is false positives, and a doc linter that cries wolf gets switched off.
+doc-refs:
+	@$(BASH) scripts/verify-doc-refs.sh --selftest
+	@$(BASH) scripts/verify-doc-refs.sh
 
 verify-benches:
 	@$(BASH) scripts/verify-benches.sh
