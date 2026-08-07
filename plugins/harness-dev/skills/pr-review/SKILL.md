@@ -5,7 +5,7 @@ description: "Use when a pull request is already open on the forge and you want 
 
 # pr-review
 
-이미 열려 있는 PR 하나를 `rules/harness/dev/review.md` 의 체크리스트로 검토하고 **보고**한다.
+이미 열려 있는 PR 하나를 `.claude/rules/harness/dev/review.md` 의 체크리스트로 검토하고 **보고**한다.
 
 **본 스킬이 하지 않는 것** — commit·push 하지 않고, GitHub 에 코멘트를 남기지 않으며(사용자가 명시적으로 요청할 때만), 머지하지 않는다. 출력은 사용자에게 주는 punch list 하나다.
 

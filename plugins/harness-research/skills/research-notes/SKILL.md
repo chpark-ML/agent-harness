@@ -5,7 +5,7 @@ description: "Use to create or maintain the five-document research-note set (STA
 
 # research-notes
 
-`rules/harness/research/notes.md` 의 다섯 문서를 **생성** 하고, 이후 결과가 나올 때마다 **어느 파일이 갱신되는지 라우팅** 한다.
+`.claude/rules/harness/research/notes.md` 의 다섯 문서를 **생성** 하고, 이후 결과가 나올 때마다 **어느 파일이 갱신되는지 라우팅** 한다.
 
 두 경로가 있다 — 처음이면 § A (bootstrap), 이미 있으면 § B (maintenance).
 
