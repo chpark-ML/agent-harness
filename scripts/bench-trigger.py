@@ -28,9 +28,13 @@ Runs are serial on purpose. Under parallel load `claude -p` startup alone can
 exceed a short timeout, and every arm reads as zero.
 
   python3 scripts/bench-trigger.py evals/trigger/<skill>.json --skill <name> [--runs 2]
+  python3 scripts/bench-trigger.py <other-repo>/evals/trigger/<skill>.json --cwd <other-repo>
 
 `--skill` is the id as it appears in a Skill tool call, e.g.
-`harness-slides:results-deck`. Runs on the stock macOS python3 (3.9) — the
+`harness-slides:results-deck` for a plugin skill or a bare `slide-deck` for a
+project skill. `--cwd` is where the prompts run, which is what decides whose
+`.claude/skills` are loaded — that is how another repo's skills get measured
+without installing anything. Runs on the stock macOS python3 (3.9) — the
 `from __future__ import annotations` above is what makes that true, and it is
 why skill-creator's own run_eval.py does not run there.
 """
@@ -45,7 +49,7 @@ import time
 from pathlib import Path
 
 
-def first_tool_call(prompt: str, timeout: int) -> tuple[str | None, str]:
+def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[str | None, str]:
     """Run one prompt and return (tool_name, raw_input_json) for the first tool
     call, or (None, reason). Kills the agent as soon as it has an answer — we
     only care about the opening move, and a full run costs real money."""
@@ -61,7 +65,7 @@ def first_tool_call(prompt: str, timeout: int) -> tuple[str | None, str]:
     ]
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, text=True
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, text=True, cwd=cwd
     )
     pending, acc, deadline = None, "", time.time() + timeout
     try:
@@ -105,6 +109,8 @@ def main() -> int:
     ap.add_argument("--skill", help="skill id as in a Skill tool call; defaults to the eval set's own")
     ap.add_argument("--runs", type=int, default=2)
     ap.add_argument("--timeout", type=int, default=90)
+    ap.add_argument("--cwd", help="directory the prompts run in; project skills are "
+                                  "loaded from <cwd>/.claude/skills. Defaults to here.")
     a = ap.parse_args()
 
     raw = json.loads(Path(a.eval_set).read_text())
@@ -123,16 +129,33 @@ def main() -> int:
 
     # A skill that is not installed cannot fire, and the run would score 0/6
     # while looking like a finding. Refuse instead.
-    plugin = skill.split(":")[0]
-    try:
-        listed = subprocess.run(["claude", "plugin", "list"], capture_output=True, text=True, timeout=60).stdout
-    except Exception:
-        listed = ""
-    if plugin and plugin not in listed:
-        print(f"bench-trigger: plugin '{plugin}' is not installed — a missing skill would "
-              f"score zero and read as a result.\n  claude plugin install {plugin}@agent-harness --scope user",
-              file=sys.stderr)
-        return 1
+    #
+    # Only plugin skills carry a `plugin:name` id. A project skill — one living
+    # in the target repo's .claude/skills/<name>/SKILL.md — is called by bare
+    # name, so splitting on ":" yields the skill's own name and the plugin check
+    # rejects every one of them. Measuring another repo's skills is a real use:
+    # the eval set travels, the skills stay where they are, and `claude -p` picks
+    # them up from the working directory. So the presence check follows the id.
+    if ":" in skill:
+        plugin = skill.split(":")[0]
+        try:
+            listed = subprocess.run(["claude", "plugin", "list"], capture_output=True, text=True, timeout=60).stdout
+        except Exception:
+            listed = ""
+        if plugin and plugin not in listed:
+            print(f"bench-trigger: plugin '{plugin}' is not installed — a missing skill would "
+                  f"score zero and read as a result.\n  claude plugin install {plugin}@agent-harness --scope user",
+                  file=sys.stderr)
+            return 1
+    else:
+        # Same guarantee, different lookup: the file has to exist under the cwd
+        # the prompts will run in, which is what --cwd sets.
+        root = Path(a.cwd) if a.cwd else Path.cwd()
+        if not (root / ".claude" / "skills" / skill / "SKILL.md").is_file():
+            print(f"bench-trigger: no project skill '{skill}' under {root} — "
+                  f"a missing skill would score zero and read as a result.\n"
+                  f"  expected {root}/.claude/skills/{skill}/SKILL.md", file=sys.stderr)
+            return 1
     print(f"=== trigger benchmark — {a.skill} ===")
     print(f"{len(cases)} prompts x {a.runs} runs, serial, {a.timeout}s cap")
     print(f"model={os.environ.get('BENCH_MODEL','opus')} "
@@ -143,7 +166,7 @@ def main() -> int:
     for c in cases:
         hits, opens = 0, []
         for _ in range(a.runs):
-            name, payload = first_tool_call(c["query"], a.timeout)
+            name, payload = first_tool_call(c["query"], a.timeout, a.cwd)
             if name is None and payload == "timeout":
                 timeouts += 1
                 opens.append("TIMEOUT")
@@ -173,8 +196,11 @@ def main() -> int:
     print(f"  overall:            {sum(r['pass'] for r in rows)}/{len(rows)}")
     if timeouts:
         print(f"  timeouts:           {timeouts}  (counted as neither — raise --timeout)")
-    Path("evals/trigger/last-result.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2))
-    print("  written to evals/trigger/last-result.json")
+    # Beside the eval set, not at a fixed path: an eval set for another repo's
+    # skills belongs in that repo, and its results should not land here.
+    out = Path(a.eval_set).resolve().parent / "last-result.json"
+    out.write_text(json.dumps(rows, ensure_ascii=False, indent=2))
+    print(f"  written to {out}")
     return 0 if all(r["pass"] for r in rows) else 1
 
 
