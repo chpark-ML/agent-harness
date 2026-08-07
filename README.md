@@ -1,42 +1,36 @@
 # agent-harness
 
-프로젝트에 상관없이 쓰는 Claude Code 하네스. 가드 훅 · 규약 · 스킬 한 벌을 설치하고, 제거하면 정확히 원래대로 돌린다.
+**연구와 개발을 위한 범용 Claude Code 하네스 — 쓸 만한 플러그인을 검토하고 조합해, 한 줄로 설치되고 한 줄로 되돌아가는 한 벌로 유지한다.**
 
-**이 하네스가 스스로 하는 일은 셋이다** — 사고를 막고(가드), 작업 규약을 고정하고(규칙·스킬), 그 둘을 안전하게 설치·제거한다. *일하는 능력 자체* 는 대부분 조합해서 얻는다: `harness-dev` 는 [Superpowers](https://github.com/obra/superpowers) 를 끌어와 brainstorming · TDD · systematic debugging · 계획 수립 · 코드리뷰 요청/수신 · worktree 를 붙이고, 우리는 그 위에 *이 저장소의 규약* 만 얹는다. 남의 것으로 되는 일을 다시 만들지 않는 것이 방침이다 ([ADR-0009](docs/adr/0009-external-dependencies.md)).
+주장하지 않고 잰다. 이 저장소의 모든 층은 stock Claude Code 와 대조해 숫자가 붙어 있고, 아무것도 벌지 못한 규칙은 그렇다고 적혀 있다.
 
-그래서 두 프로파일의 두께가 다르다. Superpowers 의 스킬 14개는 개발 워크플로를 폭넓게 덮지만 **연구 전용은 0개** 라서, `harness-dev` 는 얇고 (규약 1 + 스킬 1) `harness-research` 는 두껍다 (규약 1 + 스킬 2 + 템플릿 5). 비대칭은 미완성이 아니라 그 사실의 결과다.
+---
 
-**전제**: git 저장소. 가드 둘과 규약 대부분이 git 과 forge(PR) 를 가정한다. PR 흐름이 없는 개인 저장소에서는 `rules/harness/workflow.md` 의 절반이 무의미하고, 나머지 절반(harness gap 루프, plan 단계 검증)은 그대로 유효하다.
+## Quick Start
 
-## 두 조각으로 배포된다
-
-플랫폼이 그은 선을 그대로 따른다. 플러그인이 나를 수 있는 것과 없는 것이 명확히 갈리기 때문이다 ([ADR-0008](docs/adr/0008-plugin-declarative-split.md)).
-
-| | 플러그인 | `harnessctl` |
-|---|---|---|
-| 무엇 | 가드 훅 6개 · 스킬 · 커맨드 · 검증기 | permissions 3티어 · `includeCoAuthoredBy` · `CLAUDE.md` · `.claude/rules` |
-| 왜 이쪽 | Claude Code 가 직접 로드·업데이트·스코프 관리 | 플러그인 `settings.json` 은 `agent`·`subagentStatusLine` 만 지원하고, 플러그인 루트의 `CLAUDE.md` 는 컨텍스트로 안 읽히며, `rules` 는 플러그인 컴포넌트가 아니다 |
-| 설치 | `claude plugin install` | `harnessctl init` |
-| 위치 | 플러그인 캐시 | 프로젝트 또는 `~/.claude` |
-
-`harnessctl` 은 플러그인이 `bin/` 으로 배포하므로 설치하면 Bash 도구 PATH 에 자동으로 올라간다.
-
-## 요구 사항
-
-bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그인을 지원하는 Claude Code. `harnessctl doctor` 가 전부 점검한다.
-
-## 설치
+### 설치 — 한 줄
 
 ```bash
 git clone https://github.com/chpark-ML/agent-harness ~/agent-harness
 ~/agent-harness/install.sh --profile dev,python --with-tools
 ```
 
-한 번에 끝난다. 스크립트가 marketplace 등록 → 플러그인 설치 → `harnessctl init` (플러그인이 못 나르는 절반) → 언어 서버 설치 → `doctor` 까지 진행한다. 프로파일은 콤마로 조합하고, `--scope project` 면 이 저장소에만, 생략하면 머신 전체(`user`)다. `--with-tools` 는 LSP 가 요구하는 언어 서버를 `npm -g` 로 설치한다 — 전역 변경이라 opt-in 이다.
+끝이다. 스크립트가 marketplace 등록 → 플러그인 설치 → `harnessctl init` → 언어 서버 설치 → `doctor` 까지 한 번에 진행한다.
 
-끝나면 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드되고, 그때부터 가드가 동작하며 `harnessctl` 이 PATH 에 오른다.
+| 옵션 | 뜻 |
+|---|---|
+| `--profile dev,python` | 프로파일 조합. 생략하면 `core` 만 |
+| `--scope project` | 이 저장소에만. 생략하면 머신 전체(`user`) |
+| `--with-tools` | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
 
-손으로 하고 싶다면 같은 일을 두 단계로 나눈 것이 전부다:
+설치 후 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
+
+```bash
+harnessctl doctor        # 무엇이 설치됐고 무엇이 빠졌는지
+```
+
+<details>
+<summary>손으로 하려면 — 두 단계가 전부다</summary>
 
 ```bash
 claude plugin marketplace add chpark-ML/agent-harness
@@ -47,101 +41,251 @@ harnessctl init --scope user --with dev
 
 `install.sh` 가 두 번째 단계를 세션 재시작 없이 해내는 방법은 플러그인 디렉터리의 `harnessctl` 을 경로로 직접 부르는 것이다 — PATH 등록만 새 세션이 필요하지, 설치를 끝내는 데는 필요 없다.
 
-## 프로파일
+</details>
 
-전부 `harness-core` 를 dependency 로 갖는다. 조합해서 설치할 수 있다 — `harness-dev` + `harness-python` 이 흔한 조합.
-
-| 프로파일 | 더해지는 것 |
-|---|---|
-| `harness-core` | 가드 훅 6개, `pr-create` 스킬, `/verify`, 검증기, `harnessctl` |
-| `harness-dev` | [Superpowers](https://github.com/obra/superpowers) + 코드리뷰 규약 · `pr-review` |
-| `harness-research` | 5문서 노트 규율 · `research-notes` · `repro-checklist` |
-| `harness-slides` | `results-deck` — 산출물을 발표 서사로, 모든 수치의 추적을 기계 검사 |
-| `harness-python` | `pyright-lsp` |
-| `harness-typescript` | `typescript-lsp` |
-
-언어 프로파일은 dependency 만 든 manifest 하나다. 다른 언어가 필요하면 공식 marketplace 의 LSP (`gopls-lsp` · `rust-analyzer-lsp` · `jdtls-lsp` · `clangd-lsp` 등) 를 같은 모양으로 추가하면 된다. **LSP 플러그인은 언어 서버 바이너리를 포함하지 않는다** — `harnessctl doctor` 가 PATH 를 확인하고 설치 명령을 알려준다. `harness-slides` 도 같다: 렌더링은 `slides-grab` (npm) 이 하고 이 프로파일은 그 입력을 만든다.
-
-## 무엇을 받는가
-
-**가드 (차단)** — `secret-scrubber` (명령줄의 리터럴 시크릿), `large-file-veto` (10 MiB 초과 `git add`), `protected-paths` (선언된 절대경로 prefix, 기본 비활성), `ai-attribution-guard` (커밋·PR 의 AI 귀속).
-
-**정보 (차단 안 함)** — `session-brief` (세션 시작 시 10줄 repo 상태), `check-uncommitted` (default branch 에 작업이 쌓일 때만).
-
-**규약** — `CLAUDE.md` 5원칙 (Think Before Coding · Simplicity First · Surgical Changes · Goal-Driven Execution · Surface Harness Gaps), 브랜치·커밋·PR 규약, harness gap 루프, plan 단계 진단 검증.
-
-**권한 3티어** — 읽기 전용·안전한 git 은 allow, `push`/`rebase`/`merge` 는 ask, 되돌릴 수 없는 것과 `.env`·`secrets/` 읽기는 deny.
-
-전체 인벤토리와 설계 근거는 [`docs/agent-layer.md`](docs/agent-layer.md), 결정 이력은 [`docs/adr/`](docs/adr/), 훅별 상세는 [`docs/hooks/`](docs/hooks/).
-
-## harnessctl 이 건드리는 것 — 전부
-
-플러그인은 자기 캐시에만 살고 아래 어디에도 쓰지 않는다. 아래는 `harnessctl init` 이 대상(`--scope project` 면 프로젝트, `--scope user` 면 `~/.claude`) 안에 쓰는 것의 전부다.
-
-1. **관리 파일** — `.claude/rules/harness/**`. 이미 있으면 덮어쓴다. 로컬 수정은 사라지므로, 고칠 것은 하네스 저장소에서 고친다. *`--scope user` 에서는 설치하지 않는다* — 사용자 레벨 `rules` 가 읽힌다는 근거가 없어 무력한 파일이 되기 때문이고, 무엇을 건너뛰었는지 출력한다.
-2. **템플릿 파일** — `CLAUDE.md`, `protected-paths.txt`, `allowed-paths.txt`. **없을 때만** 복사한다. 이후로는 프로젝트 소유.
-3. **`settings.json`** — 없으면 만들고, 있으면 **파싱 후 재직렬화**한다 (통째로 교체하지 않는다). 넣는 것은 둘뿐: 이미 없는 permission 문자열, 그리고 `includeCoAuthoredBy: false` (**키가 없을 때만**; 값이 있으면 경고만 하고 둔다).
-4. **`settings.json.bak-<타임스탬프>`** — 설정이 실제로 바뀔 때만 남기는 직전 스냅샷.
-5. **`.gitignore`** — `settings.local.json` 과 `.bak-*` 두 줄 (프로젝트 스코프에서만).
-6. **`harness-manifest.json`** — 위 전부의 영수증. 제거는 이 영수증만 되돌린다.
-
-**건드리지 않는 것**
-
-- **`settings.json` 의 `hooks` 블록.** 훅은 플러그인이 등록한다. 검증기가 *설치 전후로 `.hooks` 가 바이트 동일* 함을 단정한다.
-- 선택한 스코프 밖의 무엇도. `.claude/settings.local.json`. manifest 에 없는 `.claude/` 아래 모든 것. git — 커밋도, 브랜치도, config 도.
-- 이미 값이 있는 설정 키. 우리가 추가한 것만 우리 것이다.
-
-**부수효과** — `settings.json` 이 jq 로 재직렬화되므로 들여쓰기가 2칸으로 정규화된다 (키 순서는 보존). 이후 재실행은 멱등이라 아무것도 쓰지 않지만, Claude Code 가 자기 포맷으로 파일을 다시 쓴 뒤 (설정을 UI 에서 바꿨을 때 등) 처음 한 번은 재정규화가 일어나고 스냅샷이 하나 남는다.
-
-**제거**
+### 롤백 — 두 줄
 
 ```bash
-harnessctl uninstall --scope user            # 템플릿은 남긴다
-claude plugin uninstall harness-dev@agent-harness --prune
+harnessctl uninstall --scope user                        # 설정·규칙·CLAUDE.md 되돌리기
+claude plugin uninstall harness-dev@agent-harness --prune # 플러그인 제거
 ```
 
-검증된 성질: 제거 후 `settings.json` 은 설치 전과 **정준 동일**하다 (`jq -S` 기준).
+**검증된 성질**: 제거 후 `settings.json` 은 설치 전과 **정준 동일** 하다 (`jq -S` 기준). 설치기는 자기가 쓴 것의 영수증(`harness-manifest.json`)만 되돌리고, 그 외에는 아무것도 건드리지 않는다. `--purge-templates` 를 주지 않으면 프로젝트 소유가 된 템플릿(`CLAUDE.md` 등)은 남긴다.
 
-## 무엇을 기대할 수 있나
+되돌리기 전에 무엇이 지워질지 보려면 `--dry-run`.
 
-주장하지 않고 쟀다. 층마다 `make bench*` 로 stock Claude Code 와 대조한다.
+**부수효과 하나**: `settings.json` 이 jq 로 재직렬화되므로 들여쓰기가 2칸으로 정규화된다 (키 순서는 보존). 재실행은 멱등이라 아무것도 쓰지 않지만, Claude Code 가 자기 포맷으로 파일을 다시 쓴 뒤에는 (UI 에서 설정을 바꿨을 때 등) 처음 한 번 재정규화가 일어나고 스냅샷이 하나 남는다.
 
-| 층 | 결과 |
+---
+
+## 이 저장소가 하는 일
+
+**연구와 개발 양쪽에 쓰는 범용 에이전트 하네스를 만든다.** 하는 일은 셋이다.
+
+1. **최신 플러그인·스킬을 검토한다** — 본문을 읽고, 겹치는지 판정하고, 쓸 것과 안 쓸 것을 근거와 함께 남긴다.
+2. **조합(composite)을 만든다** — 남의 것으로 되는 일은 다시 만들지 않는다. 우리가 얹는 것은 *이 저장소의 규약* 과, 남들이 안 만든 자리뿐이다.
+3. **한 줄로 설치되는 한 벌로 유지한다** — 설치·제거·진단이 명령 하나씩이고, 제거하면 원래대로 돌아간다.
+
+여기에 하나가 더 붙는다. **넣은 것이 실제로 값을 하는지 잰다.** 규칙은 적어두면 지켜지는 것처럼 보이지만, 재보면 절반은 아무것도 벌지 않는다.
+
+**전제**: git 저장소. 가드 둘과 규약 대부분이 git 과 forge(PR) 를 가정한다.
+**요구 사항**: bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그인을 지원하는 Claude Code.
+
+---
+
+## 규칙 요약
+
+컨슈머가 받는 규약. 전문은 설치되는 `CLAUDE.md` 와 `.claude/rules/harness/` 에 있다.
+
+### 행동 5원칙
+
+| | |
 |---|---|
-| **가드** — 사고를 막나 | stock **0 / 29** → harness **27 / 29** · 정상 작업 오탐 **2 / 24** |
-| **규약** — 글이 행동을 바꾸나 | 브랜치 이름 stock **0 / 12** → harness **10 / 12** (*p* ≈ 0.00007) |
-| **스킬 라우팅** — 의도한 스킬로 가나 | **59 / 60** |
-| **발표 수치 추적** — 조작된 숫자를 잡나 | 실제 산문 193토큰 중 오탐 **6 (3.1%)** |
-| **LSP** — 토큰이 주나 | **결론 없음.** 이 설계로는 61% 이상만 보인다 |
+| **1. Think Before Coding** | 가정을 밝히고, 해석이 갈리면 묻는다. 불명확하면 멈춘다 |
+| **2. Simplicity First** | 문제를 푸는 최소 코드. 200줄인데 50줄로 되면 다시 쓴다 |
+| **3. Surgical Changes** | 바뀐 줄 전부가 요청으로 추적돼야 한다. 남의 죽은 코드는 말만 하고 둔다 |
+| **4. Goal-Driven Execution** | 성공 기준을 정하고 실제로 돌려서 확인한다. "될 것이다" 는 검증이 아니다 |
+| **5. Surface Harness Gaps** | 하네스가 틀렸으면 우회하지 말고 드러낸다. **2회 이상 발생** 해야 제안하고, 그 횟수는 원장에 센다 |
 
-**두 숫자를 함께 봐야 한다.** 전부 차단하는 가드는 차단율 100%를 찍고 하루 만에 꺼지며, 그때부터 0이 된다. **8%가 가격표다.**
+### 작업 규약
 
-정직하게 적어 둘 것 셋:
+- **Branch** `{feat,fix,chore}-<slug>` — `/` 금지 (worktree·디렉터리 이름이 된다)
+- **Commit** 제목은 동사로 70자 이하 한 줄, 본문엔 *what* 이 아니라 *why*
+- **PR** title `[<slug>] <description>`, body 는 Motivation → Changes → Verification → Notes
+- **AI 귀속 금지** — `Co-Authored-By: Claude` 도 `🤖 Generated with` 도 남기지 않는다
+- `main` 직접 push 금지. 한 줄 수정·임시 탐색은 애초에 PR 단위가 아니다
 
-- **규약 중에도 아무것도 벌지 않는 것이 있다.** commit 제목 70자 제한은 하네스가 있으나 없으나 6/6 이다 — 모델이 원래 짧게 쓴다.
-- **PR 단계 규약은 아직 못 쟀다.** 헤드리스 세션은 `git push` 승인 프롬프트에 답할 수 없어 PR 단계에 도달하지 못한다.
-- **측정하다 계기를 여섯 번 틀렸고 전부 하네스를 나쁘게 보이게 했다.** 그 여섯 건과 거기서 나온 규칙은 [`docs/agent-layer.md` §4b](docs/agent-layer.md) 에 표로 남겼다.
+### 권한 3티어
 
-방법·표본·한계는 전부 [§4b](docs/agent-layer.md) 에 있다.
+| 티어 | 무엇 |
+|---|---|
+| allow | 읽기 전용, 안전한 git (`status`·`diff`·`add`·`commit`·`switch` …) |
+| ask | `push` · `rebase` · `merge` — 되돌리기 비싼 것 |
+| deny | 되돌릴 수 없는 것, `.env`·`secrets/` 읽기, force push |
 
-## 검증
+---
+
+## 무엇이 들어 있고 어떻게 구조화했나
+
+### 두 조각으로 배포된다
+
+플랫폼이 그은 선을 그대로 따른다 ([ADR-0008](docs/adr/0008-plugin-declarative-split.md)).
+
+| | 플러그인 | `harnessctl` |
+|---|---|---|
+| **무엇** | 가드 훅 6 · 스킬 · 커맨드 · 검증기 | permissions 3티어 · `CLAUDE.md` · `.claude/rules` |
+| **왜 이쪽** | Claude Code 가 직접 로드·업데이트·스코프 관리 | 플러그인 `settings.json` 은 `agent`·`subagentStatusLine` 만 지원하고, 플러그인 루트 `CLAUDE.md` 는 컨텍스트로 안 읽히며, `rules` 는 플러그인 컴포넌트가 아니다 |
+| **설치** | `claude plugin install` | `harnessctl init` |
+| **위치** | 플러그인 캐시 | 프로젝트 또는 `~/.claude` |
+
+`harnessctl` 은 플러그인이 `bin/` 으로 배포하므로 설치하면 Bash 도구 PATH 에 자동으로 오른다.
+
+### 프로파일 6개
+
+전부 `harness-core` 를 dependency 로 갖고, 조합해서 설치한다.
+
+| 프로파일 | 더해지는 것 | 상시 컨텍스트 |
+|---|---|---|
+| `harness-core` | 가드 훅 6, `pr-create`, `/verify`, 검증기, `harnessctl` | ~390 tok |
+| `harness-dev` | [Superpowers](https://github.com/obra/superpowers) 14스킬 + 코드리뷰 규약 · `pr-review` | ~351 + 688 tok |
+| `harness-research` | 5문서 노트 규율 · `research-notes` · `repro-checklist` | ~480 tok |
+| `harness-slides` | `results-deck` — 산출물을 발표 서사로, 수치 추적을 기계 검사 | ~300 tok |
+| `harness-python` | `pyright-lsp` (manifest 한 장, 파일 없음) | 0 |
+| `harness-typescript` | `typescript-lsp` (manifest 한 장, 파일 없음) | 0 |
+
+**두 프로파일의 두께가 다른 것은 미완성이 아니다.** Superpowers 가 개발 워크플로를 폭넓게 덮지만 **연구 전용 스킬은 0개** 라서, `harness-dev` 는 얇고 `harness-research` 는 두껍다.
+
+**훅과 LSP 는 상시 컨텍스트 비용이 0** 이다 — 매 세션 비용을 만드는 것은 스킬 description 뿐이다.
+
+---
+
+## 구조 상세
+
+### 가드 훅 6개
+
+| 훅 | 무엇을 막나 | 차단 |
+|---|---|---|
+| `secret-scrubber` | 명령줄의 리터럴 시크릿 (API 키·토큰·AWS 키) | ✅ exit 2 |
+| `large-file-veto` | 10 MiB 초과 `git add` | ✅ |
+| `protected-paths` | 선언된 절대경로 prefix (기본 비활성) | ✅ |
+| `ai-attribution-guard` | 커밋·PR 의 AI 귀속 | ✅ |
+| `session-brief` | 세션 시작 시 10줄 repo 상태 | ❌ 정보 |
+| `check-uncommitted` | default branch 에 작업이 쌓일 때 | ❌ 정보 |
+
+**차단하는 훅만 exit 2.** 정보성 훅이 턴을 막으면 그건 버그다. 차단 메시지는 *무엇이 걸렸는지* 와 *어떻게 푸는지* 를 둘 다 담는다 — 컨슈머는 훅 파일을 자기 트리에서 열 수 없으므로 (플러그인 캐시에 있다) 메시지가 유일한 인터페이스다.
+
+### 스킬 5개
+
+| 스킬 | 프로파일 | 언제 |
+|---|---|---|
+| `pr-create` | core | 현재 작업을 이 저장소 규약대로 PR 로. PR 열고 멈춤, 머지 안 함 |
+| `pr-review` | dev | **이미 열린** PR 을 체크리스트로 훑고 blocking/non-blocking 분리 |
+| `research-notes` | research | 5문서 세트(STATUS·experiment_plan·FINDINGS·ARTIFACTS·review_log) 생성·유지 |
+| `repro-checklist` | research | 시드·환경·config 3기둥. 인용될 결과를 내기 전에 |
+| `results-deck` | slides | 산출물 → 발표 서사. 모든 수치가 근거로 추적되는지 기계 검사 |
+
+각 스킬의 description 은 **negative routing** 을 담는다 — 자기가 안 할 일을 이웃 스킬 이름으로 지목한다. 이게 실제로 작동하는지는 아래에서 쟀다.
+
+### `harnessctl` 이 건드리는 것 — 전부
+
+플러그인은 자기 캐시에만 살고 아래 어디에도 쓰지 않는다.
+
+| # | 무엇 | 규칙 |
+|---|---|---|
+| 1 | `.claude/rules/harness/**` | **관리 파일** — 덮어쓴다. 고칠 것은 하네스 저장소에서 고친다. `--scope user` 에서는 설치 안 함 |
+| 2 | `CLAUDE.md`, `*-paths.txt` | **템플릿** — 없을 때만 복사. 이후 프로젝트 소유 |
+| 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 `includeCoAuthoredBy: false` 만 |
+| 4 | `settings.json.bak-<ts>` | 설정이 실제로 바뀔 때만 남기는 직전 스냅샷 |
+| 5 | `.gitignore` | 두 줄 (프로젝트 스코프에서만) |
+| 6 | `harness-manifest.json` | 위 전부의 영수증. 제거는 이 영수증만 되돌린다 |
+
+**건드리지 않는 것** — `settings.json` 의 `hooks` 블록 (훅은 플러그인이 등록하며, 검증기가 *설치 전후 `.hooks` 바이트 동일* 을 단정한다) · 선택 스코프 밖의 무엇도 · `settings.local.json` · manifest 에 없는 `.claude/` 아래 전부 · git (커밋·브랜치·config).
+
+---
+
+## 검토한 플러그인 — 무엇을 들이고 무엇을 안 들였나
+
+이름이 아니라 **본문을 읽고** 판정한다. 이름만 보고 내린 판정은 세 번 다 틀렸다 ([ADR-0011](docs/adr/0011-ecosystem-survey.md)).
+
+### 채택
+
+| 이름 | 무엇 | 어떻게 들였나 | 근거 |
+|---|---|---|---|
+| [`superpowers`](https://github.com/obra/superpowers) | 개발 워크플로 스킬 14 (brainstorming · TDD · systematic-debugging · worktrees …) | `harness-dev` 의 dependency | 개발 워크플로를 폭넓게 덮는다. 우리가 만들 이유가 없다 |
+| `pyright-lsp` · `typescript-lsp` | 언어 서버 연결 | 언어 프로파일의 dependency | 상시 컨텍스트 비용 0. 해당 언어 파일이 있을 때만 붙는다 |
+| `skill-creator` (공식) | **평가 하네스** — 서브에이전트 3(analyzer·comparator·grader) + 스크립트 7. 짝 실행·mean±stddev 집계·트리거 최적화 | 개발자만 설치, **배포 안 함** | 이름은 작성 도우미지만 본문은 계측기다. 상시 112 tok / 호출 10.9k |
+| `karpathy-guidelines` (MIT) | LLM 코딩 함정 4원칙 | **설치 안 함 — 본문을 흡수** | 우리 `CLAUDE.md` §1–4 가 이미 이것이다 (규범 문장 23개 중 20개 일치). 두 벌 로드할 이유가 없다 |
+| `task-observer` (CC BY 4.0) | 세션을 관찰해 스킬 개선점을 원장에 남기는 메타 스킬 | **설치 안 함 — 기제만 흡수** | 446줄 중 절반이 우리 §5 와 겹친다. 가져온 것은 *지속되는 원장* 하나 |
+| `slides-grab` (npm) | 슬라이드 렌더링 (plan → html → design → export) | 플러그인 아님. `doctor` 가 설치 안내 | 렌더링은 이미 풀린 문제다. `results-deck` 은 그 **입력** 을 만든다 |
+
+### 미채택
+
+| 이름 | 무엇 | 왜 안 들였나 |
+|---|---|---|
+| `caveman` | 원시인 말투로 출력 토큰 65% 절감 | [ADR-0002](docs/adr/0002-hook-contract.md) 가 *차단 메시지는 무엇이 걸렸고 어떻게 푸는지 둘 다 담는다* 를 훅 계약으로 못박았다. 정면으로 싸운다 |
+| `ui-ux-pro-max` | UI/UX 레퍼런스 (84 스타일·192 팔레트·22 스택) | 도메인 프로파일감. 이 저장소는 UI 프로젝트가 아니고 발생 0회 → `harness-frontend` 후보로 backlog |
+| `claude-mem` | 라이프사이클 훅 5개로 세션 전체를 캡처→AI 압축→SQLite | **모든 도구 입출력** 을 저장한다. `secret-scrubber` 를 운영하는 저장소에서 무엇이 삼켜지는지 확인 전에는 불가 |
+| `omniroute` | 290+ 프로바이더 로컬 AI 게이트웨이 | 플러그인이 아니라 프록시. 프롬프트와 코드가 제3자를 통과한다 — 하네스 결정이 아니라 보안 결정 |
+| `handoff` | 세션 간 컨텍스트 인수인계 | `harness-research` 의 5문서 세트가 연구 쪽을 이미 덮는다. 개발 쪽 발생 0회 |
+
+### 우리가 직접 만든 것 — 남이 안 만든 자리만
+
+| 자산 | 왜 우리가 만들어야 했나 |
+|---|---|
+| 가드 훅 6 | 스킬은 가이드고 훅은 가드다. 사고 방어선은 모델 밖에 있어야 한다 |
+| `harnessctl` | 플러그인이 못 나르는 셋(permissions·CLAUDE.md·rules)을 **되돌릴 수 있게** 설치하는 것은 아무도 안 한다 |
+| `pr-create` · `pr-review` | Superpowers 의 대응 스킬은 *저장소 규약* 을 모른다. 생애주기 단계로 축을 갈라 공존시켰다 |
+| `research-notes` · `repro-checklist` | Superpowers 의 **연구 전용 스킬은 0개** 다 |
+| `results-deck` + `check-claims.sh` | `slides-grab` 은 렌더링만 한다. *추적 불가능한 수치가 슬라이드에 오르는 사고* 를 막는 자리는 비어 있었다 |
+
+---
+
+## 어떻게 점검하나 — 테스트와 결과
+
+두 종류가 있다. **`verify` 는 공짜이고 CI 가 돌린다. `bench` 는 모델 세션을 태우므로 실비가 들고 손으로 돌린다.**
+
+### 1. `make verify` — 의도대로 도는가 (공짜, CI)
 
 ```bash
-make verify                     # 문법 + frontmatter + 훅 + harnessctl + 플러그인 매니페스트
-make verify BASH=/bin/bash      # macOS bash 3.2 바닥
+make verify                     # 전부
+make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 ```
 
-현재 훅 198 케이스 · claim 검사 33 · harnessctl 92 assertion · frontmatter 11 · 매니페스트 7.
+| 대상 | 케이스 |
+|---|---|
+| 훅 6종 동작 | **198** |
+| 설치기 왕복 | **92** assertion |
+| 발표 수치 검사기 | **33** |
+| frontmatter 파싱 | **11** |
+| 플러그인·마켓플레이스 매니페스트 | **7** |
 
-CI 가 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인 매니페스트 (Claude CLI 필요, 별도 job). 동작 검증은 CLI 없이도 전부 돈다.
+케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
+
+CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인 매니페스트.
+
+### 2. `make bench*` — 날것 대비 값을 하는가 (유료, 수동)
+
+| 층 | 물은 것 | stock | harness | 판정 |
+|---|---|---|---|---|
+| **가드** `make bench` | 사고를 막나 | 0 / 29 | **27 / 29** | 결정론적 · 정상 작업 오탐 **2/24** |
+| **규약** `make bench-convention` | 브랜치 이름 규칙이 행동을 바꾸나 | 0 / 12 | **10 / 12** | **유의** *p* ≈ 0.00007 |
+| " | commit 제목 70자 제한은? | 6 / 6 | 6 / 6 | **변별력 없음** |
+| " | commit 본문 존재는? | 5 / 6 | 6 / 6 | 유의하지 않음 |
+| **스킬 라우팅** `make bench-trigger` | 의도한 스킬로 가나 | — | **59 / 60** | 음성 6/6 은 3회씩 확인 |
+| **수치 추적** `make bench-claims` | 조작된 숫자를 잡나 | — | 오탐 **6 / 193 (3.1%)** | 결정론적 |
+| **LSP** `make bench-lsp` | 토큰·정확도가 나아지나 | 3/3 clean | 3/3 clean, 토큰 −6.3% | **결론 없음** |
+
+#### 읽는 법 세 가지
+
+**하나. 두 숫자를 함께 본다.** 가드가 27/29 를 막는 대가는 정상 작업 2/24 를 막는 것이다. 전부 차단하는 가드는 차단율 100% 를 찍고 하루 만에 꺼지며, 그때부터 0 이 된다. **8% 가 가격표다.**
+
+**둘. 규약 중에도 아무것도 벌지 않는 것이 있다.** commit 제목 70자 제한은 하네스가 있으나 없으나 6/6 이다 — 모델이 원래 짧게 쓴다. 규칙으로 적혀 있으면 지켜지는 것처럼 보이지만 **그 규칙이 만든 차이는 0** 이다. 이런 건 후보로만 남기고 지우는 쪽을 검토한다.
+
+**셋. LSP 는 "효과 없음" 이 아니라 "이 자로는 안 보임" 이다.** off 팔의 변동계수가 26% 라 n=3 으로 검출 가능한 최소 효과가 **61%** 다. 관측된 6.3% 를 보려면 팔당 137회가 필요하다. **에이전트 세션을 표본으로 쓰는 A/B 는 20% 미만의 효과를 주장하지 않는다** 는 규율이 여기서 나왔다.
+
+#### 계측기를 여섯 번 틀렸다
+
+측정보다 이쪽이 값졌을지 모른다. 여섯 번 모두 화면에는 **"0.0 / 실패" 로 똑같이 보였고**, 전부 하네스를 부당하게 나쁘게 보이게 했다 — 읽기 전용 과제라 기제가 발동 못 함 · 타임아웃이 미트리거와 구분 안 됨 · 이미 설치된 스킬은 대역으로 못 잼 · 첫 도구 호출만 봄 · 픽스처에 규칙이 없었음 · 과제가 규칙의 예외 조항에 걸림.
+
+**규칙: 음성 결과를 얻으면 결론 내기 전에 기제가 발동할 조건이 갖춰졌는지부터 확인한다.** 그리고 **쿼리당 1회는 측정이 아니다.**
+
+여섯 건 전부와 방법·표본·한계는 [`docs/agent-layer.md` §4b](docs/agent-layer.md) 에 표로 있다.
+
+#### 아직 못 잰 것
+
+- **PR 단계 규약** (title 형식, description 4절) — 헤드리스 세션은 `git push` 승인 프롬프트에 답할 수 없어 PR 단계에 도달하지 못한다. 이 자체가 발견이다.
+- **`CLAUDE.md` 5원칙 자체** — 브랜치 규약은 쟀지만 "Simplicity First" 가 코드를 실제로 단순하게 만드는지는 채점 기준을 세우기 어렵다.
+
+---
 
 ## 기여
 
-[`CLAUDE.md`](CLAUDE.md) 가 개발 규약, [`docs/agent-layer.md`](docs/agent-layer.md) 가 범위와 backlog 의 단일 출처다. 요지 셋:
+[`CLAUDE.md`](CLAUDE.md) 가 개발 규약, [`docs/agent-layer.md`](docs/agent-layer.md) 가 범위와 backlog 의 단일 출처다. 요지 넷:
 
 - 새 가드는 **산출물 한 묶음** — 스크립트 · 검증기 · 문서 · `hooks.json` 등록 · SOT 갱신, 이름이 넷 다 같을 것.
+- 새 스킬도 마찬가지 — **트리거 eval**(`evals/trigger/<name>.json`, 양성 6 · 음성 6)이 없으면 미완성이다. 재지 않은 negative routing 은 주장일 뿐이다.
 - 검증 없이 머지된 가드는 가드가 아니라 장식이다.
-- **실제로 두 번 이상 발생한** 문제에만 자산을 추가한다.
+- **실제로 두 번 이상 발생한** 문제에만 자산을 추가한다. 횟수는 `.claude/harness-gaps.md` 가 센다.
 
 플러그인 매니페스트에 `version` 이 명시돼 있으므로 **변경을 배포하려면 버전을 올려야 한다.** 커밋만으로는 사용자에게 가지 않는다.
 
