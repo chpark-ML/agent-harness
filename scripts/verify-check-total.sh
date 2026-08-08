@@ -61,10 +61,20 @@ fi
 sum="$(grep -E '^[[:space:]]+[0-9]+ / [0-9]+ (passed|files clean)' "$LOG" \
        | grep -v 'verifiers passed' \
        | awk '{s += $1} END {print s+0}')"
-manifests="$(grep -c 'Validation passed' "$LOG" 2>/dev/null || echo 0)"
+# grep -c prints 0 and exits 1 when nothing matches, so `|| echo 0` appends a
+# second zero and the arithmetic below dies. It always prints a number; take it.
+manifests="$(grep -c 'Validation passed' "$LOG" 2>/dev/null)"
+manifests="${manifests:-0}"
 budget=0
 grep -q 'ceiling:' "$LOG" && budget=1
 actual=$((sum + manifests + budget))
+
+# verify-plugins is additive: without the Claude CLI it skips and prints so.
+# The published total counts those manifests, so on a machine without the CLI
+# the total is not measurable — say that instead of failing on a number the run
+# was never able to produce. CI validates manifests in its own job.
+skipped=0
+grep -q 'claude CLI not on PATH' "$LOG" && skipped=1
 
 echo
 echo "=== what the run produced ==="
@@ -79,7 +89,11 @@ if [ "$actual" -eq 0 ]; then
 fi
 
 echo
-if [ -n "$badge" ] && [ "$actual" != "$badge" ]; then
+if [ "$skipped" -eq 1 ]; then
+  echo "  skip  plugin manifests were not validated here (no claude CLI), so the"
+  echo "        run total is $actual and cannot be compared with the published"
+  echo "        $badge. The three published numbers were still checked above."
+elif [ -n "$badge" ] && [ "$actual" != "$badge" ]; then
   echo "  FAIL  documents say $badge, the run produced $actual."
   echo "        Update the three places, or find out which check disappeared."
   fail=1
