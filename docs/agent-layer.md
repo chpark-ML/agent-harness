@@ -277,7 +277,7 @@ description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대
 ### 아직 측정하지 않은 것
 
 - **규약 중 PR 단계 둘.** 위에 적은 두 이유로 로컬에서는 불가능하다. 실제 forge 에 throwaway 저장소를 두면 된다.
-- **`CLAUDE.md` 5원칙 자체.** 브랜치 규약은 쟀지만 "Simplicity First" 가 실제로 코드를 단순하게 만드는지는 채점 기준을 세우기 어렵다. `skill-creator` 의 grader 서브에이전트가 이 자리를 메울 후보다.
+- **`CLAUDE.md` 나머지 원칙.** 브랜치 규약은 쟀지만 "Simplicity First" 가 실제로 코드를 단순하게 만드는지는 채점 기준을 세우기 어렵다. `skill-creator` 의 grader 서브에이전트가 이 자리를 메울 후보다.
 - **설치기는 원리상 A/B 대상이 아니다.** "제거하면 원래대로" 는 비교군이 있는 주장이 아니라 불변량이고, `scripts/verify-install.sh` 의 92 assertion 이 그것을 단정한다 (특히 uninstall 후 `settings.json` 정준 동일).
 
 ## 5. Guide vs Guard

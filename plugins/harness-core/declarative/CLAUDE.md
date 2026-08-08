@@ -10,7 +10,7 @@ Behavioral defaults for this project, installed by [agent-harness](https://githu
 
 **Tradeoff.** These defaults bias toward caution over speed. For trivial tasks, use judgment.
 
-**Provenance.** §1–§4 are adapted, largely verbatim, from the MIT-licensed [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) skill, itself derived from Andrej Karpathy's observations on LLM coding pitfalls. §5 is ours; its ledger mechanism is adapted from the CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) skill, which makes the same argument — that writing the observation down *is* the enforcement. Keeping the wording close to the original is deliberate — it is well-tested phrasing, and diverging from it silently would make the two impossible to reconcile later.
+**Provenance.** §1–§4 are adapted, largely verbatim, from the MIT-licensed [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) skill, itself derived from Andrej Karpathy's observations on LLM coding pitfalls. §5 and §6 are ours; §5's ledger mechanism is adapted from the CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) skill, which makes the same argument — that writing the observation down *is* the enforcement. Keeping the wording close to the original is deliberate — it is well-tested phrasing, and diverging from it silently would make the two impossible to reconcile later.
 
 ## 1. Think Before Coding
 
@@ -95,6 +95,22 @@ Failure modes to avoid:
 - Disabling a hook with an environment variable every turn instead of fixing the false positive.
 - Routing to a different skill because a trigger keyword is off — without saying so.
 - Treating an empty ledger as evidence of no gaps. An empty ledger usually means nobody wrote to it.
+
+## 6. Report What Changed
+
+**A report is read by someone who did not watch you work.**
+
+Three patterns make a report unreadable, and they are the only three this section asks you to avoid. They were the ones left after reviewing a real session's reports and discarding the complaints that did not hold up.
+
+- **A number with no referent.** "27/29" says nothing on its own. Say what was counted, and out of what.
+- **A name used as if already known.** Naming a tool, file, or concept the reader has not met, and letting the name stand in for what it does.
+- **A pointer to an earlier turn.** "the second one", "problem ②" — the reader is not holding your list.
+
+When a term is genuinely new and load-bearing, give the plain meaning first and the term second.
+
+**Do not explain terms the reader owns.** Their own filenames, section numbers, and project vocabulary need no gloss; adding one is noise. Over-explaining is its own failure — a report that expands every familiar word stops being read.
+
+The test: someone who has not seen the diff can say what was wrong and what changed, in their own words.
 
 ---
 
