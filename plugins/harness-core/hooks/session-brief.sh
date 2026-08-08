@@ -18,7 +18,7 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 branch="$(git -C "$root" branch --show-current 2>/dev/null)"
 [ -z "$branch" ] && branch="(detached: $(git -C "$root" rev-parse --short HEAD 2>/dev/null))"
 
-echo "[session-brief] repo 상태"
+echo "[session-brief] repo state"
 echo "- branch: ${branch}"
 
 upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
@@ -34,9 +34,9 @@ if [ -n "$upstream" ]; then
 fi
 
 dirty="$(git -C "$root" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
-[ "$dirty" != "0" ] && echo "- 미커밋 변경: ${dirty} 파일"
+[ "$dirty" != "0" ] && echo "- uncommitted: ${dirty} files"
 
-echo "- 최근 커밋:"
+echo "- recent commits:"
 # Truncate the subject so a rendered line fits 80 columns (2 indent + 7 hash +
 # 1 space + 66 = 76). The budget is about how much context this costs, and a
 # 170-column subject wraps to three rows however few logical lines it is.

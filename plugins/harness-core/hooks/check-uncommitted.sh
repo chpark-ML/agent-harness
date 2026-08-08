@@ -42,5 +42,5 @@ fi
 dirty="$(git -C "$root" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
 [ "${dirty:-0}" -gt 0 ] || exit 0
 
-echo "[check-uncommitted] ${default} 에 미커밋 변경 ${dirty} 건. 리뷰 단위가 될 작업이면 지금 {feat,fix,chore}-<slug> 브랜치로 옮기는 편이 쌉니다 (단발 typo·탐색이면 무시)."
+echo "[check-uncommitted] ${dirty} uncommitted change(s) on ${default}. If this is going to be a review unit, moving to a {feat,fix,chore}-<slug> branch now is cheaper than later (ignore for a one-off typo or exploration)."
 exit 0
