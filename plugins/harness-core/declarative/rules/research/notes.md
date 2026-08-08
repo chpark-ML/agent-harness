@@ -5,68 +5,68 @@ paths: ["**/*"]
 
 # Research — note discipline
 
-연구 프로젝트 **하나당 디렉터리 하나**, 그 안에 다섯 문서를 둔다. 경로는 컨슈머 프로젝트가 정한다 (`docs/`, `notes/`, `projects/<name>/` 등 — 본 규약은 위치를 강제하지 않고 *집합* 을 강제한다).
+**One directory per research project**, holding five documents. The consumer project chooses the path (`docs/`, `notes/`, `projects/<name>/` — this convention does not dictate location, it dictates the *set*).
 
-**우선순위.** `CLAUDE.md` ⊂ [`../workflow.md`](../workflow.md) ⊂ 본 파일 ⊂ skill·agent. 좁은 scope 가 이긴다. 파일 생성·유지 절차는 `research-notes` 스킬.
+**Precedence.** `CLAUDE.md` ⊂ [`../workflow.md`](../workflow.md) ⊂ this file ⊂ skills and agents. The narrower scope wins. Creating and maintaining the files is the `research-notes` skill.
 
-## 쓰기 권한 요약
+## Write permissions at a glance
 
-| 문서 | 역할 | 갱신 방식 |
+| Document | Role | How it is updated |
 |---|---|---|
-| `STATUS.md` | **단일 진입점** | 통째로 다시 쓴다 (현재 시점만 담는다) |
-| `experiment_plan.md` | 시간순 원장 | **끝에 append.** 이전 항목 수정 안 함 |
-| `FINDINGS.md` | 원장의 단면 (지금 무엇을 믿는가) | 다시 쓴다. **단 번복은 삭제 금지** |
-| `ARTIFACTS.md` | 주장 → 산출물 추적 지도 | 행 추가·경로 정정 |
-| `review_log.md` | 리뷰 체크포인트 이력 | **끝에 append.** 이전 entry 수정 안 함 |
+| `STATUS.md` | **the single entry point** | rewritten whole — it holds only the present |
+| `experiment_plan.md` | chronological ledger | **append at the end.** Earlier entries are never edited |
+| `FINDINGS.md` | a cross-section of the ledger — what is believed now | rewritten, **except that reversals are never deleted** |
+| `ARTIFACTS.md` | the map from claim to artefact | rows added, paths corrected |
+| `review_log.md` | checkpoint history | **append at the end.** Earlier entries are never edited |
 
 ---
 
-## R1 — `STATUS.md` 가 유일한 진입점
+## R1 — `STATUS.md` is the only entry point
 
-새 세션은 **이 파일만 읽고** 작업을 재개할 수 있어야 한다. 담는 것은 셋이다 — *현재 상태* / *진행 중인 것* / *다음 행동*. 제목 옆에 갱신 날짜를 박고, 갱신할 때 날짜도 같이 고친다.
+A new session must be able to resume **by reading this file alone**. It holds three things: *where things stand*, *what is in flight*, *what happens next*. Put the date next to the title and change it when you change the content.
 
-- 과거 시점 서술을 이 파일에 쌓지 않는다. 이력은 원장과 git 에 있다.
-- 다른 문서에 "현재 상태" 를 중복 서술하지 않는다. 두 개가 생기면 곧 서로 어긋나고, 새 세션이 오래된 쪽을 읽는다.
-- 날짜가 오래됐는데 내용이 안 바뀌었으면 그 자체가 신호 — 갱신되지 않은 진입점은 없느니만 못하다.
+- Do not accumulate past-tense narrative here. History lives in the ledger and in git.
+- Do not describe "current state" in a second document. Two of them will diverge, and the new session will read the stale one.
+- A stale date on unchanged content is itself a signal — an entry point nobody updates is worse than none.
 
-## R2 — `experiment_plan.md` 는 시간순 원장이다
+## R2 — `experiment_plan.md` is a chronological ledger
 
-번호 붙은 항목의 나열이고, 각 항목은 **intent → setup → result** 를 담는다. 새 항목은 **끝에** 붙인다.
+Numbered entries, each carrying **intent → setup → result**. New entries go **at the end**.
 
-- **이전 항목을 고쳐 쓰지 않는다.** 틀린 것으로 밝혀졌으면 새 항목에서 그렇게 적는다. 원장의 가치는 *그때 무엇을 알고 있었는가* 를 보존하는 데 있다.
-- `setup` 은 재실행 가능한 수준으로 — 명령·설정·코드 리비전·입력. 재현 요건은 `repro-checklist` 스킬.
-- `result` 에 해석을 섞지 않는다. 해석은 R3 의 문서로 간다.
+- **Do not rewrite earlier entries.** If something turned out to be wrong, say so in a new entry. The ledger's value is that it preserves *what was known at the time*.
+- Write `setup` so the run can be repeated — command, configuration, code revision, inputs. Reproducibility requirements are the `repro-checklist` skill.
+- Keep interpretation out of `result`. Interpretation belongs to the document in R3.
 
-## R3 — `FINDINGS.md` 는 원장의 단면이고, 번복을 보존한다
+## R3 — `FINDINGS.md` is a cross-section, and it preserves reversals
 
-원장은 시간순이라 "지금 무엇이 확립됐나" 를 읽을 수 없다. 그 단면이 이 문서다. 각 결과는 **통과한 통제와 함께** 적는다 — 통제 없이 살아남은 수치는 확립된 결과가 아니다.
+The ledger is chronological, so it cannot answer "what is established now". This document is that cross-section. Record each result **with the controls it passed** — a number that survived no control is not an established result.
 
-**번복은 지우지 않는다.** 어떤 결론이 뒤집히면 그 결론을 표에서 내리되, *무엇이 뒤집었는지* 와 함께 별도 절에 남긴다. 이유는 두 가지다.
+**Reversals are not deleted.** When a conclusion is overturned, take it out of the table but keep it in a separate section along with *what overturned it*. Two reasons.
 
-- 같은 가설을 다시 세우는 것을 막는다.
-- **번복 기록이 없는 FINDINGS 는 정직하게 관리되지 않았다는 신호다.** 연구가 진행되는데 아무것도 뒤집히지 않았을 확률보다, 뒤집힌 것을 조용히 지웠을 확률이 높다.
+- It stops the same hypothesis being raised again.
+- **A FINDINGS with no reversals is a signal that it is not being kept honestly.** The odds that nothing was overturned during a live research project are lower than the odds that something was quietly deleted.
 
-## R4 — `ARTIFACTS.md` 는 주장에서 산출물로 가는 지도다
+## R4 — `ARTIFACTS.md` maps claims to artefacts
 
-한 행 = 하나의 주장. 열은 *claim · 그것을 만든 run/command · 출력 위치 · 날짜*.
+One row per claim. Columns: *claim · the run or command that produced it · where the output is · date*.
 
-**이 파일을 통해 추적되지 않는 수치는 아직 결과가 아니다.** 문서·발표·PR 본문에 수치를 쓰기 전에 행이 먼저 있어야 한다.
+**A number not traceable through this file is not yet a result.** The row comes before the number appears in a document, a talk, or a PR body.
 
-- 출력이 세션 임시 디렉터리·scratchpad 에 있으면 그건 위치가 아니다. 세션이 끝나면 주장만 남고 근거가 사라진다.
-- 로그를 산출물과 같은 단위로 취급한다. 메트릭 파일만 옮기고 로그를 두고 오면 수치는 남고 provenance 는 사라진다.
+- Output sitting in a session temp directory or a scratchpad is not a location. When the session ends the claim survives and the evidence does not.
+- Treat logs as artefacts too. Moving only the metrics file leaves the number without its provenance.
 
-## R5 — `review_log.md` 는 append-only 체크포인트 이력이다
+## R5 — `review_log.md` is an append-only checkpoint history
 
-날짜가 붙은 체크포인트를 끝에 추가한다. **각 체크포인트는 직전 entry 의 액션 항목을 resolved / open / regressed 로 판정하는 것으로 시작**한다.
+Add dated checkpoints at the end. **Each checkpoint begins by judging the previous entry's action items as resolved, open, or regressed.**
 
-그 diff 없이 새 지적만 쌓으면 같은 항목이 매번 새 발견처럼 다시 등장하고, 무엇이 실제로 고쳐졌는지 아무도 모른다. 판정을 먼저 하고 나서 신규 항목을 붙인다.
+Without that diff, new findings simply pile up, the same item reappears as a fresh discovery every time, and nobody knows what was actually fixed. Judge first, then add.
 
 ---
 
-## 이 규율이 막는 실패
+## What this discipline prevents
 
-셋 다 이미 일어난 적이 있는 실패다.
+All three have happened.
 
-1. **재개 불가능한 세션** — 상태가 여러 문서에 흩어져 있어, 새 세션이 무엇부터 해야 하는지 알아내는 데 컨텍스트의 절반을 쓴다. → R1.
-2. **아무도 재현할 수 없는 수치** — 문서에는 수치가 있는데 그것을 만든 run 이 어디 있는지 모른다. 주장은 남고 근거는 사라진다. → R4.
-3. **조용히 다시 쓰인 결론** — 틀린 것으로 밝혀진 결론이 흔적 없이 교체돼, 몇 주 뒤 같은 가설을 다시 세운다. → R2·R3.
+1. **A session that cannot be resumed** — state scattered across documents, so a new session spends half its context working out what to do first. → R1.
+2. **A number nobody can reproduce** — the figure is in the document and the run that produced it is not findable. The claim survives, the evidence does not. → R4.
+3. **A conclusion quietly rewritten** — something shown to be wrong is replaced without a trace, and weeks later the same hypothesis is raised again. → R2, R3.
