@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-426-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-427-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -323,26 +323,18 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 이름이 아니라 **본문을 읽고** 판정한다. 이름만 보고 내린 판정은 세 번 다 틀렸다 ([ADR-0011](docs/adr/0011-ecosystem-survey.md)).
 
-### 채택
+### 판정 요약
 
-| 이름 | 무엇 | 어떻게 들였나 | 근거 |
-|---|---|---|---|
-| [`superpowers`](https://github.com/obra/superpowers) | 개발 워크플로 스킬 14 (brainstorming · TDD · systematic-debugging · worktrees …) | `harness-dev` 의 dependency | 개발 워크플로를 폭넓게 덮는다. 우리가 만들 이유가 없다 |
-| `pyright-lsp` · `typescript-lsp` | 언어 서버 연결 | 언어 프로파일의 dependency | 상시 컨텍스트 비용 0. 해당 언어 파일이 있을 때만 붙는다 |
-| `skill-creator` (공식) | **평가 하네스** — 서브에이전트 3(analyzer·comparator·grader) + 스크립트 7. 짝 실행·mean±stddev 집계·트리거 최적화 | 개발자만 설치, **배포 안 함** | 이름은 작성 도우미지만 본문은 계측기다. 상시 112 tok / 호출 10.9k |
-| `karpathy-guidelines` (MIT) | LLM 코딩 함정 4원칙 | **설치 안 함 — 본문을 흡수** | 우리 `CLAUDE.md` §1–4 가 이미 이것이다 (규범 문장 23개 중 20개 일치). 두 벌 로드할 이유가 없다 |
-| `task-observer` (CC BY 4.0) | 세션을 관찰해 스킬 개선점을 원장에 남기는 메타 스킬 | **설치 안 함 — 기제만 흡수** | 446줄 중 절반이 우리 §5 와 겹친다. 가져온 것은 *지속되는 원장* 하나 |
-| `slides-grab` (npm) | 슬라이드 렌더링 (plan → html → design → export) | 플러그인 아님. `doctor` 가 설치 안내 | 렌더링은 이미 풀린 문제다. `results-deck` 은 그 **입력** 을 만든다 |
+전수 판정과 **측정치**는 [`docs/agent-layer.md` §3b](docs/agent-layer.md) 한 표에 있다. 여기서는 컨슈머가 실제로 받는 것만.
 
-### 미채택
-
-| 이름 | 무엇 | 왜 안 들였나 |
+| 이름 | 판정 | 한 줄 |
 |---|---|---|
-| `caveman` | 원시인 말투로 출력 토큰 65% 절감 | [ADR-0002](docs/adr/0002-hook-contract.md) 가 *차단 메시지는 무엇이 걸렸고 어떻게 푸는지 둘 다 담는다* 를 훅 계약으로 못박았다. 정면으로 싸운다 |
-| `ui-ux-pro-max` | UI/UX 레퍼런스 (84 스타일·192 팔레트·22 스택) | 도메인 프로파일감. 이 저장소는 UI 프로젝트가 아니고 발생 0회 → `harness-frontend` 후보로 backlog |
-| `claude-mem` | 라이프사이클 훅 5개로 세션 전체를 캡처→AI 압축→SQLite | **모든 도구 입출력** 을 저장한다. `secret-scrubber` 를 운영하는 저장소에서 무엇이 삼켜지는지 확인 전에는 불가 |
-| `omniroute` | 290+ 프로바이더 로컬 AI 게이트웨이 | 플러그인이 아니라 프록시. 프롬프트와 코드가 제3자를 통과한다 — 하네스 결정이 아니라 보안 결정 |
-| `handoff` | 세션 간 컨텍스트 인수인계 | `harness-research` 의 5문서 세트가 연구 쪽을 이미 덮는다. 개발 쪽 발생 0회 |
+| [`superpowers`](https://github.com/obra/superpowers) 스킬 14 | **의존** | 개발 워크플로를 폭넓게 덮는다. 우리 라우팅과 **59/60** 으로 공존 |
+| `pyright-lsp` · `typescript-lsp` | **의존** | 상시 비용 0. 효과는 **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
+| [`harness-100`](https://github.com/revfactory/harness-100) 100벌 | **의존, 흡수 안 함** | 우리 자리를 하나도 안 뺏는다 (음성 **6/6**). 담으면 6도메인 ≈ 35k tok |
+| `slides-grab` (npm) | **외부 도구** | 렌더링은 이미 풀린 문제. `results-deck` 은 그 **입력** 을 만든다 |
+| `karpathy-guidelines` (MIT) · `task-observer` (CC BY 4.0) | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 와 §5 의 원장이 이것이다. 출처는 Credits 에 |
+| `caveman` · `claude-mem` · `omniroute` · `ui-ux-pro-max` · `handoff` | **기각 · 보류** | 훅 계약 충돌 · 시크릿 확인 미완 · 보안 결정 · 발생 0회 |
 
 ### 우리가 직접 만든 것 — 남이 안 만든 자리만
 
@@ -377,9 +369,9 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | frontmatter 파싱 | **11** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **12** |
-| 문서 내부 참조 (`verify-doc-refs`) | **50** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **51** 파일 + 자체 **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **426** |
+| **합계** | **427** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

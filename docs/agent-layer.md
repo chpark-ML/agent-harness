@@ -76,6 +76,31 @@
 
 컨슈머용 sub-agent 가 아직 없는 것은 미완이 아니라 판단이다. 발명할 수는 있지만, 실제로 두 번 이상 필요했던 위임이 아직 없다.
 
+## 3b. 생태계 판정 — 무엇을 들이고, 무엇을 재봤나
+
+§3 의 마지막 세 행(외부 플러그인 · 외부 계측기 · 외부 npm 도구)의 상세다. **판정 근거와 측정치를 한 표에 둔다** — 흩어져 있으면 같은 후보를 두 번 검토하게 된다. 판정 서사는 [ADR-0011](adr/0011-ecosystem-survey.md), 컨슈머용 요약은 README 에 있고 둘 다 이 표를 가리킨다.
+
+**측정 열이 이 표의 요점이다.** 대부분이 비어 있고, 그건 아직 안 쟀다는 뜻이지 효과가 없다는 뜻이 아니다.
+
+| 대상 | 무엇 | 판정 | 근거 | 측정 | 상시 비용 |
+|---|---|---|---|---|---|
+| [`superpowers`](https://github.com/obra/superpowers) | 개발 워크플로 스킬 14 | **의존** | 개발 워크플로를 폭넓게 덮는다. 우리가 만들 이유가 없다 | 우리 라우팅 **59/60**. 다만 위임을 한 번 안 받았다 — 머지 요청이 3회 다 `Bash` 로 | ~688 |
+| `pyright-lsp` · `typescript-lsp` | 언어 서버 연결 | **의존** | 언어 프로파일의 dependency | **결론 없음** — 토큰 −6.3%, 이 설계의 MDE 는 61% | **0** |
+| [`harness-100`](https://github.com/revfactory/harness-100) | 도메인 버티컬 100벌 (Apache-2.0) | **의존, 흡수 안 함** | 개별 harness 는 ADR-0001 편입 기준을 설계상 통과 못 한다. 흡수하면 6도메인 ≈ 35k tok | 공존 **충돌 0** — 우리 스킬이 음성 6/6 을 3회씩 만장일치 방어 | 벌당 ~560, **설치한 것만** |
+| `skill-creator` (공식) | 평가 하네스 — 서브에이전트 3 + 스크립트 7 | **개발자만, 배포 안 함** | 이름은 작성 도우미지만 본문은 계측기다 | — | 112 상시 / **10.9k 호출** |
+| `karpathy-guidelines` (MIT) | LLM 코딩 함정 4원칙 | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 가 이미 이것이다 | 규범 문장 23개 중 **20개 문자 일치** | 0 (흡수분) |
+| `task-observer` (CC BY 4.0) | 세션 관찰 → 개선점 원장 | **설치 안 함, 기제만 흡수** | 446줄 중 절반이 우리 §5 와 겹친다 | — | 0 (흡수분) |
+| [`slides-grab`](https://www.npmjs.com/package/slides-grab) | 슬라이드 렌더링 | **외부 도구** | 렌더링은 이미 풀린 문제. `doctor` 가 PATH 점검 | — | 0 |
+| `graphify` (ehr-research 프로젝트 스킬) | 코드베이스 지식그래프 — god node · community detection · query/path/explain | **미판정** | 우리에게 대응 자산이 없다. LSP 와 층이 다르다 ([axes](engineering-axes.md)) | **안 쟀다** | 스킬 702줄 |
+| `caveman` | 출력 토큰 65% 절감 | **기각** | [ADR-0002](adr/0002-hook-contract.md) 의 훅 계약(*차단 메시지는 무엇이 걸렸고 어떻게 푸는지를 담는다*)과 정면 충돌 | — | — |
+| `ui-ux-pro-max` | UI/UX 레퍼런스 | **보류** | 도메인 프로파일감. 이 저장소 발생 0회 → `harness-frontend` 후보 | — | — |
+| `claude-mem` | 라이프사이클 훅 5개로 세션 캡처 → SQLite | **보류** | **모든 도구 입출력** 을 저장한다. `secret-scrubber` 를 운영하는 저장소에서 확인 전 불가 | — | — |
+| `omniroute` | 290+ 프로바이더 로컬 게이트웨이 | **기각** | 플러그인이 아니라 프록시. 하네스 결정이 아니라 보안 결정 | — | — |
+| `handoff` | 세션 간 컨텍스트 인수인계 | **보류** | 연구 쪽은 5문서 세트가 덮는다. 개발 쪽 발생 0회 | — | — |
+| `headroom` · `ponytail` | 타 프로젝트 스코프 | **대상 아님** | 이 저장소의 자산이 아니다 | — | — |
+
+**판정은 이름이 아니라 본문으로 한다.** 이름만 보고 내린 판정은 세 번 다 틀렸다 (ADR-0011). `skill-creator` 는 작성 도우미가 아니라 계측기였고, `harness-100` 은 스킬 모음이 아니라 프로젝트 템플릿 모음이었으며, `slide-deck`(ehr-research)은 고아인 줄 알았으나 다른 파이프라인의 정문 아래 있었다.
+
 ## 4. 검증 의무
 
 **검증 없이 머지된 가드는 가드가 아니라 장식이다** ([ADR-0003](adr/0003-verification-mandate.md)).
@@ -91,7 +116,7 @@
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 50 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 426. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 51 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 427. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
