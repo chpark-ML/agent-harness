@@ -6,7 +6,7 @@ Behavioral defaults for this project, installed by [agent-harness](https://githu
 
 **Layering.** This file is the *global default*. Path-scoped overrides live in `.claude/rules/harness/` — `workflow.md` (catch-all) at the top, plus whatever domain rules the installed modules added. A narrower scope wins. Skills extend further and are entered on intent rather than on path; they ship inside the harness plugin, not in this repository.
 
-**Language.** Match the user's prompt language. Mixed Korean/English is normal; code, paths, and command names stay in English verbatim.
+**Language.** Match the user's prompt language, and mixing it with English is normal. Code, paths, and command names stay in English verbatim.
 
 **Tradeoff.** These defaults bias toward caution over speed. For trivial tasks, use judgment.
 

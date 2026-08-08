@@ -47,11 +47,18 @@ syntax:
 	done; \
 	exit $$fail
 
+# Which second languages a skill description must carry is a property of the
+# deployment, not of the harness — a contributor writing for a Japanese team
+# should not need a Korean marker to pass CI. This repository serves Korean
+# prompts today, so it declares that and the check applies to its own skills.
+# Whether those triggers earn what they cost is being measured; see §4b.
+TRIGGER_LANGS ?= 한국어
+
 # A skill whose frontmatter fails to parse loads with empty metadata and
 # silently stops being routable. Needs nothing but python3, so it runs in
 # every environment.
 frontmatter:
-	@$(BASH) scripts/verify-frontmatter.sh
+	@HARNESS_TRIGGER_LANGS=$(TRIGGER_LANGS) $(BASH) scripts/verify-frontmatter.sh
 
 # A dead link or a mistyped path in an instruction file is not an error — the
 # step just never runs, and nothing says so. Selftest first: this checker's own

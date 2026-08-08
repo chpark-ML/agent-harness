@@ -75,15 +75,24 @@ def check(path, kind, required):
             failed += 1
             problems.append((rel, "name '%s' does not match directory '%s'" % (name, dirname)))
             return
-        # The description is what routes the model to the skill. Korean triggers
-        # and the routing clause are checkable; English triggers are not, since
-        # any English prose would satisfy a naive test — that part stays a human
-        # review item, and harness-reviewer says so.
+        # The description is what routes the model to the skill. The routing
+        # clause is checkable; English triggers are not, since any English prose
+        # would satisfy a naive test — that part stays a human review item, and
+        # harness-reviewer says so.
+        #
+        # Second-language triggers used to be required here, and the required
+        # language was Korean. That made a contributor writing a skill for a
+        # Japanese team unable to pass CI without adding a Korean marker, which
+        # is a defect rather than a convention. A deployment now declares which
+        # languages it serves and only those are checked; unset means the check
+        # does not run. Which languages a description should carry is a property
+        # of the deployment, not of the harness.
         desc = data['description']
-        if '한국어' not in desc and 'Korean' not in desc:
-            failed += 1
-            problems.append((rel, "description has no Korean triggers"))
-            return
+        for lang in [x for x in os.environ.get('HARNESS_TRIGGER_LANGS', '').split(',') if x.strip()]:
+            if lang.strip() not in desc:
+                failed += 1
+                problems.append((rel, "description has no %s triggers" % lang.strip()))
+                return
         if '말고' not in desc and 'not this skill' not in desc.lower():
             failed += 1
             problems.append((rel, "description has no negative-routing clause"))
