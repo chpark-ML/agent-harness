@@ -260,3 +260,24 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   `rules/` 가 프로젝트 스코프 전용이라는 사실이 §4 표와 README 에 수치로
   드러났으므로, 구멍의 크기는 이제 문서화돼 있다 (user 3.9k 대 project 8.0k).
 - **회차**: 1
+
+## 2026-08-08 — PR 제목 70자 상한을 아무것도 재지 않는다 (2회차)
+
+- **어디**: `plugins/harness-core/declarative/rules/core/workflow.md` R4 체크리스트 ·
+  `plugins/harness-core/skills/pr-create/SKILL.md` Step 5
+- **무슨 일**: R4 는 *"PR title 이 `[<slug>] <description>` 형식이고 70자 이하"* 를
+  체크 항목으로 두는데, **재는 것이 없다.** 사람도 에이전트도 눈으로 센다.
+  - **1회차**: PR #4 `[bench-trigger-project-skills] Measure skills…` — **71자**로
+    나갔고 **그대로 머지됐다.** 아무도 몰랐다.
+  - **2회차**: PR #6 을 **79자**로 열었다. `gh pr view --json title` 로 다른 걸
+    보다가 우연히 걸렸다.
+- **왜 조용한가**: 훅은 `git commit` 을 보고 `ai-attribution-guard` 는 커밋·PR
+  명령을 보는데, **길이는 아무 가드의 관심사가 아니다.** 그리고 PR 제목은
+  저장소 파일이 아니라 `make verify` 계열이 닿지 못한다.
+- **제안**: `pr-create` 스킬 Step 5 가 `gh pr create` 를 부르기 **전에** 제목
+  길이를 계산해 넘으면 멈춘다. 검증기가 아니라 스킬 본문이 자리인 이유는, 제목이
+  존재하는 유일한 순간이 거기이기 때문이다. 훅으로 만들려면 `gh pr create` 의
+  `--title` 을 파싱해야 하는데 인용 형태가 여러 가지라 취약하다.
+- **왜 지금 안 고치나**: 하네스 변경이라 별도 PR 이다 (§6). 그리고 이 PR 은
+  *빼는 작업* 이라 스킬 본문 변경을 섞지 않는다.
+- **회차**: 2 — 제안함, 승인 대기
