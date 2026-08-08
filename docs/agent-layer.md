@@ -123,7 +123,7 @@
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, 세션 로그 렌더러 44, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 56 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 483. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, 세션 로그 렌더러 44, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 57 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 484. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
