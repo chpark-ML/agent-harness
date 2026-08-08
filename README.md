@@ -41,7 +41,7 @@
 |---|---|---|---|---|---|
 | **가드 훅** | **6** — 차단 4 · 정보 2 | | | | |
 | **권한 3티어** | allow 42 / ask 3 / deny 8 | | | | |
-| **`CLAUDE.md`** | 행동 5원칙 | | | | |
+| **`CLAUDE.md`** | 행동 6원칙 | | | | |
 | **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | |
@@ -144,7 +144,7 @@ git clone https://github.com/chpark-ML/agent-harness ~/agent-harness && cd ~/age
 ./install.sh
 ```
 
-가드 6개, 권한 3티어, 5원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나. 나머지는 나중에 같은 명령에 프로파일만 더해서 올리면 된다.
+가드 6개, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나. 나머지는 나중에 같은 명령에 프로파일만 더해서 올리면 된다.
 
 설치가 끝나면 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
 
@@ -220,7 +220,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 컨슈머가 받는 규약. 전문은 설치되는 `CLAUDE.md` 와 `.claude/rules/harness/` 에 있다.
 
-### 행동 5원칙
+### 행동 6원칙
 
 | | |
 |---|---|
@@ -412,7 +412,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 #### 아직 못 잰 것
 
 - **PR 단계 규약** (title 형식, description 4절) — 헤드리스 세션은 `git push` 승인 프롬프트에 답할 수 없어 PR 단계에 도달하지 못한다. 이 자체가 발견이다.
-- **`CLAUDE.md` 5원칙 자체** — 브랜치 규약은 쟀지만 "Simplicity First" 가 코드를 실제로 단순하게 만드는지는 채점 기준을 세우기 어렵다.
+- **`CLAUDE.md` 나머지 원칙** — 브랜치 규약은 쟀지만 "Simplicity First" 가 코드를 실제로 단순하게 만드는지는 채점 기준을 세우기 어렵다.
 
 ---
 
@@ -429,7 +429,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 ## Credits
 
-`settings.json` 을 안전하게 병합하는 법, 충돌 방지 백업, 대칭 제거, "무엇을 건드리는가" 감사 절은 [`claude-statusline`](https://github.com/chpark-ML/claude-statusline) 에서 가져왔다. 2-tier 설치·훅별 검증 의무·자동 발견 디스패처·ADR 규율, 그리고 5원칙 `CLAUDE.md`·harness gap 루프·PR 규약·"가드만 차단한다" 원칙·연구 노트 5문서 패턴은 공개하지 않는 사내 하네스 두 벌에서 가져와 프로젝트 특화를 걷어낸 것이다.
+`settings.json` 을 안전하게 병합하는 법, 충돌 방지 백업, 대칭 제거, "무엇을 건드리는가" 감사 절은 [`claude-statusline`](https://github.com/chpark-ML/claude-statusline) 에서 가져왔다. 2-tier 설치·훅별 검증 의무·자동 발견 디스패처·ADR 규율, 그리고 원칙 기반 `CLAUDE.md`·harness gap 루프·PR 규약·"가드만 차단한다" 원칙·연구 노트 5문서 패턴은 공개하지 않는 사내 하네스 두 벌에서 가져와 프로젝트 특화를 걷어낸 것이다.
 
 외부 저작물에서 가져온 것 둘, 출처와 라이선스를 밝힌다.
 
