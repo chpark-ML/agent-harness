@@ -1,54 +1,54 @@
-# ADR-0005: 설치기는 오버레이 트리 · 2-tier · 마커 병합 · manifest 로 구성한다
+# ADR-0005: The installer is an overlay tree, two tiers, marker-based merging, and a manifest
 
-- **Status**: Accepted — 3번(마커 기반 훅 병합)은 [ADR-0008](0008-plugin-declarative-split.md) 로 대체됨
+- **Status**: Accepted — point 3 (marker-based hook merging) is superseded by [ADR-0008](0008-plugin-declarative-split.md)
 - **Date**: 2026-08-06
 
 ## Context
 
-설치기는 컨슈머의 `.claude/settings.json` 을 건드린다. 그 파일에는 우리가 만들지 않은 것 — 모델 설정, 플러그인, 사용자 자신의 훅과 권한 — 이 들어 있고, 그것을 잃으면 되돌릴 방법이 없다.
+The installer touches a consumer's `.claude/settings.json`. That file holds things we did not create — model settings, plugins, the user's own hooks and permissions — and there is no way to get them back once lost.
 
-참조 자산 두 개가 각각 절반씩 답을 갖고 있었다. 하나는 `settings.json` 을 통째로 덮어쓰지 않고 jq 로 파싱-재직렬화하며 매 쓰기 전 타임스탬프 백업을 남기고, 설치와 제거가 같은 함수를 반대 방향으로 호출한다. 다른 하나는 파일을 두 tier(덮어쓰기 / 최초 1회)로 나누고, 손으로 유지하는 for 루프 목록으로 복사한다.
+Two reference assets each had half an answer. One never overwrote `settings.json` wholesale: it parsed and re-serialised with jq, left a timestamped backup before every write, and had install and uninstall call the same function in opposite directions. The other split files into two tiers (overwrite / first time only) and copied them from a hand-maintained `for` loop.
 
-둘 다 다루지 않는 문제가 하나 있다: 전자는 `settings.json` 의 **단일 키** 하나만 병합한다. 여기서는 배열 안의 훅 등록 여러 개를 컨슈머의 등록과 섞어야 하고, 나중에 우리 것만 골라내야 한다.
+Neither addressed one problem: the first merges a **single key** in `settings.json`. Here we have to mix several hook registrations inside an array with the consumer's own, and later pick out only ours.
 
 ## Decision
 
-네 가지를 채택한다.
+Four things.
 
-**1. 오버레이 트리가 곧 파일 목록.** `<overlay>/files/` 아래를 그대로 컨슈머 경로에 복사한다. `install.sh` 는 `find` 로 훑으므로 목록을 유지하지 않는다 — 새 파일을 넣으면 설치되고, 등록을 잊을 수 없다.
+**1. The overlay tree is the file list.** Everything under `<overlay>/files/` is copied to the matching consumer path. `install.sh` walks it with `find`, so there is no list to maintain — add a file and it installs, and you cannot forget to register it.
 
-> *ADR-0008 이후*: 이 성질은 사라지지 않고 **자리를 옮겼다.** 훅·스킬·커맨드·검증기는 플러그인 컴포넌트가 됐고, 플랫폼이 규약 경로에서 직접 발견하므로 목록이 여전히 필요 없다. 남은 선언적 페이로드는 7개 파일뿐이라 `harnessctl` 이 트리를 훑는 대신 명시적으로 계획을 세운다 — 모듈 rule 만 `rules/<module>/*.md` 로 글롭한다. 목록 유지 부담이 없다는 결론은 같고, 수단만 다르다.
+> *After ADR-0008*: this property did not disappear, it **moved**. Hooks, skills, commands and verifiers became plugin components, and the platform discovers them at convention paths, so there is still no list. The declarative payload that remains is seven files, so `harnessctl` plans explicitly instead of walking a tree — only module rules are globbed, from `rules/<module>/*.md`. The conclusion, that no list has to be maintained, is the same; only the means differ.
 
-**2. 2-tier.** *managed* 는 재설치 시 최신으로 덮어쓴다. *template* 은 최초 1회만 복사하고 이후 컨슈머 소유다 (`CLAUDE.md`, 경로 가드 설정 파일). 각 오버레이의 `templates.txt` 가 선언한다.
+**2. Two tiers.** *managed* is overwritten with the latest on reinstall. *template* is copied once and belongs to the consumer thereafter (`CLAUDE.md`, the path-guard config files). Each overlay's `templates.txt` declares which is which.
 
-> *ADR-0008 이후*: 그대로 유효하다. tier 선언만 `templates.txt` 에서 `harnessctl` 의 계획 코드(`add` / `addt`)로 옮겼다.
+> *After ADR-0008*: still true. Only the tier declaration moved, from `templates.txt` into harnessctl's planning code (`add` / `addt`).
 
-**3. 마커 기반 훅 병합.** *(→ [ADR-0008](0008-plugin-declarative-split.md) 로 **대체됨**. 훅은 이제 플러그인이 `hooks/hooks.json` 에서 `${CLAUDE_PLUGIN_ROOT}` 로 등록하고, 설치기는 `settings.json` 의 `hooks` 블록을 읽지도 쓰지도 않는다. 마커도, strip-then-append 도, 그 둘을 위해 있던 jq 프로그램도 삭제됐다. 아래 본문은 기록으로 남긴다.)* 모든 하네스 훅은 `.claude/hooks/harness/` 아래에 설치되고, 등록 command 문자열에 그 경로 조각이 들어간다. 병합은 **strip-then-append** — 각 이벤트에서 마커를 포함한 등록만 제거한 뒤 fragment 의 것을 붙인다. 그래서 재설치가 멱등이고, 제거가 컨슈머의 훅을 건드리지 않으며, 손으로 편집된 `settings.json` 도 중복이 쌓이지 않고 수렴한다.
+**3. Marker-based hook merging.** *(→ **Superseded** by [ADR-0008](0008-plugin-declarative-split.md). Hooks are now registered by the plugin in `hooks/hooks.json` against `${CLAUDE_PLUGIN_ROOT}`, and the installer neither reads nor writes the `hooks` block of `settings.json`. The marker, the strip-then-append, and the jq programs that existed for both were deleted. The text below stays as a record.)* Every harness hook installs under `.claude/hooks/harness/`, and that path fragment appears in the registration's command string. Merging is **strip-then-append** — for each event, remove only the registrations containing the marker, then append the fragment's. That makes reinstall idempotent, keeps uninstall away from the consumer's hooks, and lets a hand-edited `settings.json` converge instead of accumulating duplicates.
 
-**4. `.claude/harness-manifest.json` 이 그 외 전부의 영수증.** 실제로 추가한 permission 문자열, 설정한 스칼라 키, 우리가 만든 JSON 컨테이너의 경로, `.gitignore` 에 붙인 줄, 설치한 파일 목록, 선택된 모듈. 제거는 이 영수증만 되돌린다.
+**4. `.claude/harness-manifest.json` is the receipt for everything else.** The permission strings actually added, the scalar keys set, the paths of JSON containers we created, the line appended to `.gitignore`, the list of installed files, the selected modules. Uninstall reverses this receipt and nothing else.
 
-> *ADR-0008 이후*: 항목 구성은 그대로다. 달라진 것은 "그 외" 의 범위가 줄었다는 것 — 훅이 병합 대상에서 빠지면서 `settings.json` 에서 설치기가 손대는 것은 permissions 3티어와 스칼라 하나(`includeCoAuthoredBy`)뿐이고, 영수증도 그만큼만 기록한다.
+> *After ADR-0008*: the fields are unchanged. What shrank is the scope of "everything else" — with hooks out of the merge, all the installer touches in `settings.json` is the three permission tiers and one scalar (`includeCoAuthoredBy`), and the receipt records exactly that much.
 
-파생되는 성질 둘:
+Two properties follow:
 
-- **모든 설치는 먼저 이전 설치분을 되돌린 뒤 다시 적용한다.** 추가분은 언제나 원본 상태 기준으로 계산되므로 재설치가 누적되지 않는다.
-- **모듈을 빼면 그 파일이 지워진다.** manifest 가 이전 목록을 알고 있으므로 차집합이 그대로 제거 대상이다. 별도의 부분 제거 명령이 필요 없다.
+- **Every install first reverts the previous install, then reapplies.** Additions are always computed against the original state, so reinstalls do not accumulate.
+- **Dropping a module deletes its files.** The manifest knows the previous list, so the set difference is the removal set. No separate partial-uninstall command is needed.
 
-그 밖에 참조 설치기에서 그대로 가져온 것: 쓰기 전 preflight 전량 통과 (fail-before-mutate), 초 단위 충돌을 피하는 카운터 붙은 타임스탬프 백업, `curl | bash` 를 막는 `BASH_SOURCE` 가드, 설치 직후 스모크 테스트, README 의 "무엇을 건드리는가" 감사 절.
+Taken directly from the reference installer: all preflight checks pass before any write (fail-before-mutate), timestamped backups with a counter to survive same-second collisions, a `BASH_SOURCE` guard against `curl | bash`, a smoke test straight after install, and a "what it touches" audit section in the README.
 
 ## Consequences
 
-- `settings.json` 이 jq 로 재직렬화되므로 **포맷이 바뀐다** (들여쓰기 2칸, 키 순서는 보존). 첫 설치의 diff 에 포맷 변경이 섞인다. README 에 명시한다.
-- ~~우리 훅은 컨슈머의 기존 그룹에 합쳐지지 않고 같은 matcher 의 **별도 그룹** 으로 추가된다.~~ → ADR-0008 이후: **설치기는 `hooks` 를 건드리지 않는다.** 컨슈머의 훅 블록은 설치 전후로 바이트 동일하며, `scripts/verify-install.sh` 가 그것을 단정한다 ("the consumer's `.hooks` block is byte-identical after install"). 소유권 경계를 지키기 위한 장치가 필요 없어졌다 — 경계 자체가 없다.
-- 컨슈머가 원래 갖고 있던 권한 문자열은 우리가 같은 문자열을 "추가" 하지 않으므로 제거 시에도 남는다.
-- manifest 를 지우면 대칭 제거가 불가능해진다. `install.sh --uninstall` 은 manifest 없이는 중단한다.
-- 관리 대상 경로에 하네스 소유가 아닌 파일이 있으면 설치가 **아무것도 쓰지 않고 중단** 한다.
-- 제거 후에도 `settings.json.bak-*` 스냅샷은 남는다. 의도된 안전망이며 제거기가 경로를 출력한다.
-- *(ADR-0008 이후 추가)* 제거가 두 명령이 됐다. `harnessctl uninstall` 은 영수증만 되돌리고 플러그인은 그대로 두므로, 제거기가 `claude plugin uninstall ... --prune` 을 함께 출력한다.
+- `settings.json` is re-serialised by jq, so **the formatting changes** (two-space indent; key order preserved). The first install's diff mixes in a formatting change. The README says so.
+- ~~Our hooks are added as a **separate group** under the same matcher rather than joining the consumer's existing group.~~ → After ADR-0008: **the installer does not touch `hooks` at all.** The consumer's hook block is byte-identical before and after install, and `scripts/verify-install.sh` asserts it ("the consumer's `.hooks` block is byte-identical after install"). The machinery for holding an ownership boundary is gone because the boundary is gone.
+- Permission strings the consumer already had survive uninstall, because we never "added" a string we did not add.
+- Delete the manifest and symmetric removal becomes impossible. `install.sh --uninstall` stops without one.
+- If a managed path holds a file the harness does not own, the install **stops without writing anything**.
+- `settings.json.bak-*` snapshots survive uninstall. That is a deliberate safety net, and the uninstaller prints the path.
+- *(Added after ADR-0008)* Uninstall became two commands. `harnessctl uninstall` reverses the receipt and leaves the plugins alone, so it also prints `claude plugin uninstall ... --prune`.
 
 ## Alternatives considered
 
-- **`settings.json` 전체를 우리 파일로 교체** (참조 하네스 하나의 방식) — 가장 단순하지만 컨슈머의 설정을 지운다.
-- **훅 등록에 별도 마킹 키 추가** (`"_harness": true` 같은) — Claude Code 스키마에 없는 키를 넣게 되고, 사용자가 편집하다 지우면 소유권을 잃는다. 경로 마커는 훅이 동작하려면 반드시 유지되어야 하는 정보라 지워질 수 없다.
-- **install.sh 안의 명시적 파일 배열** (참조 설치기의 방식) — 검토 시 목록이 눈에 보이는 장점이 있으나, 파일 추가 시 등록 누락이라는 실패 모드가 생긴다. 트리에서 파생하면 그 실패 모드 자체가 없어진다.
-- **모듈별 부분 제거 명령** — `--with` 가 이미 차집합으로 처리하므로 중복이다.
+- **Replace `settings.json` wholesale with ours** (one reference harness's approach) — simplest, and it erases the consumer's configuration.
+- **Add a marking key to hook registrations** (something like `"_harness": true`) — puts a key in that the Claude Code schema does not have, and ownership is lost the moment a user edits it away. A path marker cannot be deleted, because the hook needs it to work at all.
+- **An explicit file array inside install.sh** (the reference installer's approach) — the list is visible during review, but it introduces a failure mode where adding a file means forgetting to register it. Deriving from the tree removes that failure mode entirely.
+- **A per-module partial-uninstall command** — redundant, since `--with` already handles it as a set difference.

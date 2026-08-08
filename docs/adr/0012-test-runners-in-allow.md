@@ -1,22 +1,22 @@
-# ADR-0012: 테스트 러너 다섯을 `allow` 로 올린다
+# ADR-0012: Five test runners move into `allow`
 
-- **상태**: 채택
-- **날짜**: 2026-08-08
-- **관련**: [ADR-0007](0007-install-levels.md) (권한 티어) · [`CLAUDE.md`](../../plugins/harness-core/declarative/CLAUDE.md) §4·§6 · [`agent-layer.md` §4b](../agent-layer.md)
+- **Status**: Accepted
+- **Date**: 2026-08-08
+- **Related**: [ADR-0007](0007-install-levels.md) (permission tiers) · [`CLAUDE.md`](../../plugins/harness-core/declarative/CLAUDE.md) §4 and §6 · [`agent-layer.md` §4b](../agent-layer.md)
 
 ## Context
 
-`CLAUDE.md` §4 는 *"run it, look at what came out"* 을 요구한다. 새 §6 도 보고에 근거를 요구한다. 두 원칙 다 **에이전트가 검증 명령을 실제로 돌릴 수 있다** 는 전제 위에 서 있다.
+`CLAUDE.md` §4 requires *"run it, look at what came out"*. The new §6 requires evidence in a report. Both principles stand on the assumption that **the agent can actually run the verification command**.
 
-그 전제가 거짓이었다. `allow` 42항목 중 **러너는 `Bash(make:*)` 하나뿐**이고 `pytest`·`python3`·`npm`·`sh`·`./script` 는 전부 없다. Makefile 이 없는 저장소에서 하네스가 명령한 검증은 **매번 승인 프롬프트를 띄우고, 비대화형 실행에서는 아예 거부된다.**
+That assumption was false. Of 42 `allow` entries, **the only runner was `Bash(make:*)`** — no `pytest`, no `python3`, no `npm`, no `sh`, no `./script`. In a repository without a Makefile, the verification the harness demands **raises an approval prompt every time, and is refused outright in a non-interactive run.**
 
-**측정 중에 드러났다.** R6 루프 규칙 벤치마크의 1차 파일럿이 양팔 0/3 으로 나왔고, 스트림을 뜯어보니 에이전트는 `sh check.sh` 를 **요청했고 거부됐다**. 0/3 은 규칙에 대한 증거가 아니라 권한에 대한 증거였다. 같은 실행에서 **시험 대상 에이전트가 스스로 이 결함을 보고했고**, 원장에 적으려다 그것마저 거부됐다 — `.claude/` 쓰기도 승인 대상이라서다.
+**It surfaced during a measurement.** The first pilot of the R6 loop-rule benchmark came back 0/3 on both arms; opening the stream showed the agent had **asked to run `sh check.sh` and been refused**. The 0/3 was evidence about permissions, not about the rule. In the same run **the agent under test reported the defect itself**, and was then refused when it tried to write to the ledger — because writing to `.claude/` needs approval too.
 
-원장은 이것을 2회차로 센다. 1회차는 *`ask` 티어가 헤드리스에서 PR 플로우를 도달 불가로 만든다* 였다. **같은 부류다: 권한 설계가 하네스 자신이 명령한 단계를 도달 불가로 만든다.**
+The ledger counts this as occurrence 2. Occurrence 1 was *the `ask` tier makes the PR flow unreachable in headless runs*. **Same family: the permission design makes a step the harness itself mandates unreachable.**
 
 ## Decision
 
-`permissions.allow` 에 러너 다섯을 더한다. `Bash(make:*)` 바로 옆에 둔다 — 같은 부류이기 때문이다.
+Add five runners to `permissions.allow`, right beside `Bash(make:*)` — because they are the same kind of thing.
 
 ```
 Bash(pytest:*)
@@ -26,29 +26,29 @@ Bash(cargo test:*)
 Bash(go test:*)
 ```
 
-**임의 `python3`·`python`·`sh`·`bash`·`node` 는 넣지 않는다.** 그건 러너를 허용하는 것이 아니라 셸을 여는 것이다. `npm run <script>` 도 넣지 않는다 — 스크립트 이름이 임의라 `npm test` 만큼 좁지 않다.
+**Bare `python3`, `python`, `sh`, `bash` and `node` are not added.** That is not allowing a runner, it is opening a shell. `npm run <script>` is not added either — the script name is arbitrary, so it is not as narrow as `npm test`.
 
-목록에 없는 러너를 쓰는 프로젝트는 자기 `settings.json` 에 자기 것을 더한다. 우리가 모든 생태계의 러너를 예측하려 들면 목록이 곧 셸이 된다.
+A project whose runner is not on the list adds its own to its own `settings.json`. Try to anticipate every ecosystem's runner and the list becomes a shell.
 
-## 우리가 감수하는 것 — 명시한다
+## What we are accepting, stated plainly
 
-**테스트 러너는 저장소의 임의 코드를 실행한다.** `conftest.py` 도, 테스트 파일도, `package.json` 의 `pretest` 도. 승인 프롬프트 없이 돈다.
+**A test runner executes arbitrary code from the repository.** `conftest.py`, the test files, `package.json`'s `pretest`. All of it runs with no approval prompt.
 
-그 선은 **이미 넘어 있었다.** `Bash(make:*)` 가 `allow` 에 있고 Makefile 은 무엇이든 실행한다. 지금 상태는 *"러너는 위험하다"* 가 아니라 *"Makefile 을 쓰는 저장소만 검증할 수 있다"* 였고, 그건 보안 판단이 아니라 우연이다.
+**That line was already crossed.** `Bash(make:*)` is in `allow`, and a Makefile runs anything. The state before this change was not *"runners are dangerous"* but *"only repositories that use a Makefile can be verified"* — which is not a security judgement, it is an accident.
 
-넓어지는 실제 범위는 **"Makefile 이 있는 저장소" 에서 "테스트가 있는 저장소" 로** 다. 위협 모델상 이 시점에는 사용자가 이미 그 저장소에서 에이전트를 돌리기로 했고, 에이전트는 이미 파일을 읽고 쓴다.
+What actually widens is the range **from "repositories with a Makefile" to "repositories with tests"**. In threat-model terms, by this point the user has already decided to run an agent in that repository, and the agent already reads and writes files.
 
-**`ask` 티어를 검토했고 버렸다.** `ask` 는 헤드리스에서 항상 거부되므로 §4 를 지킬 수 없는 상태가 그대로 남는다. 그리고 티어 정의상 `ask` 는 *되돌리기 비싼 것* 인데 테스트 실행은 보통 국소적이고 멱등이다.
+**The `ask` tier was considered and dropped.** `ask` is always refused headless, so the state where §4 cannot be honoured would simply remain. And by the tier's own definition `ask` is for *things that are expensive to undo*, while running tests is usually local and idempotent.
 
 ## Consequences
 
-- `allow` 42 → **47**. `context-budget` 과 무관하다 (권한은 상시 컨텍스트가 아니다).
-- `verify-install.sh` 의 픽스처를 바꿔야 했다. 그 검증기는 *컨슈머가 원래 갖고 있던 allow 항목이 제거 후에도 살아남는가* 를 `Bash(npm test:*)` 로 시험하고 있었는데, **우리가 같은 문자열을 배포하면 그 테스트는 틀린 이유로 통과한다** — 보존돼서가 아니라 우리가 다시 넣어서. 픽스처를 `Bash(echo consumer-owned:*)` 로 바꿨다. 우리가 절대 배포하지 않을 문자열이라야 소유권 성질을 실제로 시험한다.
-- 이 변경으로 **R6 계열 규칙을 다시 잴 수 있게 된다.** 다만 R6 자체는 별개 근거로 철회된 상태다 (양팔 3/3, 변별력 없음).
-- 컨슈머 중 `pytest` 를 승인 프롬프트로 막고 싶은 쪽은 자기 `settings.json` 의 `deny` 로 덮는다. `deny` 가 `allow` 를 이긴다.
+- `allow` goes 42 → **47**. Irrelevant to `context-budget` (permissions are not always-on context).
+- A fixture in `verify-install.sh` had to change. That verifier tested *does an `allow` entry the consumer already had survive uninstall* using `Bash(npm test:*)` — and **once we ship that same string, the test passes for the wrong reason**: not because it was preserved but because we put it back. The fixture is now `Bash(echo consumer-owned:*)`. Only a string we will never ship actually tests the ownership property.
+- This change **makes the R6 family of rules measurable again.** R6 itself is withdrawn on separate grounds (3/3 on both arms, no discriminating power).
+- A consumer who wants `pytest` behind an approval prompt overrides it with `deny` in their own `settings.json`. `deny` beats `allow`.
 
 ## Alternatives considered
 
-- **아무것도 안 한다.** §4·§6 이 지킬 수 없는 전제 위에 남는다. 그리고 그 사실이 벤치마크를 한 번 조용히 망쳤다.
-- **`Bash(./check.sh)` 처럼 프로젝트가 지정한 단일 진입점만 허용.** 깔끔하지만 그런 진입점을 갖는 저장소가 드물고, 결국 `make` 하나였던 지금과 같은 문제로 돌아간다.
-- **`ask` 로 올린다.** 위에 적은 두 이유로 버렸다.
+- **Do nothing.** §4 and §6 keep standing on an assumption that cannot be met. And that fact already ruined one benchmark quietly.
+- **Allow only a project-designated single entry point, like `Bash(./check.sh)`.** Clean, but few repositories have such an entry point, and it lands back in the same problem as having only `make`.
+- **Move them to `ask`.** Dropped for the two reasons above.

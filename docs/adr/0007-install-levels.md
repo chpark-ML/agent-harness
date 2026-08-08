@@ -1,65 +1,65 @@
-# ADR-0007: 설치 레벨은 둘이고, 청중으로 나눈다
+# ADR-0007: There are two install levels, divided by audience
 
 - **Status**: Accepted
 - **Date**: 2026-08-06
 
 ## Context
 
-초판은 프로젝트 레벨 설치만 지원했다. 참조 하네스 둘이 모두 프로젝트 레벨이었고, 팀 공유에는 커밋된 파일이 필요하다는 것이 근거였다. 그러나 그 근거는 자산의 *일부* 에만 해당한다.
+The first version supported project-level installs only. Both reference harnesses were project-level, and the reasoning was that team sharing needs committed files. But that reasoning covers only *some* of the assets.
 
-가드에는 정반대의 논리가 붙는다. `secret-scrubber` 의 존재 이유는 키가 절대 새지 않게 하는 것인데, 프로젝트마다 설치하는 구조에서는 **설치를 잊은 저장소가 정확히 사고가 나는 저장소** 다. 5분 보려고 clone 한 남의 repo, 급하게 만든 스크래치 디렉터리 — 하네스를 설치할 리 없고, 경솔한 명령이 나오기 쉬운 곳도 거기다. 커버리지에 구멍이 있는 가드는 구멍의 크기만큼이 아니라 *그 구멍이 어디에 나는지* 만큼 약하다.
+Guards carry the opposite logic. `secret-scrubber` exists so that a key never leaks — and under a per-project install, **the repository that forgot to install is exactly the repository where the accident happens**. Somebody else's repo cloned for five minutes, a scratch directory thrown together in a hurry: nowhere near a harness install, and precisely where a careless command comes from. A guard with a hole in its coverage is weak not in proportion to the hole's size but to *where the hole is*.
 
-관측된 사실 하나 더: 본 저장소를 만든 사용자의 `~/.claude/settings.json` 에는 훅이 0개, `CLAUDE.md` 없음, permissions 는 `defaultMode` 하나뿐이었다. 사용자 레벨이 비어 있는 것이 기본 상태다.
+One more observed fact: the `~/.claude/settings.json` of the user who built this repository had zero hooks, no `CLAUDE.md`, and one permissions key (`defaultMode`). An empty user level is the default state.
 
-문서에서 확인한 제약:
+Constraints confirmed in the documentation:
 
-- **훅 등록은 레이어 간 병합된다** ("Hook entries merge across settings levels rather than replacing each other"), 동일 핸들러는 1회만 실행. 다만 두 레벨은 서로 다른 command 문자열을 등록하므로 (`$CLAUDE_PROJECT_DIR/...` vs 절대경로) 동일 핸들러로 취급되지 않고 **두 번 실행된다**. *(→ [ADR-0008](0008-plugin-declarative-split.md) 이후 이 조건이 성립하지 않는다. 설치기가 훅을 등록하지 않으므로 두 레벨이 서로 다른 command 문자열을 만들 일 자체가 없다.)*
-- **Permissions 도 스코프 간 병합된다.**
-- **`${CLAUDE_PROJECT_DIR}` 는 문서화**돼 있으나, 훅 안에서 사용자 설정 디렉터리를 가리키는 변수는 문서에 없다.
-- **Path-scoped rules 파일은 프로젝트 레벨에만 문서화**돼 있다. `~/.claude/rules/` 에 대한 언급이 없다.
+- **Hook registrations merge across levels** ("Hook entries merge across settings levels rather than replacing each other"), and an identical handler runs once. But the two levels register different command strings (`$CLAUDE_PROJECT_DIR/...` versus an absolute path), so they are not treated as the same handler and **run twice**. *(→ After [ADR-0008](0008-plugin-declarative-split.md) this condition cannot arise. The installer registers no hooks, so there is no way for two levels to produce different command strings.)*
+- **Permissions merge across scopes** as well.
+- **`${CLAUDE_PROJECT_DIR}` is documented**, but there is no documented variable pointing at the user config directory from inside a hook.
+- **Path-scoped rules files are documented for the project level only.** There is no mention of `~/.claude/rules/`.
 
 ## Decision
 
-설치 레벨은 둘이고, **편의가 아니라 청중으로** 나눈다.
+There are two install levels, divided **by audience, not by convenience**.
 
-| | 프로젝트 (기본) | `--user` |
+| | Project (default) | `--user` |
 |---|---|---|
-| 위치 | `<project>/` + `<project>/.claude/` | `~/.claude/` (또는 `$CLAUDE_CONFIG_DIR`) |
-| 청중 | 이 저장소를 clone 하는 **팀** | 이 머신에서 일하는 **나** |
-| 커밋됨 | 예 | 아니오 |
-| 적용 범위 | 그 프로젝트 | 5분짜리 clone 을 포함한 모든 프로젝트 |
+| Location | `<project>/` + `<project>/.claude/` | `~/.claude/` (or `$CLAUDE_CONFIG_DIR`) |
+| Audience | the **team** that clones this repository | **you**, working on this machine |
+| Committed | yes | no |
+| Applies to | that project | every project, including a five-minute clone |
 
-**권장 기본값은 `--user` 다.** 가드·스킬·커맨드·원칙은 머신 전체에 한 번 걸고, 프로젝트 설치는 *팀이 같은 규약을 받아야 할 때* 와 *프로젝트 고유의 rules·설정이 필요할 때* 만 추가한다.
+**The recommended default is `--user`.** Put guards, skills, commands and principles on the machine once, and add a project install only when *the team needs the same conventions* and when *project-specific rules and settings are needed*.
 
-파생되는 세 가지:
+Three things follow:
 
-1. **`.claude/` 접두사를 벗긴다.** 사용자 설정 디렉터리가 곧 그 `.claude` 다. `map_rel` 이 오버레이 경로를 레벨에 맞게 옮기므로 두 레벨이 한 코드 경로를 공유한다.
-2. **`--user` 는 `rules/` 를 설치하지 않는다.** 사용자 레벨에서 읽힌다는 근거가 없으므로, 넣으면 *동작하는 것처럼 보이는 무력한 파일* 이 된다. 설치기가 무엇을 건너뛰었는지 출력하고 프로젝트 설치를 안내한다. 사용자 레벨의 상시 지침은 `~/.claude/CLAUDE.md` 다.
-3. **양쪽에 설치돼 있으면 경고한다.** 훅이 두 번 돈다 — 차단 결과는 같지만 정보성 훅의 출력이 겹친다. 자동으로 한쪽을 끄지 않는 이유는 어느 쪽을 끌지가 사용자의 판단이기 때문이다.
+1. **Strip the `.claude/` prefix.** The user config directory *is* that `.claude`. `map_rel` remaps overlay paths to the level, so both levels share one code path.
+2. **`--user` does not install `rules/`.** There is no evidence they are read at user level, so installing them would produce *files that look like they work and do nothing*. The installer prints what it skipped and points at a project install. Standing instructions at user level go in `~/.claude/CLAUDE.md`.
+3. **Warn when both are installed.** Hooks run twice — the blocking outcome is the same, but informational hooks print over each other. We do not switch one off automatically, because which one to switch off is the user's call.
 
-소유권 마커도 바뀐다: `.claude/hooks/harness/` → **`/hooks/harness/`**. `CLAUDE_CONFIG_DIR` 이 설정되면 사용자 설정 디렉터리 이름이 `.claude` 가 아니고, 사라질 수 있는 마커는 마커가 아니다.
+The ownership marker changes too: `.claude/hooks/harness/` → **`/hooks/harness/`**. When `CLAUDE_CONFIG_DIR` is set the user config directory is not named `.claude`, and a marker that can vanish is not a marker.
 
-### 갱신 ([ADR-0008](0008-plugin-declarative-split.md) 이후)
+### Update (after [ADR-0008](0008-plugin-declarative-split.md))
 
-레벨을 **청중으로 나눈다** 는 결정과 위 표는 그대로 유효하다. 구현과 파생 항목 셋이 바뀐다.
+The decision to divide **by audience**, and the table above, still hold. The implementation and three of the consequences changed.
 
-- **`--user` 플래그가 `harnessctl init --scope user|project` 가 됐다.** 그리고 스코프 표면이 하나에서 둘로 늘었다 — 플러그인 절반은 플러그인 시스템 자신의 `claude plugin install --scope user|project|local` 이 정하고, 선언적 절반은 `harnessctl` 의 `--scope` 가 정한다. 둘은 독립이며, 짝을 맞추는 것은 사용자 몫이다. `harnessctl --scope local` 은 아직 없다 (backlog).
-- **1번 (`map_rel`) 은 없어졌다.** 오버레이를 레벨에 맞게 재사상하는 함수 대신, `harnessctl` 이 스코프에 따라 `TARGET`·`SETTINGS`·`MANIFEST`·`CONFIG_DIR` 을 한 번 정하고 계획을 그 위에서 세운다. `--scope user` 는 `.gitignore` 를 만들지 않고 `.git` 도 요구하지 않는다.
-- **2번 (rules 는 프로젝트 전용) 은 그대로 성립하고, 이제 `harnessctl` 을 규율한다.** 문서화된 `~/.claude/rules/` 가 없다는 사실은 변하지 않았고, 플러그인 쪽으로도 길이 열리지 않았다 — `rules` 는 플러그인 컴포넌트가 아니다. 그래서 rule 은 프로젝트 스코프의 `harnessctl` 만 배송할 수 있고, 사용자 스코프에서는 건너뛴 사실을 출력한다. `verify-install.sh` 가 두 성질을 다 단정한다.
-- **3번 (양쪽 설치 시 경고) 은 폐기됐다.** 훅을 등록하는 주체가 플러그인 하나뿐이므로, `harnessctl init` 을 몇 개 스코프에서 돌리든 훅은 한 번만 등록된다. 두 스코프를 동시에 초기화하는 것은 이제 상호작용 없는 정상 동작이고, 각 스코프가 자기 manifest 를 갖는다.
-- **소유권 마커 `/hooks/harness/` 도 폐기됐다.** 마커의 용도는 `settings.json` 안에서 우리 훅 등록을 골라내는 것이었는데, 골라낼 등록이 없다. 설치기의 소유권 근거는 이제 manifest 하나뿐이다.
+- **The `--user` flag became `harnessctl init --scope user|project`.** And the scope surface went from one to two — the plugin half is decided by the plugin system's own `claude plugin install --scope user|project|local`, and the declarative half by harnessctl's `--scope`. They are independent, and matching them up is the user's job. `harnessctl --scope local` does not exist yet (backlog).
+- **Point 1 (`map_rel`) is gone.** Instead of a function remapping the overlay per level, `harnessctl` fixes `TARGET`, `SETTINGS`, `MANIFEST` and `CONFIG_DIR` once from the scope and plans on top of them. `--scope user` creates no `.gitignore` and does not require `.git`.
+- **Point 2 (rules are project-only) still holds, and now governs `harnessctl`.** The absence of a documented `~/.claude/rules/` has not changed, and no path opened on the plugin side either — `rules` is not a plugin component. So rules can only be delivered by `harnessctl` at project scope, and at user scope it prints what it skipped. `verify-install.sh` asserts both properties.
+- **Point 3 (warn when both are installed) is retired.** Only one thing registers hooks — the plugin — so however many scopes you run `harnessctl init` in, hooks register once. Initialising two scopes is now ordinary, non-interacting behaviour, and each scope keeps its own manifest.
+- **The `/hooks/harness/` ownership marker is retired too.** Its purpose was to pick our hook registrations out of `settings.json`, and there are no registrations to pick. The installer's only basis for ownership is now the manifest.
 
 ## Consequences
 
-- 사용자 레벨 설치는 `.git` 을 요구하지 않고 `.gitignore` 를 만들지 않는다.
-- ~~훅 등록에 실제 경로가 박힌다 (`$HOME/.claude/...`, 커스텀 config dir 면 절대경로). 문서화된 대안이 없다.~~ → ADR-0008 이후: 훅 등록이 사라졌으므로 이 문제도 사라졌다. 플러그인은 `${CLAUDE_PLUGIN_ROOT}` 라는 문서화된 앵커를 쓰고, 경로는 어느 스코프에 설치하든 플러그인 캐시를 가리킨다.
-- `protected-paths` 훅은 이제 사용자 설정과 프로젝트 설정을 **합집합** 으로 읽는다. 머신 전체 보호가 프로젝트의 자체 목록 때문에 사라지면, 아무도 설정하지 않은 프로젝트에서 가드가 가장 약해진다.
-- `--user` 설치는 **팀에 공유되지 않는다.** 팀 규약이 필요하면 프로젝트 설치가 여전히 답이다. ~~그 경우 훅 중복 경고를 보게 된다.~~ → ADR-0008 이후: 경고 없이 두 스코프를 그냥 함께 쓴다.
-- 검증 부담이 늘었다. `scripts/verify-install.sh` 가 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 사용자 레벨 왕복까지 검사한다 — 실제 `~/.claude` 를 건드리지 않으므로 CI 와 개발자 머신에서 그대로 돌릴 수 있다.
+- A user-level install does not require `.git` and does not create a `.gitignore`.
+- ~~Hook registrations embed a real path (`$HOME/.claude/...`, or an absolute path under a custom config dir). There is no documented alternative.~~ → After ADR-0008: hook registrations are gone, so this problem is gone. The plugin uses the documented `${CLAUDE_PLUGIN_ROOT}` anchor, and the path points at the plugin cache whatever the install scope.
+- The `protected-paths` hook now reads the **union** of the user and project configs. If machine-wide protection disappeared because a project has its own list, the guard would be weakest in a project nobody configured.
+- A `--user` install **is not shared with the team.** When team conventions are needed, a project install is still the answer. ~~You then see the duplicate-hook warning.~~ → After ADR-0008: the two scopes simply run together, with no warning.
+- The verification burden grew. `scripts/verify-install.sh` uses `CLAUDE_CONFIG_DIR` to point at a scratch directory and checks the user-level round trip too — it never touches the real `~/.claude`, so it runs unchanged in CI and on a developer's machine.
 
 ## Alternatives considered
 
-- **프로젝트 레벨만** (초판) — 팀 공유는 되지만 가드에 구멍이 남고, 그 구멍이 하필 사고가 나는 곳이다.
-- **사용자 레벨만** — 가드는 완전해지지만 팀에 아무것도 전달되지 않고, path-scoped rules 를 쓸 수 없다.
-- **양쪽 설치 시 프로젝트 쪽 훅을 자동 생략** — 중복은 없어지지만, 나중에 사용자 레벨을 제거하면 프로젝트가 조용히 무방비가 된다. 경고 후 사용자가 정하게 둔다. *(ADR-0008 이후 문제 자체가 없어져 이 대안도 무의미해졌다.)*
-- **`~/.claude/rules/` 에도 설치하고 동작하길 기대** — 근거 없는 파일을 놓는 것이고, 무력한 규칙 파일은 없는 것보다 나쁘다.
+- **Project level only** (the first version) — team sharing works, but the guards keep a hole, and the hole is exactly where the accidents are.
+- **User level only** — the guards are complete, but nothing reaches the team and path-scoped rules cannot be used.
+- **Automatically skip the project hooks when both are installed** — no duplication, but remove the user level later and the project is silently undefended. Warn, and let the user decide. *(After ADR-0008 the problem itself is gone, so this alternative is moot.)*
+- **Install to `~/.claude/rules/` and hope it works** — that is placing a file on no evidence, and a rules file with no force is worse than none.
