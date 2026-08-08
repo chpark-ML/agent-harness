@@ -2,10 +2,14 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-slides",
   "displayName": "Harness Slides",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Turn a repository's own results into a deck outline whose every number is traceable. Rendering is left to slides-grab",
-  "author": { "name": "chpark-ML" },
+  "author": {
+    "name": "chpark-ML"
+  },
   "repository": "https://github.com/chpark-ML/agent-harness",
   "license": "MIT",
-  "dependencies": ["harness-core"]
+  "dependencies": [
+    "harness-core"
+  ]
 }

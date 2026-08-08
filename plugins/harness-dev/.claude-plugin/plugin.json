@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-dev",
   "displayName": "Harness Dev",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Product and service development profile: harness-core plus Superpowers",
   "author": {
     "name": "chpark-ML"
