@@ -98,53 +98,48 @@
 
 ## 시작하기
 
-먼저 저장소를 받는다.
+**한 줄이면 된다.** 무엇을 하는 사람인지에 따라 프로파일만 고른다 — 전부 조합 가능하고 나중에 더해도 된다.
 
 ```bash
-git clone https://github.com/chpark-ML/agent-harness ~/agent-harness && cd ~/agent-harness
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
 ```
 
-그다음은 무엇을 하는 사람인지에 따라 한 줄이면 된다. 전부 조합 가능하고 나중에 더해도 된다.
+<details>
+<summary><b>원격 스크립트를 그냥 실행하는 게 꺼려진다면</b></summary>
 
-#### 개발 — 가장 흔한 조합
+당연한 경계다. 세 가지 중 아무거나 하면 된다.
 
 ```bash
-./install.sh --profile dev,python --with-tools
+# 1) 읽고 나서 실행한다 — 223줄이고, 하는 일은 marketplace 등록 → 플러그인 설치 → harnessctl init 이다
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh -o install.sh
+less install.sh && bash install.sh --profile dev,python
+
+# 2) 리비전에 고정한다 — main 이 움직여도 받는 것이 안 바뀐다
+bash install.sh --profile dev --ref <commit-sha>
+
+# 3) 저장소를 받아서 실행한다 (이전 방식)
+git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/install.sh --profile dev
 ```
 
-가드 6개, [Superpowers](https://github.com/obra/superpowers) 스킬 14개, `pr-create`·`pr-review`, Python 언어 서버까지. TypeScript 면 `python` 대신 `typescript`, 둘 다면 둘 다 쓴다.
+**릴리스 태그는 아직 없다.** `--ref` 는 태그·브랜치·커밋 SHA 를 다 받지만 이 저장소는 태그를 하나도 발행한 적이 없으므로, 지금 고정할 수 있는 것은 커밋 SHA 다.
 
-#### 연구
+**클론은 원래 필요 없었다.** 설치기는 체크아웃에서 아무것도 읽지 않는다 — `harnessctl` 을 *플러그인 캐시 → 마켓플레이스 클론 → 이 체크아웃* 순으로 찾는데, 앞의 둘은 스크립트 자신이 방금 만든 것이다. 세 번째는 fallback 일 뿐이라 클론은 스크립트 파일 하나를 얻는 용도였다.
 
-```bash
-./install.sh --profile research
-```
+</details>
 
-가드 6개, 5문서 노트 규율, `research-notes`·`repro-checklist`. 실험을 돌리고 결과를 기록하는 흐름에 맞춰져 있다.
+### 무엇을 고를 것인가
 
-#### 연구 + 발표
+`--profile` 만 다르다. 위 명령 뒤에 붙이면 된다.
 
-```bash
-./install.sh --profile research,slides
-```
+| 하는 일 | 플래그 | 받는 것 |
+|---|---|---|
+| **개발** (가장 흔함) | `--profile dev,python --with-tools` | 가드 6, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
+| **연구** | `--profile research` | 가드 6, 5문서 노트 규율, `research-notes`·`repro-checklist` |
+| **연구 + 발표** | `--profile research,slides` | 위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고 **덱의 모든 수치가 근거로 추적되는지 기계로 검사**. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다 |
+| **이 저장소에만** | `--profile dev --scope project` | 머신 전체를 안 건드린다. 현재 저장소의 `.claude/` 와 `settings.json` 만 바뀌고, clone 하는 팀 전체가 같은 규약을 받는다 |
+| **최소** | (없음) | 가드 6, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나 |
 
-위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고, **덱의 모든 수치가 근거로 추적되는지 기계로 검사** 한다. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다.
-
-#### 이 저장소에만
-
-```bash
-./install.sh --profile dev --scope project
-```
-
-머신 전체를 건드리지 않는다. 현재 git 저장소의 `.claude/` 와 `settings.json` 만 바뀌고, 그 저장소를 쓰는 팀 전체가 같은 규약을 받는다.
-
-#### 최소 — 가드만
-
-```bash
-./install.sh
-```
-
-가드 6개, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나. 나머지는 나중에 같은 명령에 프로파일만 더해서 올리면 된다.
+**`--scope` 를 한 번은 생각하고 고른다.** 기본은 `user` (머신 전체) 인데, `dev`·`research` 의 **규칙 파일은 프로젝트 스코프에만 설치된다** — `~/.claude/rules` 는 읽히는 자리가 아니라서다. 두 프로파일을 제대로 쓰려면 작업 저장소에서 `--scope project` 로 한 번 더 설치한다.
 
 설치가 끝나면 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
 
