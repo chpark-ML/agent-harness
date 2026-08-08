@@ -92,7 +92,7 @@ CASE_CWD="$WORK/main-dirty"
 run_hook '{}'
 expect "main with changes → still exit 0 (informational, never blocks)" 0 "$RC"
 expect_match "main with changes → names the branch" "$OUT" "main"
-expect_match "main with changes → names the file count" "$OUT" "1 건"
+expect_match "main with changes → names the file count" "$OUT" "1 uncommitted"
 expect_match "main with changes → names the branch convention" "$OUT" "feat,fix,chore"
 
 CASE_CWD="$WORK/master-dirty"
@@ -110,6 +110,6 @@ expect_match "the default branch comes from origin/HEAD, not from its name" "$OU
 printf 'another\n' > "$WORK/main-dirty/second.txt"
 CASE_CWD="$WORK/main-dirty"
 run_hook '{}'
-expect_match "count follows the working tree" "$OUT" "2 건"
+expect_match "count follows the working tree" "$OUT" "2 uncommitted"
 
 verify_summary

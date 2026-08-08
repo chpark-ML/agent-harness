@@ -60,7 +60,7 @@ run_hook '{}'
 expect "clean repo → exit 0" 0 "$RC"
 expect_match "names the branch" "$OUT" "branch: main"
 expect_match "lists recent commits" "$OUT" "commit number 6"
-expect_absent "clean repo omits the uncommitted line" "$OUT" "미커밋"
+expect_absent "clean repo omits the uncommitted line" "$OUT" "uncommitted:"
 expect_absent "no upstream configured → no upstream line" "$OUT" "upstream"
 
 # --- output budget ----------------------------------------------------------
@@ -78,7 +78,7 @@ fi
 CASE_CWD="$WORK/dirty"
 run_hook '{}'
 expect "dirty repo → exit 0" 0 "$RC"
-expect_match "reports uncommitted changes" "$OUT" "미커밋 변경: 2"
+expect_match "reports uncommitted changes" "$OUT" "uncommitted: 2"
 
 lines="$(printf '%s\n' "$OUT" | grep -c .)"
 if [ "$lines" -le 10 ]; then
