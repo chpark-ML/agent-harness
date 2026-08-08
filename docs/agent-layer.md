@@ -76,29 +76,43 @@
 | 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복. 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
 | Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 한국어 트리거와 negative routing (영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
 | 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
+| 컨텍스트 예산 | `scripts/context-budget.sh` — 상시 로드되는 **전 footprint**(선언적 + 플러그인)를 스코프 × 프로파일별로 합산하고 `CONTEXT_CEILING` 을 넘으면 실패. 파일 목록은 glob 이라 새 rule 이 조용히 공짜가 되지 않는다 |
 | 매니페스트 | `claude plugin validate --strict` — 별도 CI job. 나머지 검증은 CLI 없이 돈다 |
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 50 파일 + 자체 케이스 19 — 합계 425. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 50 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 426. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
 **그리고 오탐 셋을 먼저 냈다.** 동결 코퍼스(`evals/prose-corpus.md`)는 과거 문서의 사본이라 링크가 원본 위치 기준이고, `declarative/` 페이로드의 상대 링크는 *설치 후* 위치 기준으로 맞다. 셋 다 검사기를 고쳐서 없앴다 — 문서를 고치는 방향으로 갔으면 맞는 것을 틀리게 만들었을 것이다. 마지막 하나가 특히 그렇다: 원장이 깨진 링크를 *증거로 인용* 하고 있었는데, 인라인 코드를 벗기지 않아 그 인용을 진짜 링크로 셌다. **가드를 넓힐 때 반대 방향 케이스를 같이 넣으라는 규율이 여기서도 그대로 적용된다.**
 
-**컨텍스트 비용** (`claude plugin details` 실측, 2026-08-07):
+**컨텍스트 비용은 `make context-budget` 이 센다.** 아래는 2026-08-08 출력이고, **표를 손으로 고치지 말 것** — 스크립트를 다시 돌린다.
 
-| | 상시 로드 | 호출 시 |
+| 무엇 | 상시 로드 | 언제 |
 |---|---|---|
-| `harness-core` (스킬 1 + 커맨드 1) | ~390 tok | — |
-| `harness-dev` (스킬 1) | ~351 tok | — |
-| `harness-research` (스킬 2) | ~480 tok | ~1.9k · ~3k |
-| `harness-slides` (스킬 1) | ~300 tok | ~1.6k |
-| `superpowers` (스킬 14) | ~688 tok | — |
-| **배포분 합계** | **~2.2k tok / 세션** | |
-| `skill-creator` (개발용, 배포 안 함) | ~112 tok | **~10.9k** |
+| `CLAUDE.md` | **~1,736 tok** | user + project 양쪽 |
+| `rules/core/workflow.md` | **~1,696** | project only |
+| `rules/dev/review.md` | **~1,132** | project only, `--with dev` |
+| `rules/research/notes.md` | **~1,279** | project only, `--with research` |
+| `harness-core` | ~329 | 항상 |
+| `harness-dev` + `superpowers` | ~240 + ~688 | `dev` |
+| `harness-research` | ~480 | `research` |
+| `harness-slides` | ~446 | `slides` |
+| **worst case** (project, 전 프로파일) | **~8,026 tok / 세션** | 천장 9,000 |
+| user 스코프 전 프로파일 | ~3,919 | rules 가 없어서 |
+| `skill-creator` (개발용, 배포 안 함) | ~112 | 호출 시 ~10.9k |
 
-**훅은 컨텍스트 비용이 0 이다** — `plugin details` 가 "harness-only — no model context cost" 로 분류한다. LSP 도 마찬가지다. 즉 매 세션 비용을 만드는 것은 오직 스킬 description 이다. 단가는 균일하지 않다: Superpowers 는 14개에 688 토큰이라 하나당 ~49 지만, 우리 것은 `harness-core` 2개 항목에 390, `harness-dev` 1개에 351 — 트리거를 영·한 양쪽으로 담고 negative routing 까지 넣느라 훨씬 길다. **우리 스킬 하나가 남의 것 일곱 개 값을 한다**는 뜻이고, 이것이 스킬을 늘릴 때 실제로 계산해야 하는 수치다. 이 표가 새 스킬을 추가할 때 대조할 기준선이다. `results-deck` 이 300 인 것은 그 기준선을 실제로 대본 결과다 — negative routing 을 두 방향(`slides-grab`·`research-notes`)으로 넣고도 우리 평균 아래로 들어왔다.
+**이 표는 두 번 틀린 적이 있고 둘 다 같은 이유다 — 손으로 유지했기 때문이다.**
+
+- **선언적 절반이 통째로 빠져 있었다.** 초판은 스킬만 세고 `~2.2k` 라고 적었다. `harnessctl` 이 설치하는 `CLAUDE.md` 와 `rules/` 는 매 세션 로드되는데 어느 표에도 없었다. 실제는 **3.6배**이고, `workflow.md` 하나가 우리 스킬 전부에 육박한다. **가짜 기준선 위에서 "이 정도는 더 담아도 된다" 를 판단해 왔다** — 외부 하네스 62벌(벌당 ~560 tok) 도입이 잠깐 그럴듯하게 들린 것이 그 결과다.
+- **플러그인 숫자도 낡았다.** 표는 core 390 / dev 351 / slides 300 이라고 적고 있었는데 실측은 329 / 240 / 446 이다.
+
+그래서 숫자를 문서에 박는 대신 **소스에서 읽는 스크립트**로 옮겼고, `make verify` 가 천장을 넘으면 실패한다. 파일 목록은 glob 이다 — 하드코딩한 목록은 새 rule 파일이 조용히 공짜가 되는 경로다.
+
+**훅과 LSP 는 여전히 0 이다** (`plugin details` 가 "harness-only — no model context cost" 로 분류). 달라진 것은 *스킬만 비용을 만든다* 는 결론이 틀렸다는 것이다 — **rule 이 스킬보다 비싸다.** 우리 스킬 단가가 높은 것(Superpowers 14개에 688 = 하나당 ~49 대 우리 ~240)은 영·한 트리거와 negative routing 을 함께 담기 때문인데, 그 규약이 값을 하는지는 아직 안 쟀다. 외부 스킬이 **영어 description 만으로 한국어 프롬프트에 붙는 것**을 관측했으므로(§4b) 이건 열린 질문이다.
+
+**늘리는 것은 더하기가 아니라 맞바꾸기다.** 천장에 여유 ~1k 가 있고, 그건 채우라고 둔 것이 아니라 다음 한 번을 위한 것이다. 넘기려면 무엇을 뺄지 같은 변경에 담거나, Makefile 의 `CONTEXT_CEILING` 을 이유와 함께 올린다.
 
 **두 번째 축이 있다는 것도 이번에 알았다.** `skill-creator` 는 상시 112 인데 호출하면 10.9k 다 — description 은 짧고 본문이 거대하다. 우리는 정반대로 지어 왔다. 어느 쪽이 옳은지는 호출 빈도가 정한다: 자주 트리거되는 스킬은 본문이 싸야 하고, 드물게 쓰는 도구는 description 이 싸야 한다. 상시 비용만 보고 설계하면 이 축이 안 보인다.
 
