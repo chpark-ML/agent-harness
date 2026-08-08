@@ -1,53 +1,53 @@
-# ADR-0013: 저장소 태그는 스냅샷을 버저닝하고, 플러그인 버전과 독립이다
+# ADR-0013: A repository tag versions the snapshot, independently of the plugin versions
 
-- **상태**: 채택
-- **날짜**: 2026-08-08
-- **관련**: [ADR-0005](0005-installer.md) (설치기) · [ADR-0008](0008-plugin-declarative-split.md) (플러그인/선언적 분리) · [`README`](../../README.md) · [`SECURITY.md`](../../SECURITY.md)
+- **Status**: Accepted
+- **Date**: 2026-08-08
+- **Related**: [ADR-0005](0005-installer.md) (the installer) · [ADR-0008](0008-plugin-declarative-split.md) (the plugin/declarative split) · [`README`](../../README.md) · [`SECURITY.md`](../../SECURITY.md)
 
 ## Context
 
-`install.sh --ref <ref>` 는 marketplace 를 특정 리비전에 고정한다. 이 손잡이는 **존재하고 동작하는데 고정할 대상이 없다** — 이 저장소는 태그를 하나도 발행한 적이 없다 (`git tag` · `git ls-remote --tags` 둘 다 0). README 와 `SECURITY.md` 는 그래서 *"릴리스 태그는 아직 없다"* 를 세 곳에서 각각 적어두고 커밋 SHA 를 권한다.
+`install.sh --ref <ref>` pins the marketplace to a revision. That handle **exists and works, and there is nothing to grab** — this repository has never published a tag (`git tag` and `git ls-remote --tags` both empty). So the README and `SECURITY.md` each say *"no release tags are published yet"* in three places and recommend a commit SHA instead.
 
-**컨슈머에게 `main` 이 움직인다고 알리면서 멈춰 세울 손잡이는 안 준 셈이다.** 실제로 움직인다 — 하루에 PR 이 열 개 넘게 들어간 날이 있었다.
+**We told consumers `main` moves, and handed them no handle to stop it.** It does move — there was a day with more than ten PRs.
 
-태그를 안 붙인 이유는 게으름이 아니라 답하지 못한 질문 하나였다: **여섯 플러그인이 각자 버전을 갖는데 저장소 태그는 무엇의 버전인가.**
+The reason for not tagging was not laziness but one unanswered question: **six plugins carry their own versions, so what is a repository tag the version of?**
 
-| 플러그인 | 버전 |
+| Plugin | Version |
 |---|---|
 | `harness-core` | 1.9.3 |
 | `harness-slides` | 1.4.1 |
 | `harness-dev` | 1.0.4 |
 | `harness-research` | 1.0.2 |
-| `harness-python` · `harness-typescript` | 1.0.0 |
+| `harness-python`, `harness-typescript` | 1.0.0 |
 
-`harness-core` 가 2.0 이 되고 `harness-python` 이 1.0.0 에 머물러 있을 때 저장소 태그의 major 는 무엇이어야 하는가. 이 질문에 답하지 않고 아무 태그나 붙이면 **그 질문이 답 없이 굳는다** — 그래서 미뤘고, 원장에 1회차로 적어두었다.
+When `harness-core` reaches 2.0 and `harness-python` is still at 1.0.0, what should the repository tag's major be? Tag anything without answering that and **the question freezes unanswered** — so it was deferred, and recorded in the ledger as occurrence 1.
 
 ## Decision
 
-**저장소 태그는 스냅샷을 버저닝한다.** 어느 플러그인의 버전도 아니고, 플러그인 버전을 요약하려 들지도 않는다.
+**A repository tag versions the snapshot.** It is not any plugin's version, and it does not try to summarise them.
 
-`v<major>.<minor>.<patch>`, **`v0.1.0` 에서 시작한다.**
+`v<major>.<minor>.<patch>`, **starting at `v0.1.0`.**
 
-버저닝되는 대상은 **컨슈머가 그 리비전에서 받는 것 전체** 다 — `install.sh` · `harnessctl` · `declarative/` 페이로드 · 그 커밋 시점의 플러그인 여섯. `--ref` 가 marketplace 를 고정하므로 플러그인 버전도 **전이적으로** 고정된다. 그것이 pin 의 의미다.
+What is versioned is **everything a consumer receives at that revision** — `install.sh`, `harnessctl`, the `declarative/` payload, and the six plugin versions at that commit. Because `--ref` pins the marketplace, the plugin versions are pinned **transitively**. That is what pinning means.
 
-bump 규칙은 **선언적 계약** 이 정한다. 그것만이 단일 표면이기 때문이다.
+The bump rule keys off **the declarative contract**, because that is the only single surface.
 
-| 무엇이 바뀌면 | bump |
+| What changed | Bump |
 |---|---|
-| 기존 설치를 `harnessctl init` 으로 **다시 돌려야** 정상이 되는 변경 — settings 프래그먼트의 형태, rule 경로, `CLAUDE.md` 마커 규약, uninstall 이 되돌리는 범위 | major |
-| 컨슈머가 받는 것이 **늘어난다** — 새 훅·스킬·rule·프로파일, 새 permission 항목 | minor |
-| 나머지 — 버그 수정, 문서, 검증기, 이 저장소 전용 스크립트 | patch |
+| An existing install must **re-run `harnessctl init`** to be correct — the shape of the settings fragment, rule paths, the `CLAUDE.md` marker convention, what uninstall reverses | major |
+| Consumers **receive more** — a new hook, skill, rule or profile, a new permission entry | minor |
+| Everything else — bug fixes, documents, verifiers, repo-only scripts | patch |
 
-**0.x 인 이유.** 하네스의 핵심 주장 다수가 아직 안 재졌다 (`CLAUDE.md` §2·§3 이 행동을 바꾸는지, graph 축 전체). 1.0 은 *"이 계약을 깨지 않는다"* 는 약속이고, 재보지 않은 것에 그 약속을 걸 수 없다.
+**Why 0.x.** Much of what the harness asserts is still unmeasured (whether `CLAUDE.md` §2 and §3 change behaviour, the entire graph axis). 1.0 is a promise that *this contract will not break*, and that promise cannot be staked on something unmeasured.
 
 ## Consequences
 
-- README 와 `SECURITY.md` 의 *"릴리스 태그는 아직 없다"* 세 곳이 사라진다. `--ref` 예시가 커밋 SHA 대신 태그를 쓴다.
-- **플러그인 version bump 의무는 그대로다** ([`CLAUDE.md`](../../CLAUDE.md) §2). 저장소 태그가 그것을 대신하지 않는다 — Claude Code 는 플러그인 버전 문자열로 캐시를 판단하므로, 태그만 올리고 플러그인 버전을 안 올리면 컨슈머에게 변경이 가지 않는다. **두 층은 각자 돈다.**
-- 태그는 자동화하지 않는다. 릴리스는 판단이고, 판단을 CI 에 옮기면 위 표의 major/minor 구분이 조용히 patch 로 수렴한다. [§7](../../CLAUDE.md) 의 과잉 설계 억제도 같은 방향이다 — 릴리스 파이프라인은 발생 2회 뒤에.
+- The three *"no release tags are published yet"* notes in the README and `SECURITY.md` go away. The `--ref` examples use a tag instead of a commit SHA.
+- **The per-plugin version-bump obligation is unchanged** ([`CLAUDE.md`](../../CLAUDE.md) §2). A repository tag does not stand in for it — Claude Code decides its cache on the plugin version string, so bumping only the tag delivers nothing to a consumer. **The two layers turn independently.**
+- Tagging is not automated. A release is a judgement, and moving a judgement into CI is how the major/minor distinction above quietly collapses into patch. [§7](../../CLAUDE.md)'s resistance to over-design points the same way — a release pipeline after the second occurrence.
 
 ## Alternatives considered
 
-- **날짜 태그 (`2026-08-08`).** 여섯 버전을 요약하지 않아도 되어 정직하지만, *"이 업그레이드가 내 설치를 깨뜨리나"* 에 답하지 못한다. 그 질문이 `--ref` 를 쓰는 유일한 이유다.
-- **플러그인 버전 중 최대값을 따라간다 (`v1.9.3`).** `harness-core` 의 버전을 저장소 전체의 버전인 척하게 만든다. 나머지 다섯이 조용히 거짓이 된다.
-- **태그 없이 SHA 유지.** 지금 상태다. `--ref` 가 문서에서 세 번 사과하게 만들고, 컨슈머는 무엇이 안정 리비전인지 알 방법이 없다.
+- **Date tags (`2026-08-08`).** Honest, in that it does not have to summarise six versions — but it cannot answer *"will this upgrade break my install"*, which is the only reason to use `--ref` at all.
+- **Follow the highest plugin version (`v1.9.3`).** Makes `harness-core`'s version pretend to be the whole repository's. The other five quietly become false.
+- **No tags, keep SHAs.** The current state. It makes `--ref` apologise three times across the documentation, and leaves a consumer with no way to know which revision is stable.

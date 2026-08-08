@@ -1,35 +1,35 @@
-# ADR-0002: 훅은 bash 3.2 + jq 로만 작성하고, 설치기도 jq 를 요구한다
+# ADR-0002: Hooks are written in bash 3.2 and jq only, and the installer requires jq
 
 - **Status**: Accepted
 - **Date**: 2026-08-06
 
 ## Context
 
-훅은 모든 도구 호출마다 실행된다. 런타임 의존이 늘어날수록 하네스는 "설치했는데 안 도는" 상태가 되기 쉽고, 그 상태는 조용하다 — 가드가 안 돌아도 아무 일도 안 일어난 것처럼 보인다.
+Hooks run on every tool call. The more runtime dependencies they carry, the more easily the harness lands in the "installed but not running" state — and that state is silent. A guard that does not run looks exactly like nothing happening.
 
-바닥 환경은 macOS 의 `/bin/bash` 3.2 다 (2007년판, Apple 이 라이선스 때문에 갱신하지 않는다). 참조 하네스의 검증기들은 `mapfile` 을 쓰며 "requires bash 4+" 를 선언하고 있었고, 다른 하네스의 포맷 훅은 macOS 호스트에서 조용히 반쪽만 돌고 있었다.
+The floor is macOS's `/bin/bash` 3.2 (a 2007 release Apple does not update, for licence reasons). The reference harness's verifiers used `mapfile` and declared "requires bash 4+"; another harness's formatting hook was quietly running at half strength on macOS hosts.
 
-한편 참조 훅 하나는 stdin 파싱에 `python3` 을 쓰고 있어 자신이 속한 저장소의 bash+jq 규약을 위반한 상태였다.
+Meanwhile one reference hook used `python3` to parse stdin, putting it in violation of its own repository's bash-and-jq convention.
 
 ## Decision
 
-훅은 **bash 3.2 와 jq 로만** 작성한다. Python·Node·perl 금지. `mapfile`, 연관 배열, `${x^^}` 같은 bash 4 문법 금지. `set -u` 에서 빈 배열은 `"${arr[@]+"${arr[@]}"}"` 로 전개한다.
+Hooks are written in **bash 3.2 and jq only**. No Python, Node or perl. No bash 4 syntax such as `mapfile`, associative arrays or `${x^^}`. Under `set -u`, an empty array expands as `"${arr[@]+"${arr[@]}"}"`.
 
-훅은 `jq` 가 없으면 **stderr 한 줄과 함께 exit 0** 으로 자기 비활성화한다. 가드의 부재가 작업의 중단이 되어서는 안 된다.
+A hook **disables itself with one stderr line and `exit 0`** when `jq` is absent. A missing guard must not become a stopped piece of work.
 
-**설치기는 반대로 jq 를 요구하고, 없으면 아무것도 쓰지 않고 중단한다.** *(ADR-0008 이후: 그 preflight 는 `harnessctl` 에 있다. `install.sh` 는 플러그인을 먼저 깐 뒤 harnessctl 에서 멈추므로, "아무것도 쓰지 않고" 는 선언적 절반에만 해당한다.)* 훅이 jq 를 요구하므로 jq 없는 설치는 전부 자기 비활성화된 가드를 배포하는 것이다. 조용히 그렇게 하느니 설치 실패가 낫다.
+**The installer does the opposite: it requires jq, and stops without writing anything if it is missing.** *(After ADR-0008 that preflight lives in `harnessctl`. `install.sh` installs the plugins first and then stops at harnessctl, so "without writing anything" applies to the declarative half only.)* Since hooks require jq, an install without it delivers nothing but self-disabled guards. Better a failed install than that, done quietly.
 
-`make syntax` 가 배포되는 모든 스크립트를 `bash -n` 으로 파싱하고, CI 가 이를 macOS 의 `/bin/bash` 로도 실행한다 — 테스트가 닿지 않는 에러 경로의 bash 4 문법까지 잡기 위해서다.
+`make syntax` parses every shipped script with `bash -n`, and CI runs it under macOS's `/bin/bash` as well — to catch bash 4 syntax on error paths no test reaches.
 
 ## Consequences
 
-- 훅 로직이 장황해진다. 배열 조작·문자열 처리를 3.2 어휘로 써야 하고, `large-file-veto` 의 `git add` 인자 파싱 같은 것은 awk 한 줄을 거쳐 간다.
-- jq 없는 환경은 설치 자체가 막힌다. 규약·스킬만 원하는 사용자에게는 과한 요구지만, 그 경우에도 jq 는 한 줄로 설치된다.
-- 훅이 자기 비활성화하면 그 사실이 stderr 한 줄로만 보인다. 사용자가 놓칠 수 있다 — 설치기의 preflight 가 이를 앞당겨 막는 이유다.
-- 새 훅에 스크립트 언어를 쓰고 싶어지는 순간이 온다. 그때는 이 ADR 을 superseded 로 바꾸는 PR 을 먼저 낸다.
+- Hook logic gets verbose. Array and string handling has to be written in the 3.2 vocabulary, and things like `large-file-veto`'s `git add` argument parsing go through a line of awk.
+- An environment without jq cannot install at all. That is a heavy ask for someone who only wants the conventions and skills, but jq installs in one line even then.
+- When a hook disables itself, the only sign is one line on stderr. A user can miss it — which is why the installer's preflight blocks it earlier.
+- There will come a moment when a new hook wants a scripting language. At that point, open a PR marking this ADR superseded first.
 
 ## Alternatives considered
 
-- **Python 훅 허용** — 파싱은 쉬워지지만 인터프리터 버전·가상환경 상태에 의존하게 되고, 그 실패는 조용하다.
-- **jq 없을 때 python3 폴백** (참조 설치기의 방식) — 같은 병합 로직 두 벌을 유지해야 하고, 둘이 어긋나면 손상되는 것은 사용자의 `settings.json` 이다. 훅이 이미 jq 를 요구하는 이상 이 폴백이 구하는 시나리오는 "가드 없는 하네스" 뿐이다.
-- **bash 4 요구 + Homebrew bash 안내** — 사용자에게 환경 변경을 강요하고, 강요가 통하지 않는 곳(CI 이미지, 동료의 노트북)에서 조용히 깨진다.
+- **Allow Python hooks** — parsing gets easier, but the hook now depends on interpreter version and virtualenv state, and that failure is silent.
+- **Fall back to python3 when jq is missing** (the reference installer's approach) — two copies of the same merge logic to maintain, and when they diverge what gets damaged is the user's `settings.json`. Given that hooks already require jq, the only scenario this fallback rescues is "a harness with no guards".
+- **Require bash 4 and point at Homebrew bash** — forces an environment change on the user, and breaks quietly wherever that force does not reach (CI images, a colleague's laptop).

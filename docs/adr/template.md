@@ -5,20 +5,20 @@
 
 ## Context
 
-이 결정이 필요해진 배경 · 제약 · 가정. 결정의 근거가 되는 사실만 — 의견·예측은 최소화.
+The background, constraints and assumptions that made this decision necessary. Facts the decision rests on only — keep opinion and prediction to a minimum.
 
 ## Decision
 
-채택하는 방식. 단수 · 단언형 ("we will ..."). 짧게.
+What is being adopted. Singular, declarative ("we will ..."). Short.
 
 ## Consequences
 
-이 결정으로 따라오는 결과 — 긍정·부정 모두. "기대" 가 아니라 "이렇게 된다" 로 적는다.
+What follows from the decision — good and bad. Written as "this is how it will be", not as "we expect".
 
 ## Alternatives considered
 
-검토했지만 채택하지 않은 대안 + 거절 이유. 한 줄씩.
+What was considered and not adopted, plus the reason for rejecting it. One line each.
 
 ---
 
-> 작성 가이드 — Nygard 클래식 포맷. 새 ADR 은 `0001-`, `0002-`, ... 순서로 번호. 한 ADR 은 한 결정. 결정이 후속 ADR 로 바뀌면 본 ADR 의 Status 를 "Superseded by ADR-MMMM" 로 갱신하되 본문은 보존한다.
+> Writing guide — the classic Nygard format. New ADRs are numbered `0001-`, `0002-`, and so on. One ADR is one decision. When a later ADR changes the decision, update this one's Status to "Superseded by ADR-MMMM" and leave the body intact.

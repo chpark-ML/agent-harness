@@ -1,133 +1,133 @@
-# ADR-0011: 외부 생태계 조사 — 무엇을 들이고 무엇을 안 들이는가
+# ADR-0011: An external ecosystem survey — what comes in and what does not
 
 - **Status**: Accepted
 - **Date**: 2026-08-07
 
 ## Context
 
-후보 아홉이 지목됐다: `karpathy-guidelines` · `caveman` · `ui-ux-pro-max` · `handoff` · `skill-creator` · `omniroute` · `claude-mem` · `headroom` · `task-observer`. 설치돼 있던 것은 `headroom` 하나뿐이었고 그것도 비활성 상태에 **다른 프로젝트 스코프**였다 (`ponytail` 도 같은 처지). 나머지 여덟은 이 저장소와 아무 관계가 없었다.
+Nine candidates were named: `karpathy-guidelines`, `caveman`, `ui-ux-pro-max`, `handoff`, `skill-creator`, `omniroute`, `claude-mem`, `task-observer`, `headroom`. Only `headroom` was installed, and even that was inactive and scoped to **another project** (`ponytail` likewise). The other eight had nothing to do with this repository.
 
-첫 판정에서 나는 이 중 셋을 **포장 형식** 으로 잘라냈다 — "`task-observer` 는 `claude plugin install` 이 안 된다", "`skill-creator` 는 `writing-skills` 와 트리거가 겹치니 하나만". 둘 다 틀렸다. `SKILL.md` 는 복사하면 되고, 겹치는지는 본문을 읽어야 안다. [ADR-0009](0009-external-dependencies.md) 가 *"외부 스킬과의 충돌은 이름이 아니라 본문으로 판정한다"* 를 규칙으로 세운 바로 그 실수를 세 번째로 반복한 것이다.
+On the first pass I cut three of them on **packaging** — "`task-observer` cannot be `claude plugin install`ed", "`skill-creator` shares triggers with `writing-skills`, so keep one". Both were wrong. A `SKILL.md` can simply be copied, and whether two skills overlap is something you only learn by reading the bodies. It was the third repetition of the exact mistake [ADR-0009](0009-external-dependencies.md) had already turned into a rule: *conflicts with an external skill are judged by the body, not the name.*
 
 ## Decision
 
-### 1. `skill-creator` 를 채택한다 — 스킬이 아니라 **계측기** 로
+### 1. Adopt `skill-creator` — as an **instrument**, not a skill
 
-이것이 이번 조사의 유일하게 큰 수확이다. 이름이 시사하는 "스킬 작성 도우미" 가 아니라, 서브에이전트 3개(`analyzer`·`comparator`·`grader`)와 스크립트 7개를 실은 **평가 하네스** 다. 우리에게 없던 것을 셋 준다.
+This is the survey's one large finding. It is not the "skill-writing helper" its name suggests but an **evaluation harness**, carrying three subagents (`analyzer`, `comparator`, `grader`) and seven scripts. It gives us three things we did not have.
 
-- **with-skill / baseline 짝 실행.** 같은 턴에 두 팔을 동시에 띄운다 — 시간대·API 변동을 통제하는 정석이다.
-- **`aggregate_benchmark.py` 가 mean ± stddev 와 delta 를 낸다.** [agent-layer §4b](../agent-layer.md) 에 방금 못박은 유의성 규율과 같은 계산을 기계가 한다.
-- **`run_loop.py` 가 description 의 트리거 정확도를 최적화한다.** 트리거 eval 을 60/40 train/test 로 나누고, 각 쿼리를 3회 돌려 트리거율을 재고, **test 점수로** 최적안을 고른다 (train 으로 고르면 과적합).
+- **Paired with-skill / baseline runs.** Both arms launch in the same turn — the textbook way to control for time of day and API variation.
+- **`aggregate_benchmark.py` reports mean ± stddev and delta.** A machine doing the same calculation as the significance discipline we had just written into [agent-layer §4b](../agent-layer.md).
+- **`run_loop.py` optimises a description's trigger accuracy.** It splits the trigger eval 60/40 into train and test, runs each query three times to measure the trigger rate, and picks the best candidate **by the test score** (picking on train overfits).
 
-`analyzer` 가 찾는 것 중 하나가 **non-discriminating assertion** — 스킬이 있든 없든 통과하는 검사다. 우리가 "항상 100% 나오는 벤치마크는 정보를 주지 않는다" 로 적어둔 원칙의 기계판이다.
+One thing `analyzer` looks for is a **non-discriminating assertion** — a check that passes whether or not the skill is present. It is the machine version of the principle we had written down as "a benchmark that always returns 100% carries no information".
 
-**공식 마켓플레이스 것이므로 벤더링하지 않고 설치한다** (Apache-2.0). Superpowers 와 같은 provenance 논거다.
+**It is on the official marketplace, so we install rather than vendor it** (Apache-2.0). The same provenance argument as Superpowers.
 
-### 2. `skill-creator` 와 Superpowers `writing-skills` 는 **둘 다 둔다**
+### 2. Keep **both** `skill-creator` and Superpowers `writing-skills`
 
-첫 판정의 "트리거 겹침, 하나만" 은 본문을 읽고 철회한다. 겹치지 않는다.
+The first verdict, "triggers overlap, keep one", is withdrawn after reading the bodies. They do not overlap.
 
-| | `writing-skills` (Superpowers) | `skill-creator` (공식) |
+| | `writing-skills` (Superpowers) | `skill-creator` (official) |
 |---|---|---|
-| 무엇 | 스킬을 **어떻게 쓰는가** — TDD 매핑, 실패 유형별 서술 형태, rationalization 표, 허점 닫기 | 스킬이 **먹히는지 어떻게 재는가** — 짝 실행, 채점, 집계, 트리거 최적화 |
-| 계측 | 개념적 baseline 만 있고 도구는 없다 | 스크립트·서브에이전트·리포트 |
+| What | **How to write** a skill — TDD mapping, prose shapes per failure type, a rationalisation table, closing loopholes | **How to measure** whether a skill works — paired runs, grading, aggregation, trigger optimisation |
+| Instrumentation | A conceptual baseline, no tools | Scripts, subagents, reports |
 
-전자는 규율, 후자는 자다. 같은 트리거 문구를 공유하지만 [ADR-0009](0009-external-dependencies.md) 의 갱신 절이 세운 방식대로 **생애주기 단계로 구분축을 그으면** 충돌하지 않는다 — 쓰기 전인가, 쓴 뒤 재는가.
+The first is discipline, the second is a ruler. They share trigger phrasing, but drawing the dividing line **along the lifecycle stage** — before writing, or measuring after — resolves it, the way [ADR-0009](0009-external-dependencies.md)'s update section established.
 
-### 3. `task-observer` 의 **로그 기제** 만 가져온다
+### 3. Take only the **ledger mechanism** from `task-observer`
 
-`CLAUDE.md` §5 는 harness gap 을 "**두 번 이상 발생** 하면 제안한다" 로 규정한다. **그 임계값은 지금 집행 불가능하다** — 세션을 넘겨 발생을 세는 장치가 없어서, 전적으로 그 순간의 기억에 의존한다.
+`CLAUDE.md` §5 defines a harness gap as something you propose after it has **happened twice**. **That threshold is currently unenforceable** — there is no device that counts occurrences across sessions, so it rests entirely on what you happen to remember in the moment.
 
-`task-observer` 가 정확히 그 카운터다: 관찰을 그 턴 안에 로그 파일에 append 하고 (*"쓰는 행위가 곧 집행 기제"*), 분류 체계를 두고, 주기적으로 수면 위로 올린다. 특히 **SIMPLIFYING 신호** 절 — *"무엇을 뺄까를 무엇을 더할까만큼 의도적으로 물어라"* — 는 우리 §2·§7 의 과잉설계 억제와 정확히 같은 방향이다.
+`task-observer` is exactly that counter: it appends an observation to a log file within the same turn (*"writing it down IS the enforcement"*), keeps a taxonomy, and surfaces entries periodically. Its **SIMPLIFYING signals** section in particular — *"ask what to remove as deliberately as what to add"* — points the same way as our §2 and §7 resistance to over-design.
 
-**스킬 전체를 복사하지 않는다.** 446줄이고 우리 §5 와 절반이 겹친다. 가져오는 것은 *지속되는 원장(ledger)* 이라는 기제 하나이며, 범위는 harness gap 으로 좁힌다. 출처는 표기한다 (CC BY 4.0).
+**We do not copy the whole skill.** It is 446 lines and half of it overlaps our §5. What we take is one mechanism, *a durable ledger*, scoped down to harness gaps. Attribution is recorded (CC BY 4.0).
 
-### 4. `karpathy-guidelines` — 설치하지 않고, 출처를 표기하고, 빠진 한 줄을 흡수한다
+### 4. `karpathy-guidelines` — do not install, credit the source, absorb the one missing line
 
-**우리 `CLAUDE.md` §1~4 가 이 스킬이다.** 대시·공백 정규화 후 대조하니 규범 문장 23개 중 20개가 문자 그대로 일치했고, 남은 셋 중 둘도 표현만 다른 같은 문장이었다. 우리가 더한 것은 §5 하나다.
+**Our `CLAUDE.md` §1–4 is this skill.** Compared after normalising dashes and whitespace, 20 of its 23 normative sentences matched verbatim, and two of the remaining three were the same sentence worded differently. The one thing we added is §5.
 
-여기서 실제 결함이 나왔다. **이 스킬은 MIT 이고, 우리는 그 상당 부분을 컨슈머에게 재배포하면서 저장소 어디에도 출처를 적지 않았다.** 조사하다 걸린 컴플라이언스 문제이고, 즉시 고쳤다 — `declarative/CLAUDE.md` 머리말에 **Provenance** 절을 넣었다.
+A real defect surfaced here. **The skill is MIT, we redistribute a substantial part of it to consumers, and the repository credited it nowhere.** A compliance problem found while surveying, and fixed immediately — a **Provenance** section went into the preamble of `declarative/CLAUDE.md`.
 
-진짜로 빠져 있던 규범 문장은 하나였고 §2 에 넣었다: *"If you write 200 lines and it could be 50, rewrite it."*
+Exactly one normative sentence was genuinely missing, and it went into §2: *"If you write 200 lines and it could be 50, rewrite it."*
 
-설치는 하지 않는다. 같은 규칙 두 벌이 로드되고, 한 벌은 우리가 고칠 수 있고 한 벌은 아니다.
+We do not install it. Two copies of the same rules would load, and only one of them would be ours to fix.
 
-### 5. `harness-100` — 의존으로 두고 흡수하지 않는다
+### 5. `harness-100` — depend on it, do not absorb it
 
-[`revfactory/harness-100`](https://github.com/revfactory/harness-100) (Apache-2.0) 은 10개 도메인의 프로젝트 템플릿 100벌이다 (en/ko 각 100). 벌마다 `{NN}-{name}/.claude/{CLAUDE.md, agents/, skills/}` 로 오케스트레이터 스킬 1 + 전문가 에이전트 4–5 + 도메인 스킬 2–3.
+[`revfactory/harness-100`](https://github.com/revfactory/harness-100) (Apache-2.0) is 100 project templates across 10 domains (100 each in English and Korean). Each is `{NN}-{name}/.claude/{CLAUDE.md, agents/, skills/}` with one orchestrator skill, 4–5 specialist agents, and 2–3 domain skills.
 
-**판정: 의존. 저장소 파일 증가 0.** ADR-0009 가 Superpowers 로 이미 푼 것과 같은 문제다 — 범용 작업 능력은 남의 것으로 조합하고 우리는 가드·규약·설치만 갖는다 ([agent-layer.md §1](../agent-layer.md) Non-goal). 개별 harness 는 ADR-0001 의 편입 기준(*다른 도메인·다른 스택에 그대로 설치해도 말이 되는가*)을 설계상 통과할 수 없다. `01-youtube-production` 을 우리가 배포하는 것은 다른 제품이다.
+**Verdict: depend. Zero new files.** The same problem ADR-0009 already solved with Superpowers — general working capability is composed from other people's work, and we keep the guards, the conventions and the install ([agent-layer.md §1](../agent-layer.md), Non-goal). An individual harness cannot pass ADR-0001's admission test by construction (*would this make sense installed as-is in another domain, on another stack?*). Us shipping `01-youtube-production` would be a different product.
 
-**흡수를 검토했고 재서 접었다.** 6개 도메인 ≈ 62벌 × 벌당 ~560 tok ≈ **35k tok/세션** 이다. 상시 컨텍스트 천장이 9,000 이고 현재 소진이 8,026 이므로 도메인 하나(12–15벌, ~7–8k)도 안 들어간다. **설치 단위는 harness 한 벌이어야 하고, 저쪽이 이미 그 모양으로 쪼개 놨다** — 우리가 다시 묶을 이유가 없다.
+**Absorption was considered and dropped on measurement.** Six domains ≈ 62 harnesses × ~560 tok each ≈ **35k tok per session**. The always-on ceiling is 9,000 and current consumption is 8,026, so not even one domain fits (12–15 harnesses, ~7–8k). **The unit of installation has to be one harness, and they have already cut it that way** — there is no reason for us to bundle it back up.
 
-**공존은 실측했다.** `31-ml-experiment` 를 우리 하네스가 깔린 세션에 얹고 12케이스 × 3회:
+**Coexistence was measured.** `31-ml-experiment` was laid over a session with our harness installed, 12 cases × 3 runs:
 
-| | 결과 |
+| | Result |
 |---|---|
-| 우리 자리를 뺏었나 (음성 6) | **0건.** `repro-checklist` · `research-notes`×2 · `results-deck` · `pr-review` · `pr-create` 가 **각 3/3 만장일치**로 지켰다 |
-| 저쪽 오케스트레이터가 자기 자리를 받았나 (양성 6) | 4/6. 놓친 둘 중 하나는 `Bash` 선행(계측기 한계), 하나는 `superpowers:brainstorming` 이 3/3 선점 — **우리 교리대로다** (*"Let's build X" → brainstorming 먼저*) |
+| Did it take our seats (6 negatives) | **Zero.** `repro-checklist`, `research-notes` ×2, `results-deck`, `pr-review` and `pr-create` each held **3/3, unanimously** |
+| Did their orchestrator get its own seat (6 positives) | 4/6. Of the two misses, one was a leading `Bash` call (an instrument limitation) and one was `superpowers:brainstorming` taking it 3/3 — **which is our own doctrine** (*"Let's build X" → brainstorming first*) |
 
-**알고 써야 할 것 둘.** ① 스킬 파일이 `skill.md` 소문자다 (`SKILL.md` 0건) — macOS 기본 FS 는 대소문자를 안 가려 붙지만 Linux·컨테이너에서는 안 붙는다. ② 검증이 0 이다: md 1,808개에 테스트도 eval 세트도 CI 도 없고, README 의 *"Trigger Boundaries — Should-trigger + NOT-trigger **defined**"* 는 정의했다는 말이지 쟀다는 말이 아니다.
+**Two things to know before using it.** ① The skill files are lowercase `skill.md` (zero `SKILL.md`) — macOS's default filesystem is case-insensitive so they load, but on Linux and in containers they do not. ② Verification is zero: 1,808 markdown files with no tests, no eval sets and no CI, and the README's *"Trigger Boundaries — Should-trigger + NOT-trigger **defined**"* says defined, not measured.
 
-### 6. 나머지는 들이지 않는다
+### 6. Nothing else comes in
 
-| 후보 | 판정 근거 |
+| Candidate | Basis for the verdict |
 |---|---|
-| `caveman` | 출력 토큰 65% 절감. 그러나 [ADR-0002](0002-hook-contract.md) 가 *차단 메시지는 무엇이 걸렸는지와 어떻게 푸는지를 둘 다 담는다* 를 훅 계약으로 못박았다. 정면으로 싸운다 |
-| `ui-ux-pro-max` | 도메인 프로파일감. 이 저장소는 UI 프로젝트가 아니고 발생 0회 — §7 의 "두 번째 발생을 기다린다" 에 걸린다. 필요해지면 `harness-frontend` 로 |
-| `claude-mem` | 라이프사이클 훅 5개로 **모든 도구 입출력** 을 캡처해 저장한다. `secret-scrubber` 를 운영하는 저장소에서 무엇이 삼켜지는지 확인하지 않고 들일 수 없다 |
-| `omniroute` | 플러그인이 아니라 로컬 게이트웨이(npm). 프롬프트와 코드가 제3자 프록시를 통과한다 — 하네스 결정이 아니라 보안 결정이다 |
-| `handoff` | `harness-research` 의 5문서 세트가 연구 쪽 연속성을 이미 덮는다. 개발 쪽은 발생 0회. backlog 로 |
-| `headroom` · `ponytail` | **이 줄이 틀렸다.** 원문은 *"타 프로젝트 스코프의 비활성 설치. 이 저장소의 자산이 아니다"* 였는데, 그건 판정이 아니라 이 머신의 설치 상태다. 뒤늦게 본문을 읽고 [agent-layer §3b](../agent-layer.md) 에서 각각 **기각**(프록시·유료) 과 **보류·측정 설계 흡수** 로 판정했다 |
+| `caveman` | 65% fewer output tokens. But [ADR-0002](0002-hook-contract.md) fixed as a hook contract that *a block message carries both what was caught and how to get past it*. They fight head-on |
+| `ui-ux-pro-max` | Domain-profile material. This repository is not a UI project and the occurrence count is zero — it fails §7's "wait for the second occurrence". If it is ever needed, as `harness-frontend` |
+| `claude-mem` | Five lifecycle hooks capturing and storing **all tool I/O**. Not something to bring into a repository running `secret-scrubber` without first checking what it swallows |
+| `omniroute` | Not a plugin but a local gateway (npm). Prompts and code pass through a third-party proxy — a security decision, not a harness one |
+| `handoff` | `harness-research`'s five-document set already covers continuity on the research side. Zero occurrences on the development side. To the backlog |
+| `headroom`, `ponytail` | **This row was wrong.** It originally read *"an inactive install under another project's scope, not this repository's asset"* — which is not a verdict, it is a description of this machine. The bodies were read later and each judged in [agent-layer §3b](../agent-layer.md): **rejected** (a proxy, and paid) and **held, with its eval design absorbed** |
 
-## 계측기 자체에 대한 발견 — 이쪽이 더 값졌다
+## What the survey found about the instruments — the more valuable half
 
-`results-deck` 의 트리거율을 재려다 **거짓 음성 함정 셋** 을 밟았다. 셋 다 출력이 "0.0 — 트리거 안 됨" 으로 똑같이 보였다.
+Trying to measure `results-deck`'s trigger rate walked into **three false-negative traps**. All three produced output that looked identical: "0.0 — did not trigger".
 
-1. **타임아웃이 미트리거와 구분되지 않는다.** 기본값 `--timeout 30 --num-workers 10` 으로 돌리면 `claude -p` 가 첫 Skill 호출에 닿기 전에 잘리고, 결과는 전부 0.0 이다. 대조군을 `--num-workers 1 --timeout 150` 으로 돌리자 3/3 이 됐다.
-2. **이미 설치된 스킬은 잴 수 없다.** 하네스가 임시 슬래시 커맨드로 description 을 노출하는데, 진짜 스킬이 설치돼 있으면 모델이 **진짜 쪽** 을 부른다. 탐지기는 임시 이름을 찾으므로 "안 걸림" 으로 기록한다. 재려면 해당 플러그인을 먼저 비활성화해야 한다.
-3. **첫 도구 호출만 본다.** 탐지 코드는 첫 `tool_use` 가 `Skill`/`Read` 가 아니면 즉시 False 를 반환한다. 저장소 파일을 가리키는 과제는 모델이 `Bash` 로 둘러보며 시작할 수 있고, 그러면 나중에 스킬을 써도 미트리거로 잡힌다.
+1. **A timeout is indistinguishable from a non-trigger.** At the defaults `--timeout 30 --num-workers 10`, `claude -p` is cut off before it reaches the first Skill call, and every result is 0.0. Running the control at `--num-workers 1 --timeout 150` turned it into 3/3.
+2. **An installed skill cannot be measured through a stand-in.** The harness exposes the description as a temporary slash command, but when the real skill is installed the model calls **the real one**. The detector looks for the temporary name and records "did not fire". Measuring it means disabling that plugin first.
+3. **Only the first tool call is examined.** The detection code returns False immediately if the first `tool_use` is not `Skill` or `Read`. A task that points at repository files can have the model start by looking around with `Bash`, and then a later skill call is recorded as a non-trigger.
 
-**규칙 하나를 추가한다: 트리거 측정에는 양성 대조군을 같이 돌린다.** 설치되지 않은, 확실히 걸려야 하는 스킬 하나를 같은 조건으로 재서, 계기가 울리는 상태인지부터 확인한다. 세 함정 모두 이 대조군 하나로 걸러졌을 것이다.
+**One rule follows: run a positive control alongside any trigger measurement.** Take one skill that is not installed and must certainly fire, measure it under the same conditions, and confirm the instrument is in a state where it can ring at all. All three traps would have been caught by that single control.
 
-이것은 [agent-layer §4b](../agent-layer.md) 가 LSP 1차에서 얻은 교훈 — *음성 결과를 얻으면 기제가 발동할 조건이 갖춰졌는지부터 확인한다* — 의 세 번째 사례다. 세 번이면 규칙이다.
+This is the third instance of the lesson [agent-layer §4b](../agent-layer.md) learned from the first LSP run — *when you get a negative result, first check whether the conditions for the mechanism to fire were even met*. Three makes it a rule.
 
-## 실제로 재본 결과 — `results-deck` 트리거율
+## What the measurement actually returned — `results-deck`'s trigger rate
 
-세 함정을 피해 만든 `scripts/bench-trigger.py` 로 **설치된 진짜 스킬** 을 잰다. 프롬프트를 던지고 첫 도구 호출만 보고 죽인다 — 전체 실행은 돈이 들고, 알고 싶은 것은 오프닝 수 하나다. 타임아웃은 미트리거와 따로 기록한다.
+`scripts/bench-trigger.py`, built to avoid the three traps, measures **the real installed skill**. It fires a prompt, watches only the first tool call, and kills the run — a full run costs money, and the one thing we want to know is a single opening move. Timeouts are recorded separately from non-triggers.
 
-**negative routing 은 6/6 으로 깨끗했다** (두 번의 전수 실행 모두). 렌더링·레이아웃·PDF·노트작성·대화형 답변·다이어그램 전부 스킬을 끌어오지 않았다. description 에 박은 `slides-grab`·`research-notes` 지목이 실제로 작동한다.
+**Negative routing came back clean at 6/6** (on both full runs). Rendering, layout, PDF, note-writing, a conversational answer and a diagram all failed to pull the skill in. The `slides-grab` and `research-notes` names pinned into the description do work.
 
-**양성은 그렇지 않았다.** 처음 잰 값이 4/6 이었고, 놓친 둘은 모두 *개발 쪽 보고* 였다 (릴리스 정리, manager readout). 한국어 트리거 목록이 연구 쪽에 치우쳐 있었다. `skill-creator` 본문이 경고하는 undertrigger — *"Claude 는 스킬을 덜 부르는 경향이 있으니 description 을 약간 밀어붙이게 써라"* — 의 교과서적 사례다.
+**The positives did not.** The first measurement was 4/6, and both misses were *development-side reporting* (a release write-up, a manager readout). The Korean trigger list leaned research-side. A textbook case of the undertrigger `skill-creator`'s own text warns about — *"Claude tends to under-call skills, so write the description to push slightly"*.
 
-개발 쪽 표현을 보강하고 (`릴리스 정리해서 보고 자료로`, `스테이크홀더 리뷰용으로 정리해줘`, "readout", "even when the user never says 'slides' or 'deck'") 양성 6개를 **3회씩 짝비교** 했다.
+Development-side phrasing was strengthened (`릴리스 정리해서 보고 자료로`, `스테이크홀더 리뷰용으로 정리해줘`, "readout", "even when the user never says 'slides' or 'deck'") and the six positives were **compared pairwise, three runs each**.
 
-| 쿼리 | 수정 전 | 수정 후 |
+| Query | Before | After |
 |---|---|---|
-| 가드 훅 벤치마크 (한) | 1.00 | 1.00 |
-| pyright LSP ablation (영) | 0.33 | **0.67** |
-| FINDINGS.md 기반 (한) | 1.00 | 1.00 |
-| v1.4 릴리스 → 스테이크홀더 (한) | 0.67 | **1.00** |
-| manager readout (영) | 0.00 | 0.00 |
-| 연구 결과 정리 (한) | 1.00 | 1.00 |
-| **총 트리거** | 12 / 18 (67%) | **14 / 18 (78%)** |
+| guard-hook benchmark (ko) | 1.00 | 1.00 |
+| pyright LSP ablation (en) | 0.33 | **0.67** |
+| based on FINDINGS.md (ko) | 1.00 | 1.00 |
+| v1.4 release → stakeholders (ko) | 0.67 | **1.00** |
+| manager readout (en) | 0.00 | 0.00 |
+| summarise the research results (ko) | 1.00 | 1.00 |
+| **Total triggers** | 12 / 18 (67%) | **14 / 18 (78%)** |
 
-**개선 2 · 악화 0 · 동률 4.** 부호검정으로 *p* = 0.25 이므로 **유의하지 않다** — 짝 6개로는 그럴 수밖에 없다. 그럼에도 채택하는 근거는 유의성이 아니라 **단조성** 이다: 나빠진 쿼리가 하나도 없고, 이 수정을 유발한 바로 그 케이스(릴리스)가 0.67 → 1.00 으로 갔다. 우리 규율은 "20% 미만 효과를 주장하지 말라" 였지 "측정 없이 고치지 말라" 가 아니었고, 여기서 주장하는 것은 효과 크기가 아니라 회귀 부재다.
+**Two improved, zero worsened, four tied.** By sign test *p* = 0.25, so it is **not significant** — with six pairs it could hardly be otherwise. The reason for adopting it anyway is not significance but **monotonicity**: no query got worse, and the very case that prompted the change (the release one) went 0.67 → 1.00. Our discipline was "do not claim an effect below 20%", not "do not fix without measuring", and what is claimed here is the absence of a regression, not an effect size.
 
-**남은 0/3 은 기록해 둔다.** *"what would a good narrative look like for a 15 minute slot"* — 산출물을 요구하는 문장이 아니라 접근법을 묻는 질문이라 모델이 직접 답한다. description 으로 고칠 문제인지 자체가 불분명하므로 고치지 않고 한계로 남긴다.
+**The remaining 0/3 is recorded.** *"what would a good narrative look like for a 15 minute slot"* — a question about approach rather than a request for an artefact, so the model answers it directly. Whether that is even a description-level problem is unclear, so it is left as a limit rather than fixed.
 
-한 가지 방법론적 함정을 더 남긴다. 첫 비교는 쿼리당 **1회** 였고 4/6 대 4/6 이 나왔는데 **구성원이 달랐다** — 개선처럼도 악화처럼도 읽힐 수 있었다. 3회로 올리자 방향이 드러났다. **트리거 측정에서 쿼리당 1회는 측정이 아니다.**
+One more methodological trap worth leaving behind. The first comparison ran **once per query** and produced 4/6 against 4/6 — with **different members**. It could have been read as an improvement or as a regression. Raising it to three runs revealed the direction. **In trigger measurement, one run per query is not a measurement.**
 
 ## Consequences
 
-- **§4b 의 "규약 준수는 측정 안 됨" 이 낡았다.** `claude plugin eval` 이 early access 라 막혀 있다고 적었는데, `skill-creator` 가 그 DIY 판을 제공한다. §4b 에서 내가 손으로 스케치한 설계와 같은 모양이다.
-- 우리 스킬 description 은 한·영 트리거와 negative routing 을 담아 길다. 이제 그것이 **의도대로 라우팅되는지 잴 수 있고, 재야 한다.** 재지 않은 negative routing 은 주장일 뿐이다.
-- ~~트리거 eval 을 돌리려면 대상 플러그인을 비활성화해야 한다~~ — `skill-creator` 의 `run_eval.py` 를 쓸 때만 그렇다. 그래서 쓰지 않는다. `scripts/bench-trigger.py` 는 설치된 스킬을 그대로 재므로 비활성화가 필요 없고, 오히려 **사용자가 실제로 쓰는 구성 그대로** 를 잰다는 점에서 더 낫다.
-- `skill-creator` 는 상시 **112 tok** 이고 호출 시 **10.9k** 다 (측정해서 §4b 표에 올렸다). 상시 비용은 우리 스킬 하나보다 싸고 호출 비용은 서른 배다 — 배포하지 않고 개발자만 설치하는 자산으로는 맞는 모양이다.
-- `task-observer` 원장을 도입하면 §5 가 처음으로 집행 가능해지지만, 동시에 **아무도 읽지 않는 로그 파일** 이 될 위험이 생긴다. 그래서 범위를 harness gap 으로 좁히고, 비어 있는 원장이 정상 상태가 되지 않도록 surfacing 을 `pr-create` 에 건다.
+- **§4b's "convention compliance is unmeasured" is stale.** It said `claude plugin eval` was blocked behind early access — `skill-creator` provides the DIY version, and in the same shape as the design sketched by hand in §4b.
+- Our skill descriptions are long, carrying Korean and English triggers and negative routing. That can now **be measured for routing as intended, and must be.** Unmeasured negative routing is just a claim.
+- ~~Running a trigger eval requires disabling the plugin under test~~ — only when using `skill-creator`'s `run_eval.py`. So we do not use it. `scripts/bench-trigger.py` measures the installed skill as it is, needs no disabling, and is better for it: it measures **the configuration the user actually runs**.
+- `skill-creator` costs **112 tok** always-on and **10.9k** on invocation (measured, and recorded in the §4b table). Cheaper than one of our skills standing still, and thirty times more when called — the right shape for a developer-only asset that is not shipped.
+- Adopting the `task-observer` ledger makes §5 enforceable for the first time, and simultaneously risks producing **a log file nobody reads**. So its scope is narrowed to harness gaps, and surfacing is hung off `pr-create` so that an empty ledger does not become the normal state.
 
 ## Alternatives considered
 
-- **`skill-creator` 를 벤더링한다.** 거부. 공식 마켓에 있고 Apache-2.0 이며 스크립트가 서로를 import 한다. 복사하면 업스트림 수정이 우리에게 오지 않는다.
-- **`task-observer` 를 통째로 설치한다.** 거부. `claude plugin install` 이 안 되는 것은 복사로 풀리지만, 446줄 중 절반이 §5 와 겹친다. 겹치는 규율 두 벌은 우리가 남에게 하지 말라고 한 것이다.
-- **아홉 개를 다 설치해 보고 고른다.** 거부. `claude-mem` 과 `omniroute` 는 설치 자체가 되돌리기 어려운 데이터·경로 변경을 만든다. 본문을 먼저 읽는 쪽이 싸다.
+- **Vendor `skill-creator`.** Rejected. It is on the official marketplace, it is Apache-2.0, and its scripts import each other. Copy it and upstream fixes stop reaching us.
+- **Install `task-observer` whole.** Rejected. That it cannot be `claude plugin install`ed is solved by copying, but half of its 446 lines overlap §5. Two copies of the same discipline is the thing we tell other people not to do.
+- **Install all nine and choose afterwards.** Rejected. Installing `claude-mem` and `omniroute` makes data and path changes that are hard to undo. Reading the bodies first is cheaper.
