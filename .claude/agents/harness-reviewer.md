@@ -26,7 +26,7 @@ Six artifacts, all four `<name>`s identical. That naming is what makes this audi
    - resolves the hook as `hooks/<name>.sh` relative to the plugin root
    - at least 8 cases, and all three kinds present: no-op, block, boundary
    - boundary cases are the ones worth checking for — a verifier with only block cases proves nothing about false positives
-3. **Doc** — `docs/hooks/<name>.md`. Required sections: 동작 / 통과하는 것 / 우회 / 한계 / 검증 / 관련. Conditional: 패턴 (pattern-based hooks only) and 설정 (hooks with configuration only) — a hook with no config must not grow an empty 설정 section, so their absence is not a finding. 관련 links back to the script, `hooks.json` and the verifier
+3. **Doc** — `docs/hooks/<name>.md`. Required sections: Behaviour / What passes / Bypass / Limits / Verification / Related. Conditional: Patterns (pattern-based hooks only) and Configuration (hooks with configuration only) — a hook with no config must not grow an empty Configuration section, so their absence is not a finding. Related links back to the script, `hooks.json` and the verifier
 4. **Registration** — `plugins/harness-core/hooks/hooks.json`, under the right event, with a matcher covering the tools the script handles, and the command anchored on `${CLAUDE_PLUGIN_ROOT}`
 5. **SOT** — `docs/agent-layer.md`: inventory row present, backlog item flipped to ✅, tree updated
 6. **Version** — `plugins/harness-core/.claude-plugin/plugin.json` `version` bumped. Without a bump the change never reaches an installed user: Claude Code sees the same version string and keeps the cached copy. This is the checklist item most likely to be skipped, so check it explicitly.

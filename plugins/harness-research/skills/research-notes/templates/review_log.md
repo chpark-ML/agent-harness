@@ -1,44 +1,45 @@
 # <PROJECT> — review log
 
-> **Append-only.** 새 체크포인트는 끝에 추가하고 이전 entry 는 고치지 않는다.
-> 각 체크포인트는 **직전 entry 의 액션 항목을 resolved / open / regressed 로 판정하는 것으로 시작**한다.
-> 그 판정 없이 신규 항목만 쌓으면 같은 지적이 매번 새 발견처럼 다시 등장한다.
+> **Append-only.** New checkpoints go at the end, and earlier entries are not edited.
+> Every checkpoint **starts by ruling on the previous entry's action items** — resolved, open or regressed.
+> Skip that ruling and only stack new items, and the same objection keeps returning as if it were new.
 
 ---
 
 ## Checkpoint 1 — <YYYY-MM-DD>
 
-첫 체크포인트 (이전 이력 없음 — 판정할 항목 없음).
+First checkpoint (no history yet — nothing to rule on).
 
-### 액션 항목
+### Action items
 
-| # | 우선순위 | 항목 | 위치 |
+| # | Priority | Item | Where |
 |---|---|---|---|
 | P0-a | blocking | | |
-| P1-a | 보통 | | |
+| P1-a | normal | | |
 
 ### Bottom line
 
-<한 문단: 지금 진짜 우선순위는 무엇이고 왜 나머지가 그 다음인가.>
+<One paragraph: what the real priority is right now, and why the rest comes after it.>
 
-<!-- EXAMPLE — 삭제할 것. 두 번째 이후 체크포인트의 형식:
+<!-- EXAMPLE — delete this. The shape of every checkpoint after the first:
 
 ## Checkpoint 2 — 2026-02-01
 
-### 직전 항목 판정
+### Ruling on the previous items
 
-| # | 항목 | 판정 | 근거 |
+| # | Item | Ruling | Basis |
 |---|---|---|---|
-| P0-a | 기준선 수치가 임시 경로에만 존재 | resolved | `/srv/runs/` 로 이관, ARTIFACTS.md 행 추가 |
-| P0-b | B 의 지연 원인 미규명 | open | 미착수 |
-| P1-a | seed 간 분산 | regressed | §7 에서 범위 0.9 → 2.4 로 확대 |
+| P0-a | baseline numbers existed only in a temp path | resolved | moved to `/srv/runs/`, row added to ARTIFACTS.md |
+| P0-b | cause of B's latency unidentified | open | not started |
+| P1-a | variance across seeds | regressed | §7 widened the range from 0.9 to 2.4 |
 
-### 신규 항목
+### New items
 
-| # | 우선순위 | 항목 | 위치 |
+| # | Priority | Item | Where |
 |---|---|---|---|
-| P0-c | blocking | §7 의 분산 확대가 설정 변경 때문인지 확인 전에는 §7 수치 인용 금지 | experiment_plan.md §7 |
+| P0-c | blocking | do not quote §7's numbers until it is settled whether the wider variance came from the config change | experiment_plan.md §7 |
 
 ### Bottom line
-P1-a 의 regress 가 이번 회차의 핵심 — P0-b 보다 먼저 본다. 분산이 이 폭이면 §5·§7 비교 자체가 성립하지 않는다.
+P1-a regressing is what matters this round — it comes before P0-b. At that spread the §5 and §7
+comparisons do not hold at all.
 -->

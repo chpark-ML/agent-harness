@@ -1,35 +1,36 @@
 # <PROJECT> — findings
 
-> [`experiment_plan.md`](experiment_plan.md) 의 **단면**. 원장은 시간순이라 "지금 무엇을 믿는가" 를
-> 읽을 수 없다. 이 문서가 그 답이다. 마지막 갱신 <YYYY-MM-DD>.
+> A **cross-section** of [`experiment_plan.md`](experiment_plan.md). The ledger runs in time order, so it
+> cannot answer "what is believed now". This document is that answer. Last updated <YYYY-MM-DD>.
 >
-> **갱신 규칙.** 새 원장 항목이 기존 결론을 바꾸면 §1 의 해당 행을 고치고 출처를 갱신하되,
-> **번복은 지우지 말고 §2 에 남긴다.** 번복 기록이 하나도 없는 findings 는 정직하게 관리되지 않은 findings 다.
+> **How to update it.** When a new ledger entry changes a conclusion, edit that row in §1 and update its
+> source — but **do not delete the reversal, move it to §2.** Findings with no reversals recorded are
+> findings nobody has been honest with.
 
-## 1. 확립된 결과
+## 1. Established
 
-각 항목은 **통과한 통제** 와 함께 적는다. 통제 없이 살아남은 수치는 이 표에 들어오지 않는다.
+Each entry carries **the controls it survived**. A number that survived no control does not enter this table.
 
-| 결과 | 수치 | 통과한 통제 | 출처 |
+| Finding | Number | Controls it passed | Source |
 |---|---|---|---|
 | | | | §N |
 
-## 2. 번복의 기록
+## 2. Reversals
 
-| 이전 결론 | 무엇이 뒤집었나 | 지금의 결론 | 날짜 |
+| Previous conclusion | What overturned it | Conclusion now | Date |
 |---|---|---|---|
 | | | | |
 
-<!-- EXAMPLE — 삭제할 것. 채워진 모습:
+<!-- EXAMPLE — delete this. What a filled-in table looks like:
 
-## 1. 확립된 결과
-| 결과 | 수치 | 통과한 통제 | 출처 |
+## 1. Established
+| Finding | Number | Controls it passed | Source |
 |---|---|---|---|
-| A 는 기준선과 동등 | 70.9 vs 71.2 | 3 seed · 입력 해시 일치 · clean tree | §0 |
-| B 의 지연은 I/O 가 아니다 | wall 2.1× / io_wait 1.02× | 캐시 warm·cold 양쪽 · 동일 하드웨어 | §5 |
+| A matches the baseline | 70.9 vs 71.2 | 3 seeds, input hashes match, clean tree | §0 |
+| B's latency is not I/O | wall 2.1x / io_wait 1.02x | warm and cold cache, same hardware | §5 |
 
-## 2. 번복의 기록
-| 이전 결론 | 무엇이 뒤집었나 | 지금의 결론 | 날짜 |
+## 2. Reversals
+| Previous conclusion | What overturned it | Conclusion now | Date |
 |---|---|---|---|
-| B 의 지연은 디스크 I/O | §5 에서 io_wait 이 1.02× 로 거의 동일 | 직렬화 경로의 CPU 비용 | 2026-01-22 |
+| B's latency is disk I/O | §5 found io_wait at 1.02x, essentially unchanged | CPU cost in the serialisation path | 2026-01-22 |
 -->
