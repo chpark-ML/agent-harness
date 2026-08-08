@@ -1,0 +1,316 @@
+#!/bin/bash
+# harness-log — render this project's session history as one self-contained
+# HTML page: what you asked for, and what came back.
+#
+# catches:  nothing. This is not a guard; it produces an artifact.
+# scope:    the current project's transcripts under the Claude config dir.
+# bypass:   don't run it.
+#
+# WHAT IT KEEPS, AND WHAT IT DELIBERATELY DROPS
+#
+# Kept:    your typed prompts, and the last assistant text of each turn.
+# Dropped: every tool call and tool result, subagent transcripts, skill
+#          injections, system reminders, and the local slash-command plumbing.
+#
+# That exclusion is the point, not an economy. `claude-mem` was held out of
+# this harness for storing all tool I/O in a repository that runs
+# `secret-scrubber` (agent-layer §3b) — a log that swallows tool output
+# swallows whatever a command printed, including what the scrubber exists to
+# keep off the command line. Prompts and prose are what a human re-reads
+# anyway.
+#
+# The page is regenerated from the transcripts every run. It is never appended
+# to, so a corrupted or half-written page is one re-run away from correct, and
+# editing it by hand is pointless.
+#
+# Run:  harness-log                 # write session-log.html at the repo root
+#       harness-log --out PATH      # somewhere else
+#       harness-log --limit 20      # only the most recent N sessions
+#       harness-log --no-exclude    # don't touch .git/info/exclude
+#       harness-log --project DIR   # a project other than the current one
+
+set -uo pipefail
+
+OUT=""
+PROJECT=""
+LIMIT=0
+DO_EXCLUDE=1
+
+die() { echo "harness-log: $*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --out)         shift; [ $# -gt 0 ] || die "--out needs a value"; OUT="$1" ;;
+    --out=*)       OUT="${1#--out=}" ;;
+    --project)     shift; [ $# -gt 0 ] || die "--project needs a value"; PROJECT="$1" ;;
+    --project=*)   PROJECT="${1#--project=}" ;;
+    --limit)       shift; [ $# -gt 0 ] || die "--limit needs a value"; LIMIT="$1" ;;
+    --limit=*)     LIMIT="${1#--limit=}" ;;
+    --no-exclude)  DO_EXCLUDE=0 ;;
+    -h|--help)     usage ;;
+    *)             die "unknown argument: $1 (try --help)" ;;
+  esac
+  shift
+done
+
+command -v jq >/dev/null 2>&1 || die "jq is required"
+case "$LIMIT" in ''|*[!0-9]*) die "--limit takes a non-negative integer" ;; esac
+
+# --- where the project is, and where its transcripts live -------------------
+
+if [ -z "$PROJECT" ]; then
+  PROJECT="$(git rev-parse --show-toplevel 2>/dev/null)" || PROJECT=""
+  [ -n "$PROJECT" ] || PROJECT="$PWD"
+fi
+[ -d "$PROJECT" ] || die "not a directory: $PROJECT"
+PROJECT="$(cd "$PROJECT" && pwd)"
+
+CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+
+# Claude Code names a project's transcript directory after its absolute path
+# with every `/` and `.` replaced by `-`. Case is preserved.
+#
+# Which absolute path, though. The directory is named after the cwd the session
+# ran in, and that is the *logical* path — the one with symlinks left alone. On
+# macOS `pwd -P` turns /var into /private/var and /tmp into /private/tmp, so
+# resolving first produces a slug that matches nothing. Try the logical path,
+# then the physical one, and only then give up.
+slug_of() { printf '%s' "$1" | sed 's/[\/.]/-/g'; }
+
+TDIR="$CONFIG_DIR/projects/$(slug_of "$PROJECT")"
+if [ ! -d "$TDIR" ]; then
+  PHYS="$(cd "$PROJECT" && pwd -P)"
+  if [ "$PHYS" != "$PROJECT" ] && [ -d "$CONFIG_DIR/projects/$(slug_of "$PHYS")" ]; then
+    TDIR="$CONFIG_DIR/projects/$(slug_of "$PHYS")"
+  fi
+fi
+
+[ -d "$TDIR" ] || die "no transcripts for $PROJECT
+  looked in: $TDIR
+  If this project has been used under a different path, pass --project <that path>."
+
+[ -n "$OUT" ] || OUT="$PROJECT/session-log.html"
+
+# --- order the sessions oldest-first, by their first event ------------------
+#
+# Filenames are UUIDs, so they sort arbitrarily. mtime is wrong too: resuming
+# an old session touches it. The first timestamp inside is when the
+# conversation began, which is the order a reader expects.
+
+TMP="$(mktemp -d)" || die "cannot create a temp dir"
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+for f in "$TDIR"/*.jsonl; do
+  [ -f "$f" ] || continue
+  first="$(jq -r 'select(.timestamp) | .timestamp' "$f" 2>/dev/null | head -1)"
+  [ -n "$first" ] || continue
+  printf '%s\t%s\n' "$first" "$f"
+done | sort > "$TMP/index"
+
+TOTAL="$(wc -l < "$TMP/index" | tr -d ' ')"
+[ "$TOTAL" -gt 0 ] || die "no readable transcripts in $TDIR"
+
+if [ "$LIMIT" -gt 0 ] && [ "$LIMIT" -lt "$TOTAL" ]; then
+  tail -n "$LIMIT" "$TMP/index" > "$TMP/index.sel"
+else
+  cp "$TMP/index" "$TMP/index.sel"
+fi
+
+# --- extract turns ----------------------------------------------------------
+#
+# A turn is one typed prompt plus the LAST assistant text before the next
+# prompt. Intermediate narration is the model thinking out loud between tool
+# calls; the last block is the answer.
+#
+# Only string-form user content is a typed prompt. Array-form user events are
+# skill injections, interrupt notices and tool results — all of which look
+# like the user in the transcript and are not.
+
+EXTRACT='
+def clean:
+  gsub("<system-reminder>.*?</system-reminder>"; ""; "s")
+  | gsub("<local-command-[a-z]+>.*?</local-command-[a-z]+>"; ""; "s")
+  | sub("^\\s+"; "") | sub("\\s+$"; "");
+
+[ .[] | select(.isSidechain != true) ]
+| map(
+    if .type == "user" and (.message.content | type) == "string" then
+      (.message.content | clean) as $x
+      # A compaction hand-off arrives as a user message but nobody typed it,
+      # and its body is a machine summary of the tool work this page exists to
+      # leave out. Keep the marker, drop the body — the turn after it is real.
+      | { r: "u", t: (.timestamp // ""), b: (.gitBranch // ""),
+          k: (if ($x | startswith("This session is being continued")) then "compact" else "ask" end),
+          x: $x }
+    elif .type == "assistant" then
+      ( [ .message.content[]? | select(.type == "text") | .text ] | join("\n\n") | clean ) as $x
+      | if ($x | length) > 0 then { r: "a", t: (.timestamp // ""), x: $x } else empty end
+    else empty end)
+| map(select(.x | length > 0))
+# A prompt that was only wrapper markup cleans down to nothing and is dropped
+# above. What survives with a leading "<" is still plumbing.
+| map(select(.r == "a" or (.x | startswith("<") | not)))
+| reduce .[] as $e (
+    [];
+    if $e.r == "u" then . + [ { prompt: $e.x, kind: $e.k, ts: $e.t, branch: $e.b, reply: null } ]
+    elif length > 0 then .[0:-1] + [ .[-1] + { reply: $e.x } ]
+    else . end)
+'
+
+# One compact JSON *array* per session, one per line. A stream of arrays needs
+# no separators and no enclosing brackets, so `jq -s add` concatenates them
+# whatever each session's turn count is. Emitting bare objects and punctuating
+# them by hand does not survive a session with more than one turn.
+
+: > "$TMP/turns.jsonl"
+n_sessions=0
+while IFS="$(printf '\t')" read -r _ts f; do
+  [ -f "$f" ] || continue
+  sid="$(basename "$f" .jsonl)"
+  turns="$(jq -s -c --arg sid "$sid" "$EXTRACT | map(. + {session: \$sid})" "$f" 2>/dev/null)" || continue
+  [ -n "$turns" ] || continue
+  count="$(printf '%s' "$turns" | jq 'length' 2>/dev/null)" || continue
+  [ "${count:-0}" -gt 0 ] || continue
+  printf '%s\n' "$turns" >> "$TMP/turns.jsonl"
+  n_sessions=$((n_sessions + 1))
+done < "$TMP/index.sel"
+
+[ -s "$TMP/turns.jsonl" ] || die "no prompts found in any of $TOTAL session(s)"
+jq -s 'add' "$TMP/turns.jsonl" > "$TMP/turns.flat" || die "could not assemble turns"
+
+N_TURNS="$(jq 'length' "$TMP/turns.flat")"
+[ "${N_TURNS:-0}" -gt 0 ] || die "no prompts found in $n_sessions session(s)"
+
+# --- render -----------------------------------------------------------------
+
+RENDER='
+def esc: @html;
+# Fenced blocks are the odd-numbered segments of a split on ```. Everything
+# else is prose, shown with its own line breaks intact.
+def body:
+  split("```") | to_entries
+  | map(
+      if (.key % 2) == 1
+      then "<pre class=\"code\">" + (.value | sub("^[A-Za-z0-9_+-]*\n"; "") | esc) + "</pre>"
+      else (.value | esc) | if (. | length) > 0 then "<div class=\"p\">" + . + "</div>" else "" end
+      end)
+  | join("");
+
+def day: if (. | length) >= 10 then .[0:10] else "" end;
+
+{ turns: ., n: length, days: ([ .[] | .ts | day ] | unique | length) } as $d
+| $d.turns
+| to_entries
+| map(
+    "<article class=\"t\" id=\"t" + (.key | tostring) + "\">"
+    + "<header><span class=\"when\">" + (.value.ts | esc) + "</span>"
+    + (if (.value.branch | length) > 0 then "<span class=\"br\">" + (.value.branch | esc) + "</span>" else "" end)
+    + "<span class=\"sid\">" + (.value.session[0:8] | esc) + "</span></header>"
+    + (if .value.kind == "compact"
+       then "<div class=\"compact\">context compacted — the hand-off summary is not kept</div>"
+       else "<div class=\"ask\">" + (.value.prompt | body) + "</div>" end)
+    + (if .value.reply then "<div class=\"say\">" + (.value.reply | body) + "</div>"
+       else "<div class=\"none\">no final message — the turn was interrupted or ended in a tool call</div>" end)
+    + "</article>")
+| join("\n")
+'
+
+TURNS_HTML="$(jq -r "$RENDER" "$TMP/turns.flat")" || die "rendering failed"
+FIRST="$(jq -r '.[0].ts[0:10] // ""' "$TMP/turns.flat")"
+LAST="$(jq -r '.[-1].ts[0:10] // ""' "$TMP/turns.flat")"
+
+{
+cat <<'HEAD'
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>session log</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--dim:#6b7280;--line:#e5e7eb;--ask:#f3f4f6;--code:#f6f8fa;--acc:#2563eb}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e6e6e6;--dim:#9aa0aa;--line:#252a33;--ask:#191d24;--code:#161a20;--acc:#7aa2f7}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:52rem;margin:0 auto;padding:2rem 1.25rem 6rem}
+h1{font-size:1.35rem;margin:0 0 .2rem}
+.meta{color:var(--dim);font-size:.85rem;margin-bottom:1.5rem}
+#q{width:100%;padding:.55rem .7rem;font:inherit;font-size:.9rem;color:var(--fg);
+   background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:1.5rem}
+#q:focus{outline:none;border-color:var(--acc)}
+.t{border-top:1px solid var(--line);padding:1.5rem 0}
+.t header{display:flex;gap:.6rem;align-items:center;font-size:.75rem;color:var(--dim);margin-bottom:.6rem;flex-wrap:wrap}
+.br{border:1px solid var(--line);border-radius:99px;padding:0 .5rem}
+.sid{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}
+.ask{background:var(--ask);border-left:3px solid var(--acc);border-radius:0 8px 8px 0;padding:.7rem .9rem;margin-bottom:1rem}
+.ask .p{font-weight:500}
+.p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 .55rem}
+.p:last-child{margin-bottom:0}
+.code{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:.7rem .85rem;
+      overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;line-height:1.5;margin:.6rem 0}
+.none{color:var(--dim);font-style:italic;font-size:.9rem}
+.compact{color:var(--dim);font-size:.8rem;text-align:center;border:1px dashed var(--line);border-radius:8px;padding:.4rem;margin-bottom:1rem}
+.hide{display:none}
+#empty{color:var(--dim);padding:2rem 0}
+</style>
+<div class="wrap">
+HEAD
+
+printf '<h1>session log</h1>\n'
+printf '<p class="meta">%s turns across %s session(s) &middot; %s to %s &middot; %s</p>\n' \
+  "$N_TURNS" "$n_sessions" "${FIRST:-?}" "${LAST:-?}" \
+  "$(printf '%s' "$PROJECT" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+printf '<input id="q" type="search" placeholder="filter turns…" autocomplete="off">\n'
+printf '%s\n' "$TURNS_HTML"
+
+cat <<'FOOT'
+<p id="empty" class="hide">nothing matches.</p>
+</div>
+<script>
+(function(){
+  var q=document.getElementById('q'),
+      ts=[].slice.call(document.querySelectorAll('.t')),
+      empty=document.getElementById('empty');
+  q.addEventListener('input',function(){
+    var v=q.value.toLowerCase(),shown=0;
+    ts.forEach(function(t){
+      var hit=!v||t.textContent.toLowerCase().indexOf(v)>-1;
+      t.classList.toggle('hide',!hit); if(hit)shown++;
+    });
+    empty.classList.toggle('hide',shown>0);
+  });
+})();
+</script>
+FOOT
+} > "$OUT.tmp" || die "could not write $OUT.tmp"
+
+mv "$OUT.tmp" "$OUT" || die "could not write $OUT"
+
+# --- keep it out of git -----------------------------------------------------
+#
+# .git/info/exclude, not .gitignore: this file is one developer's local
+# artifact, and adding it to a tracked .gitignore commits a preference to
+# everyone who clones. If a project wants it shared, that is their edit.
+
+excluded=""
+if [ "$DO_EXCLUDE" -eq 1 ] && git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
+  case "$OUT" in
+    "$PROJECT"/*)
+      rel="${OUT#"$PROJECT"/}"
+      if git -C "$PROJECT" check-ignore -q "$rel" 2>/dev/null; then
+        excluded=" (already ignored)"
+      else
+        gitdir="$(git -C "$PROJECT" rev-parse --git-dir 2>/dev/null)"
+        case "$gitdir" in /*) ;; *) gitdir="$PROJECT/$gitdir" ;; esac
+        if [ -d "$gitdir/info" ] || mkdir -p "$gitdir/info" 2>/dev/null; then
+          printf '%s\n' "$rel" >> "$gitdir/info/exclude" && excluded=" (added to .git/info/exclude)"
+        fi
+      fi ;;
+  esac
+fi
+
+echo "[harness-log] $OUT"
+echo "  $N_TURNS turns from $n_sessions of $TOTAL session(s)$excluded"

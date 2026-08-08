@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-438-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-483-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -49,6 +49,7 @@
 | **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | |
+| **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
@@ -363,14 +364,15 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 대상 | 케이스 |
 |---|---|
 | 훅 6종 동작 | **198** |
+| 세션 로그 렌더러 (`verify-harness-log`) | **44** |
 | 설치기 왕복 | **99** assertion |
 | 발표 수치 검사기 | **36** |
 | frontmatter 파싱 | **11** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **12** |
-| 문서 내부 참조 (`verify-doc-refs`) | **55** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **56** 파일 + 자체 **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **438** |
+| **합계** | **483** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
