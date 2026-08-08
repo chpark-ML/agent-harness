@@ -73,9 +73,20 @@ This repo *is* a Claude Code harness, shipped as plugins plus a declarative inst
 **검증 없이 머지된 가드는 가드가 아니라 장식이다** ([ADR-0003](docs/adr/0003-verification-mandate.md)).
 
 ```bash
-make verify                  # syntax + frontmatter + 훅 + harnessctl + 매니페스트
+make verify-all              # verify + 발행된 검사 총계가 실제와 맞는지
+make verify                  # syntax + frontmatter + doc-refs + 예산 + 훅 + harnessctl + 매니페스트
 make verify BASH=/bin/bash   # macOS bash 3.2 바닥 확인 — 머지 전 필수
 ```
+
+**저장소 전용 검증기(`scripts/verify-*.sh`)가 자기 케이스를 가져야 하는가는 그 검증기의 실패 방식이 정한다.** 훅과 달리 규정이 없어 세 번을 즉석에서 판단했고, 세 사례가 기준을 만들었다.
+
+| 실패 방식 | 무엇을 붙이나 | 사례 |
+|---|---|---|
+| **오탐** — 맞는 것을 틀렸다고 한다 | **케이스.** 오탐 내는 검사는 꺼지고, 꺼진 검사는 0 이다 | `verify-doc-refs` (19케이스) |
+| **누락** — 봐야 할 것을 안 본다 | **설계로 먼저 막는다.** 목록을 하드코딩하는 대신 glob 한다. 못 막을 때만 케이스 | `context-budget` (파일 목록이 glob) |
+| 참/거짓이 자명 | 둘 다 불필요 | `verify-frontmatter` |
+
+**그리고 어느 쪽이든, 그 검증기가 도는 환경 중 *하나에서만* 실행되는 줄이 있으면 그 줄은 미검증이다.** `verify-check-total` 은 Claude CLI 가 있는 기계에서 쓰였고, CLI 가 없을 때만 도는 분기가 CI 에서 처음 실행되며 깨졌다.
 
 - 검증기는 `plugins/harness-core/scripts/_verify-lib.sh` 의 `run_case` / `expect` / `expect_match` 를 쓴다. 새로 만들지 말 것.
 - 케이스는 세 종류를 다 담는다: **no-op** (훅이 끼어들면 안 되는 입력), **block**, **boundary** (막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다.
