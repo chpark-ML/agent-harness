@@ -91,7 +91,7 @@
 | `karpathy-guidelines` (MIT) | LLM 코딩 함정 4원칙 | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 가 이미 이것이다 | 규범 문장 23개 중 **20개 문자 일치** | 0 (흡수분) |
 | `task-observer` (CC BY 4.0) | 세션 관찰 → 개선점 원장 | **설치 안 함, 기제만 흡수** | 446줄 중 절반이 우리 §5 와 겹친다 | — | 0 (흡수분) |
 | [`slides-grab`](https://www.npmjs.com/package/slides-grab) | 슬라이드 렌더링 | **외부 도구** | 렌더링은 이미 풀린 문제. `doctor` 가 PATH 점검 | — | 0 |
-| `graphify` (ehr-research 프로젝트 스킬) | 코드베이스 지식그래프 — god node · community detection · query/path/explain | **미판정** | 우리에게 대응 자산이 없다. LSP 와 층이 다르다 ([axes](engineering-axes.md)) | **안 쟀다** | 스킬 702줄 |
+| `graphify` (ehr-research 프로젝트 스킬) · `CodeGraph` · `GitNexus` | 코드베이스 지식그래프 — 구조를 미리 계산해 MCP 로 서빙 | **미판정** | 우리에게 대응 자산이 없다. LSP 는 심볼 층이라 다른 질문에 답한다 ([axes](engineering-axes.md)) | **안 쟀다.** 남들은 토큰 −47% · 도구 호출 −58% 를 보고한다 (`CodeGraph`, 저장소 7개) | 인덱스 유지 비용 |
 | `caveman` | 출력 토큰 65% 절감 | **기각** | [ADR-0002](adr/0002-hook-contract.md) 의 훅 계약(*차단 메시지는 무엇이 걸렸고 어떻게 푸는지를 담는다*)과 정면 충돌 | — | — |
 | `ui-ux-pro-max` | UI/UX 레퍼런스 | **보류** | 도메인 프로파일감. 이 저장소 발생 0회 → `harness-frontend` 후보 | — | — |
 | `claude-mem` | 라이프사이클 훅 5개로 세션 캡처 → SQLite | **보류** | **모든 도구 입출력** 을 저장한다. `secret-scrubber` 를 운영하는 저장소에서 확인 전 불가 | — | — |
