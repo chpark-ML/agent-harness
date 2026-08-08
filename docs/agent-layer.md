@@ -1,398 +1,398 @@
-# Agent Layer — 하네스의 정의 · 진행 · 검증
+# Agent Layer — what the harness is, where it stands, how it is verified
 
-본 저장소의 **유일한 single source of truth**. 하네스가 무엇을 다루고, 다음에 무엇을 만들며, 동작을 어떻게 검증하는지는 여기에만 적는다 ([ADR-0004](adr/0004-single-source-of-truth.md)).
+The **single source of truth** for this repository. What the harness covers, what gets built next, and how its behaviour is verified is written here and nowhere else ([ADR-0004](adr/0004-single-source-of-truth.md)).
 
-## 1. 정의
+## 1. Definition
 
-| 산출물 | 위치 | 역할 |
+| Artifact | Location | Role |
 |---|---|---|
-| 플러그인 | `plugins/harness-{core,dev,research,python,typescript}/` | 훅 · 스킬 · 커맨드 · 검증기 · `bin/` 실행파일 (`harnessctl` · [`harness-log`](harness-log.md)). Claude Code 가 직접 로드하고 `bin/` 은 Bash 도구 PATH 에 올린다 |
-| 선언적 설치기 | `plugins/harness-core/bin/harnessctl` | 플러그인이 못 나르는 것 — permissions · `CLAUDE.md` · `rules` — 을 대상에 쓰고 대칭 제거 |
-| Bootstrap | `install.sh` | 한 명령으로 전체 설치 — marketplace 등록 → 플러그인 → `harnessctl init` → 언어 서버 → `doctor`. 하네스 로직은 담지 않고 두 절반을 순서대로 호출한다 |
-| 검증 러너 | `plugins/harness-core/scripts/verify-*.sh` · `scripts/verify-{install,frontmatter}.sh` | 훅 동작 · harnessctl 왕복 · frontmatter |
+| Plugins | `plugins/harness-{core,dev,research,python,typescript}/` | Hooks, skills, commands, verifiers, and `bin/` executables (`harnessctl`, [`harness-log`](harness-log.md)). Claude Code loads them directly and puts `bin/` on the Bash tool's PATH |
+| Declarative installer | `plugins/harness-core/bin/harnessctl` | Writes what a plugin cannot carry — permissions, `CLAUDE.md`, `rules` — to the target, and removes it symmetrically |
+| Bootstrap | `install.sh` | The whole install in one command: register the marketplace → plugins → `harnessctl init` → language servers → `doctor`. It holds no harness logic; it calls the two halves in order |
+| Verification runners | `plugins/harness-core/scripts/verify-*.sh`, `scripts/verify-{install,frontmatter}.sh` | Hook behaviour, the harnessctl round trip, frontmatter |
 
-**Non-goal** — 애플리케이션 코드, 빌드 시스템, 언어·프레임워크별 스캐폴딩, 트래킹·배포 백엔드. 이는 컨슈머 프로젝트의 책임이다.
+**Non-goal** — application code, build systems, per-language or per-framework scaffolding, tracking and deployment backends. Those belong to the consumer project.
 
-**Non-goal 하나 더, 더 중요한 것** — *범용 작업 스킬* 을 우리가 만들지 않는다. brainstorming · TDD · systematic debugging · 계획 수립 · 코드리뷰 절차 · worktree 는 Superpowers 가 이미 잘 한다. 본 저장소의 자기 몫은 **사고 방지(가드) · 규약 고정 · 안전한 설치/제거** 셋이고, 일하는 능력은 프로파일의 `dependencies` 로 조합한다.
+**A second non-goal, and the more important one** — we do not build *general-purpose working skills*. Brainstorming, TDD, systematic debugging, planning, code-review procedure and worktrees are already done well by Superpowers. This repository's own share is three things — **preventing accidents (guards), fixing conventions, and safe install and removal** — and the ability to do work is composed through a profile's `dependencies`.
 
-이 구분이 두 프로파일의 두께 차이를 설명한다. Superpowers 스킬 14개는 개발 워크플로를 폭넓게 덮지만 **연구 전용은 0개** — 그래서 `harness-dev` 가 우리 것으로는 얇고 (규약 1 + 스킬 1) `harness-research` 가 두꺼운 것 (규약 1 + 스킬 2 + 템플릿 5) 은 균형이 안 맞는 게 아니라 upstream 커버리지를 그대로 반영한 것이다. dev 를 두껍게 만들려는 충동이 들면 먼저 Superpowers 에 이미 있는지 확인할 것.
+That distinction explains why the two profiles differ in thickness. The 14 Superpowers skills cover development workflow broadly but include **nothing research-specific** — so `harness-dev` being thin on our side (1 convention + 1 skill) while `harness-research` is thick (1 convention + 2 skills + 5 templates) is not an imbalance, it is upstream coverage reflected accurately. When the urge to thicken `dev` arrives, check whether Superpowers already has it.
 
-**프로파일은 한 줄에 늘어서 있지만 축이 셋이다.** `--profile` 이 콤마 리스트라 종류가 다른 것을 같은 문법으로 고르게 되는데, 실제로는 이렇게 갈린다.
+**The profiles sit on one line but they lie on three axes.** `--profile` takes a comma list, which invites picking different kinds of thing with the same syntax. In fact they divide like this.
 
-| 축 | 프로파일 | 무엇을 더하나 |
+| Axis | Profiles | What it adds |
 |---|---|---|
-| **역할** — 무엇을 하는 사람인가 | `dev` · `research` | 규약(rule) + 스킬. 상시 비용의 대부분 |
-| **산출물** — 무엇을 내놓는가 | `slides` | 스킬 1 + 검사기. rule 없음 |
-| **언어** — 무슨 스택인가 | `python` · `typescript` | manifest 한 장. 파일 0, 비용 0, 해당 파일이 있을 때만 LSP 가 붙는다 |
+| **Role** — what kind of work you do | `dev`, `research` | Conventions (rules) plus skills. Most of the always-on cost |
+| **Output** — what you produce | `slides` | One skill plus a checker. No rules |
+| **Language** — what stack you are on | `python`, `typescript` | One manifest. Zero files, zero cost, and the LSP only attaches when those files exist |
 
-축이 다르므로 배타적이지 않다 — `dev,python` 도 `research,slides` 도 정상 조합이다. 새 프로파일을 만들 때는 **어느 축인지 먼저 정한다**: 역할 축은 비싸고(rule 이 스킬보다 비싸다, §4), 언어 축은 사실상 공짜다.
+Different axes, so they are not exclusive — `dev,python` and `research,slides` are both ordinary combinations. When adding a profile, **decide its axis first**: the role axis is expensive (rules cost more than skills, §4) and the language axis is effectively free.
 
-**전제 하나** — git 저장소. `large-file-veto` 와 `check-uncommitted` 가 git 을 직접 부르고, `rules/harness/workflow.md` 98줄 중 PR 을 15회 언급하는 부분은 forge 를 가정한다. PR 흐름이 없는 저장소에서 그 절반은 무의미하고, R3(harness gap)·R5(plan 검증)는 그대로 유효하다. git 을 안 쓰는 작업은 이 하네스의 대상이 아니다.
+**One prerequisite** — a git repository. `large-file-veto` and `check-uncommitted` call git directly, and the part of `rules/harness/workflow.md` that mentions PRs 15 times across its 98 lines assumes a forge. In a repository with no PR flow half of that is meaningless, while R3 (harness gap) and R5 (plan verification) still hold. Work that does not use git is not what this harness is for.
 
-**Scope 판정 기준 하나**: 다른 도메인·다른 스택의 프로젝트에 그대로 설치해도 말이 되는가. 아니면 여기 것이 아니다.
+**One scope test**: would this still make sense installed as-is on a project in another domain, on another stack? If not, it does not belong here.
 
-**배포 판정 기준 하나**: 플러그인이 나를 수 있는가. 훅·스킬·커맨드·에이전트·실행파일은 나를 수 있고, permissions·`CLAUDE.md`·`rules` 는 못 나른다 — 우리가 고른 경계가 아니라 플랫폼이 그은 경계다 ([ADR-0008](adr/0008-plugin-declarative-split.md)).
+**One delivery test**: can a plugin carry it? Hooks, skills, commands, agents and executables can; permissions, `CLAUDE.md` and `rules` cannot — a boundary the platform drew, not one we chose ([ADR-0008](adr/0008-plugin-declarative-split.md)).
 
-**레벨 판정 기준 하나**: 이 자산의 청중이 *나* 인가 *팀* 인가. 가드·스킬·원칙은 나 — 머신 전체에 걸어야 설치를 잊은 저장소에 구멍이 안 난다. Path-scoped rules 와 프로젝트 고유 설정은 팀 — 커밋돼야 clone 만으로 전달된다. 스코프 자체는 이제 플러그인 시스템과 `harnessctl --scope` 가 처리한다 ([ADR-0007](adr/0007-install-levels.md)).
+**One level test**: is this asset's audience *me* or *the team*? Guards, skills and principles are me — they have to sit machine-wide or a repository you forgot to install in becomes the hole. Path-scoped rules and project-specific settings are the team — they have to be committed to arrive with a clone. Scope itself is now handled by the plugin system and `harnessctl --scope` ([ADR-0007](adr/0007-install-levels.md)).
 
-## 2. 왜 — 프로젝트마다 다시 겪는 일
+## 2. Why — the things every project runs into again
 
-매 프로젝트가 처음부터 다시 풀지 않아야 하는 문제. 각 항목은 §3 의 **한 카테고리** 가 책임진다.
+Problems no project should have to solve from scratch. Each row is owned by **one category** in §3.
 
-| 사고 / 마찰 | 빈도 | 책임 |
+| Accident / friction | Frequency | Owner |
 |---|---|---|
-| 시크릿이 명령줄에 리터럴로 들어가 history·로그·프로세스 목록에 남음 | 흔함 | `secret-scrubber` |
-| 큰 산출물이 `git add -A` 에 쓸려 히스토리에 영구 편입 | 흔함 | `large-file-veto` |
-| 공유 마운트·타 팀 디렉터리를 절대경로로 실수로 건드림 | 사이트에 따라 | `protected-paths` |
-| AI 귀속 문구가 커밋·PR 에 남음 | 기본값이 그럼 | `ai-attribution-guard` + `includeCoAuthoredBy: false` |
-| 되돌릴 수 없는 명령 (`rm -rf`, force push, `reset --hard`) | 드물지만 치명적 | Permissions `deny` |
-| PR·커밋 규약이 프로젝트마다 drift | 매번 | `rules/harness/workflow.md` |
-| 작업이 default branch 에 쌓여 리뷰 단위가 엉킴 | 흔함 | `check-uncommitted` |
-| 세션마다 repo 상태를 도구 호출로 다시 조사 | 매 세션 | `session-brief` |
-| 리뷰 기준을 매번 말로 다시 설명 | 매번 | `dev` 모듈 |
-| 실험 결과를 나중에 재현할 수 없음 | 기본값이 그럼 | `research` 모듈 |
-| 기록이 흩어져 새 세션이 이어받지 못함 | 흔함 | `research` 모듈 |
+| A secret goes onto the command line as a literal and lands in history, logs and the process list | Common | `secret-scrubber` |
+| A large artifact is swept up by `git add -A` and enters history permanently | Common | `large-file-veto` |
+| A shared mount or another team's directory is touched by absolute path, by mistake | Site-dependent | `protected-paths` |
+| AI attribution lands in a commit or PR | It is the default | `ai-attribution-guard` + `includeCoAuthoredBy: false` |
+| Irreversible commands (`rm -rf`, force push, `reset --hard`) | Rare but fatal | Permissions `deny` |
+| PR and commit conventions drift per project | Every time | `rules/harness/workflow.md` |
+| Work piles up on the default branch and the review unit tangles | Common | `check-uncommitted` |
+| Repo state is re-discovered with tool calls at the start of every session | Every session | `session-brief` |
+| Review criteria get explained out loud again each time | Every time | The `dev` module |
+| Experiment results cannot be reproduced later | It is the default | The `research` module |
+| Records scatter and a new session cannot pick them up | Common | The `research` module |
 
-새 항목을 §7 backlog 에 올릴 때는 **본 표의 어느 줄에 대응하는지** 를 밝힌다. 대응하는 줄이 없으면 먼저 줄을 추가하고, 그 줄이 실제로 두 번 이상 발생했는지 자문한다.
+When adding an item to the §7 backlog, **say which row of this table it answers**. If there is no such row, add the row first — and then ask yourself whether it has actually happened twice.
 
-## 3. 카테고리 · 채택 사다리
+## 3. Categories and the adoption ladder
 
-8 카테고리. **채택 순서가 곧 진행 축** — 가드레일 → 가이드 → 자동화 → 위임 → 외부 연결. 역순으로 가면 자동화가 사고를 키운다.
+Eight categories. **The adoption order is the axis of progress** — guardrails → guides → automation → delegation → external connections. Go in reverse and automation amplifies the accidents.
 
-| Phase | 카테고리 | 위치 | 현재 |
+| Phase | Category | Location | Now |
 |---|---|---|---|
-| **0** | Conventions | `CLAUDE.md` · `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
-| **0** | Permissions | `settings.json` (fragment 로 병합) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
-| **1** | Hooks | `plugins/harness-core/hooks/` — `hooks.json` 이 등록 | ✅ 6 (차단 4 · 정보 2) |
-| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, 그 위에 Superpowers 14 |
-| **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 하네스 자체용 1 (`harness-reviewer`) — 컨슈머용은 없음 |
+| **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
+| **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
+| **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 6 (4 blocking, 2 informational) |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, with Superpowers 14 on top |
+| **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `.claude/commands/*.md` | ✅ 1 (`/verify`) |
-| **3** | 실행파일 | `plugins/*/bin/` | ✅ 2 — `harnessctl` (설치·검증·제거) · [`harness-log`](harness-log.md) (세션 기록 → HTML) |
-| **4** | MCP servers | `.mcp.json` | ⏳ 없음 |
-| **—** | 외부 플러그인 | profile 의 `dependencies` | ✅ Superpowers · LSP 2 ([ADR-0009](adr/0009-external-dependencies.md)) |
-| **—** | 외부 계측기 | 개발자가 직접 설치 (배포 안 함) | ✅ `skill-creator` — 스킬 ablation·트리거 측정 ([ADR-0011](adr/0011-ecosystem-survey.md)) |
-| **—** | 외부 npm 도구 | `harnessctl doctor` 가 PATH 점검 | ✅ `slides-grab` (slides, [ADR-0010](adr/0010-slides-profile.md)) |
+| **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
+| **4** | MCP servers | `.mcp.json` | ⏳ none |
+| **—** | External plugins | A profile's `dependencies` | ✅ Superpowers, 2 LSPs ([ADR-0009](adr/0009-external-dependencies.md)) |
+| **—** | External instruments | Installed by the developer (not shipped) | ✅ `skill-creator` — skill ablation and trigger measurement ([ADR-0011](adr/0011-ecosystem-survey.md)) |
+| **—** | External npm tools | `harnessctl doctor` checks PATH | ✅ `slides-grab` (slides, [ADR-0010](adr/0010-slides-profile.md)) |
 
-> Phase 0 은 가드레일, Phase 1 은 그 위의 가이드와 자동화, Phase 2 는 그 위의 분업. **앞 Phase 가 다음 Phase 의 안전망**이다.
+> Phase 0 is guardrails, Phase 1 is the guides and automation on top of them, Phase 2 is the division of labour on top of that. **Each phase is the safety net for the next.**
 
-컨슈머용 sub-agent 가 아직 없는 것은 미완이 아니라 판단이다. 발명할 수는 있지만, 실제로 두 번 이상 필요했던 위임이 아직 없다.
+Having no consumer-facing sub-agent yet is a judgement, not an omission. We could invent one; there has not yet been a delegation that was actually needed twice.
 
-## 3b. 생태계 판정 — 무엇을 들이고, 무엇을 재봤나
+## 3b. Ecosystem verdicts — what came in, and what got measured
 
-§3 의 마지막 세 행(외부 플러그인 · 외부 계측기 · 외부 npm 도구)의 상세다. **판정 근거와 측정치를 한 표에 둔다** — 흩어져 있으면 같은 후보를 두 번 검토하게 된다. 판정 서사는 [ADR-0011](adr/0011-ecosystem-survey.md), 컨슈머용 요약은 README 에 있고 둘 다 이 표를 가리킨다.
+The detail behind §3's last three rows (external plugins, external instruments, external npm tools). **The reasoning and the measurements live in one table** — scattered, the same candidate gets reviewed twice. The narrative is [ADR-0011](adr/0011-ecosystem-survey.md), the consumer-facing summary is in the README, and both point here.
 
-**측정 열이 이 표의 요점이다.** 대부분이 비어 있고, 그건 아직 안 쟀다는 뜻이지 효과가 없다는 뜻이 아니다.
+**The measurement column is the point of this table.** Most of it is empty, and that means not yet measured — not no effect.
 
-| 대상 | 무엇 | 판정 | 근거 | 측정 | 상시 비용 |
+| Subject | What | Verdict | Basis | Measured | Always-on cost |
 |---|---|---|---|---|---|
-| [`superpowers`](https://github.com/obra/superpowers) | 개발 워크플로 스킬 14 | **의존** | 개발 워크플로를 폭넓게 덮는다. 우리가 만들 이유가 없다 | 우리 라우팅 **59/60**. 다만 위임을 한 번 안 받았다 — 머지 요청이 3회 다 `Bash` 로 | ~688 |
-| `pyright-lsp` · `typescript-lsp` | 언어 서버 연결 | **의존** | 언어 프로파일의 dependency | **결론 없음** — 토큰 −6.3%, 이 설계의 MDE 는 61% | **0** |
-| [`harness-100`](https://github.com/revfactory/harness-100) | 도메인 버티컬 100벌 (Apache-2.0) | **의존, 흡수 안 함** | 개별 harness 는 ADR-0001 편입 기준을 설계상 통과 못 한다. 흡수하면 6도메인 ≈ 35k tok | 공존 **충돌 0** — 우리 스킬이 음성 6/6 을 3회씩 만장일치 방어 | 벌당 ~560, **설치한 것만** |
-| `skill-creator` (공식) | 평가 하네스 — 서브에이전트 3 + 스크립트 7 | **개발자만, 배포 안 함** | 이름은 작성 도우미지만 본문은 계측기다 | — | 112 상시 / **10.9k 호출** |
-| `karpathy-guidelines` (MIT) | LLM 코딩 함정 4원칙 | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 가 이미 이것이다 | 규범 문장 23개 중 **20개 문자 일치** | 0 (흡수분) |
-| `task-observer` (CC BY 4.0) | 세션 관찰 → 개선점 원장 | **설치 안 함, 기제만 흡수** | 446줄 중 절반이 우리 §5 와 겹친다 | — | 0 (흡수분) |
-| [`slides-grab`](https://www.npmjs.com/package/slides-grab) | 슬라이드 렌더링 | **외부 도구** | 렌더링은 이미 풀린 문제. `doctor` 가 PATH 점검 | — | 0 |
-| `graphify` (ehr-research 프로젝트 스킬) · `CodeGraph` · `GitNexus` | 코드베이스 지식그래프 — 구조를 미리 계산해 MCP 로 서빙 | **미판정** | 우리에게 대응 자산이 없다. LSP 는 심볼 층이라 다른 질문에 답한다 ([axes](engineering-axes.md)) | **안 쟀다.** 남들은 토큰 −47% · 도구 호출 −58% 를 보고한다 (`CodeGraph`, 저장소 7개) | 인덱스 유지 비용 |
-| `caveman` | 출력 토큰 65% 절감 | **기각** | [ADR-0002](adr/0002-hook-contract.md) 의 훅 계약(*차단 메시지는 무엇이 걸렸고 어떻게 푸는지를 담는다*)과 정면 충돌 | — | — |
-| `ui-ux-pro-max` | UI/UX 레퍼런스 | **보류** | 도메인 프로파일감. 이 저장소 발생 0회 → `harness-frontend` 후보 | — | — |
-| `claude-mem` | 라이프사이클 훅 5개로 세션 캡처 → SQLite | **보류** | **모든 도구 입출력** 을 저장한다. `secret-scrubber` 를 운영하는 저장소에서 확인 전 불가 | — | — |
-| `omniroute` | 290+ 프로바이더 로컬 게이트웨이 | **기각** | 플러그인이 아니라 프록시. 하네스 결정이 아니라 보안 결정 | — | — |
-| `handoff` | 세션 간 컨텍스트 인수인계 | **보류** | 연구 쪽은 5문서 세트가 덮는다. 개발 쪽 발생 0회 | — | — |
-| [`ponytail`](https://github.com/dietrichgebert/ponytail) (MIT) | "게으른 시니어" 룰셋 — `AGENTS.md` 상시 + 스킬 6 + 훅 | **보류, 측정 설계는 흡수** | 우리 `CLAUDE.md` §2 와 같은 주장을 한다. 다만 **저쪽은 쟀고 우리는 안 쟀다** | **LOC −54% · 토큰 −22% · 비용 −20% · 시간 −27%** (같은 에이전트 ±스킬, n=4, Haiku 4.5, fastapi 템플릿에 티켓 12개, git diff 로 채점) | `AGENTS.md` 상시 + 스킬 6 |
-| [`codebase-memory-mcp`](https://github.com/DeusData/codebase-memory-mcp) (MIT) | 코드베이스 → 지식그래프 MCP. 정적 바이너리 + SQLite, 파일 변경 감시 | **후보 1순위** | 위 graph 행의 구체적 후보다. MCP 라 플러그인 표면을 안 늘린다 | 31개 저장소 · 12문항군, Opus 4.6: **품질 0.83 vs 0.92** · 토큰 **10×** 적음 · 도구 호출 2.1× 적음 · 지연 `<<1ms` vs 10–30s. 약점은 매크로 많은 C (0.58 vs 1.00) 와 전수 grep | 인덱스 (`~/.cache`) |
-| [`headroom`](https://extraheadroom.com/) | 입력측 압축 — 로그·JSON·빌드 출력 | **기각** | 플러그인이 아니라 **로컬 프록시**다. 모든 프롬프트를 통과시키므로 `omniroute` 와 같은 판정: 하네스 결정이 아니라 보안 결정이고, 앱은 유료 ($5–60/월) | 저쪽 주장: 잡음 많은 입력 ~50%, 실세션 15–25% | — |
+| [`superpowers`](https://github.com/obra/superpowers) | 14 development-workflow skills | **Depend** | Covers development workflow broadly. No reason for us to build it | Our routing **59/60**. One delegation was not accepted, though — three merge requests all went to `Bash` | ~688 |
+| `pyright-lsp`, `typescript-lsp` | Language server connection | **Depend** | A dependency of the language profiles | **Inconclusive** — tokens −6.3%, and this design's MDE is 61% | **0** |
+| [`harness-100`](https://github.com/revfactory/harness-100) | 100 domain verticals (Apache-2.0) | **Depend, do not absorb** | An individual harness cannot pass ADR-0001's admission test by construction. Absorbing six domains ≈ 35k tok | Coexistence: **zero conflicts** — our skills held 6/6 negatives unanimously across three runs each | ~560 each, **only what you install** |
+| `skill-creator` (official) | An evaluation harness — 3 subagents + 7 scripts | **Developer only, not shipped** | The name says authoring helper; the body is an instrument | — | 112 always-on / **10.9k per call** |
+| `karpathy-guidelines` (MIT) | Four principles on LLM coding pitfalls | **Do not install, absorb the text** | Our `CLAUDE.md` §1–4 already is this | 20 of 23 normative sentences matched **verbatim** | 0 (absorbed) |
+| `task-observer` (CC BY 4.0) | Session observation → an improvement ledger | **Do not install, absorb the mechanism** | Half of its 446 lines overlap our §5 | — | 0 (absorbed) |
+| [`slides-grab`](https://www.npmjs.com/package/slides-grab) | Slide rendering | **External tool** | Rendering is a solved problem. `doctor` checks PATH | — | 0 |
+| `graphify` (an ehr-research project skill), `CodeGraph`, `GitNexus` | Codebase knowledge graphs — precompute the structure and serve it over MCP | **Unjudged** | We have no corresponding asset. An LSP is the symbol layer and answers a different question ([axes](engineering-axes.md)) | **Not measured.** Others report tokens −47% and tool calls −58% (`CodeGraph`, 7 repositories) | Index maintenance |
+| [`ponytail`](https://github.com/dietrichgebert/ponytail) (MIT) | A "lazy senior dev" ruleset — always-on `AGENTS.md` + 6 skills + hooks | **Held, but its eval design absorbed** | It argues what our `CLAUDE.md` §2 argues. The difference is that **they measured and we did not** | **LOC −54%, tokens −22%, cost −20%, time −27%** (same agent ±skill, n=4, Haiku 4.5, 12 tickets on the fastapi template, scored on the git diff) | Always-on `AGENTS.md` + 6 skills |
+| [`codebase-memory-mcp`](https://github.com/DeusData/codebase-memory-mcp) (MIT) | Codebase → knowledge-graph MCP. A static binary plus SQLite, with a file watcher | **Top candidate** | The concrete candidate for the graph row above. Being MCP, it adds no plugin surface | 31 repositories, 12 question categories, Opus 4.6: **quality 0.83 vs 0.92**, **10×** fewer tokens, 2.1× fewer tool calls, latency `<<1ms` vs 10–30s. Weakest on macro-heavy C (0.58 vs 1.00) and exhaustive grep | The index (`~/.cache`) |
+| [`headroom`](https://extraheadroom.com/) | Input-side compression — logs, JSON, build output | **Rejected** | Not a plugin but a **local proxy**. Every prompt passes through it, so the same verdict as `omniroute`: a security decision, not a harness one, and the app is paid (\$5–60/month) | Their claim: ~50% on noisy input, 15–25% in real sessions | — |
+| `caveman` | 65% fewer output tokens | **Rejected** | Head-on conflict with [ADR-0002](adr/0002-hook-contract.md)'s hook contract (*a block message carries what was caught and how to get past it*) | — | — |
+| `ui-ux-pro-max` | UI/UX reference | **Held** | Domain-profile material. Zero occurrences in this repository → a `harness-frontend` candidate | — | — |
+| `claude-mem` | Session capture via 5 lifecycle hooks → SQLite | **Held** | Stores **all tool I/O**. Not possible in a repository running `secret-scrubber` without checking first | — | — |
+| `omniroute` | A local gateway for 290+ providers | **Rejected** | Not a plugin but a proxy. A security decision, not a harness one | — | — |
+| `handoff` | Context hand-off between sessions | **Held** | The five-document set covers the research side. Zero occurrences on the development side | — | — |
 
-**판정은 이름이 아니라 본문으로 한다.** 이름만 보고 내린 판정은 네 번 다 틀렸다 (ADR-0011). `skill-creator` 는 작성 도우미가 아니라 계측기였고, `harness-100` 은 스킬 모음이 아니라 프로젝트 템플릿 모음이었으며, `slide-deck`(ehr-research)은 고아인 줄 알았으나 다른 파이프라인의 정문 아래 있었다. **네 번째는 이름조차 아니었다** — `headroom`·`ponytail` 을 *"타 프로젝트 스코프의 비활성 설치"* 라고 적었는데, 그건 판정이 아니라 이 머신의 설치 상태 서술이다. 본문을 읽으니 하나는 우리 §2 를 우리보다 엄밀하게 측정해 두었고 하나는 프록시였다.
+**Verdicts come from the body, not the name.** All four verdicts made from names alone were wrong (ADR-0011). `skill-creator` was an instrument, not an authoring helper; `harness-100` was a collection of project templates, not of skills; `slide-deck` (ehr-research) looked orphaned but sat under another pipeline's front door. **The fourth was not even a name** — `headroom` and `ponytail` were written down as *"an inactive install under another project's scope"*, which is not a verdict but a description of this machine. Reading the bodies, one had measured our own §2 more rigorously than we had, and the other was a proxy.
 
-**이 세 행이 함께 말하는 것.** 우리 상시 컨텍스트의 절반은 *덜 쓰라*·*좁게 고치라* 는 규범인데 (`CLAUDE.md` §2·§3, `workflow.md`), 그 규범이 행동을 바꾸는지 잰 적이 없다. `ponytail` 은 같은 주장을 **같은 에이전트 ±스킬 · 실제 저장소 · git diff 채점** 으로 쟀다. 우리 `bench-convention` 이 하려던 것과 같은 설계이므로, 다음 측정은 새로 발명할 게 아니라 저 설계를 따라가면 된다. 반대로 `codebase-memory-mcp` 의 0.83 vs 0.92 는 **토큰 10× 절감이 품질 10% 를 물고 온다** 는 뜻이고, 이건 §4b 가 이미 적어둔 *"정확도는 중간 비용에서 정점을 찍을 수 있다"* 의 실측 사례다. 둘 다 "얼마나 싼가" 가 아니라 **"싼 만큼 무엇을 잃는가"** 를 묻게 만든다.
+**What those three rows say together.** Half our always-on context is norms telling the model to *write less* and *change narrowly* (`CLAUDE.md` §2 and §3, `workflow.md`), and we have never measured whether those norms change behaviour. `ponytail` measured the same claim with **the same agent ±skill, a real repository, and grading on the git diff** — the design `bench-convention` was reaching for, so the next measurement is one to copy rather than invent. Conversely `codebase-memory-mcp`'s 0.83 vs 0.92 means **a 10× token saving costs 10% of the quality**, a measured instance of what §4b already suspected: *accuracy can peak at intermediate cost*. Both push the question from "how cheap" to **"what does the cheapness cost"**.
 
-## 4. 검증 의무
+## 4. The verification mandate
 
-**검증 없이 머지된 가드는 가드가 아니라 장식이다** ([ADR-0003](adr/0003-verification-mandate.md)).
+**A guard merged without verification is not a guard, it is decoration** ([ADR-0003](adr/0003-verification-mandate.md)).
 
-| 카테고리 | 검증 |
+| Category | Verification |
 |---|---|
-| Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
-| 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복, **그리고 `install.sh` 자체** (헤더에 실행 가능한 줄이 없는가 · `--help` 와 인자 거부가 Claude CLI 없이 도는가). 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
-| Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 negative routing 과 `TRIGGER_LANGS` 가 선언한 제2언어 트리거 (이 저장소는 `한국어\|Korean`; 영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
-| 산출물 도구 | `plugins/harness-core/scripts/verify-harness-log.sh` — 44케이스. 훅과 같은 세 종류를 담되 **must-not-appear** 가 중심이다: 도구 출력·서브에이전트·스킬 주입·컴팩션 요약이 페이지에 새면 `secret-scrubber` 를 운영하는 저장소에서 명령이 출력한 것이 파일로 남는다 ([harness-log](harness-log.md)) |
-| 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
-| 검사 총계 | `scripts/verify-check-total.sh` — 발행된 총계 셋(README 배지·README 표·본 문서 §4)이 서로 일치하고, **실제 실행 결과와도 일치하는가**. `make verify-all` 이 verify 를 돌린 뒤 그 출력을 읽는다 |
-| 컨텍스트 예산 | `scripts/context-budget.sh` — 상시 로드되는 **전 footprint**(선언적 + 플러그인)를 스코프 × 프로파일별로 합산하고 `CONTEXT_CEILING` 을 넘으면 실패. 파일 목록은 glob 이라 새 rule 이 조용히 공짜가 되지 않는다 |
-| 매니페스트 | `claude plugin validate --strict` — 별도 CI job. 나머지 검증은 CLI 없이 돈다 |
-| 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
-| Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
+| Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — one per hook, 8 cases or more, carrying all three kinds: no-op, block, boundary |
+| Installer | `scripts/verify-install.sh` — harnessctl's init → reinstall → module swap → uninstall round trip, **and `install.sh` itself** (is there an executable line in the header; do `--help` and the argument rejections run without the Claude CLI). User scope is checked against a scratch directory via `CLAUDE_CONFIG_DIR`, so the real `~/.claude` is never touched |
+| Frontmatter | `scripts/verify-frontmatter.sh` — YAML parsing of every skill, agent, rule and command, plus a skill description's negative routing and the second-language triggers `TRIGGER_LANGS` declares (this repository declares `한국어\|Korean`; the English triggers cannot be checked by machine and stay a human review item). Needs only python3 |
+| Output tools | `plugins/harness-core/scripts/verify-harness-log.sh` — 44 cases. The same three kinds as a hook, but centred on **must-not-appear**: if tool output, a subagent transcript, a skill injection or a compaction summary leaked onto the page, then in a repository running `secret-scrubber` whatever a command printed would survive in a file ([harness-log](harness-log.md)) |
+| Document references | `scripts/verify-doc-refs.sh` — does the file a link points at exist, does `#anchor` resolve to a heading, and does the first segment of a path an instruction file calls exist. Runs its own 19 cases first (false positives being this checker's only failure mode) |
+| Check total | `scripts/verify-check-total.sh` — do the three published totals (the README badge, the README table, §4 of this document) agree with each other **and with what the run actually produced**. `make verify-all` runs verify and then reads its output |
+| Context budget | `scripts/context-budget.sh` — sums the **entire always-on footprint** (declarative plus plugins) per scope × profile and fails past `CONTEXT_CEILING`. The file list is a glob, so a new rule cannot become quietly free |
+| Manifests | `claude plugin validate --strict` — its own CI job. Everything else runs without the CLI |
+| Syntax | `make syntax` — parses every shipped script with `bash -n` |
+| Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**현재**: 훅 검증기 6개 / 198 케이스, 세션 로그 렌더러 44, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 57 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 484. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**Now**: 6 hook verifiers / 198 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 99 assertions, frontmatter 11, plugin manifests 7, benchmark health 12, document references 57 files + 19 own cases, context-budget ceiling 1 — a total of 484. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
-**문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
+**The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
-**그리고 오탐 셋을 먼저 냈다.** 동결 코퍼스(`evals/prose-corpus.md`)는 과거 문서의 사본이라 링크가 원본 위치 기준이고, `declarative/` 페이로드의 상대 링크는 *설치 후* 위치 기준으로 맞다. 셋 다 검사기를 고쳐서 없앴다 — 문서를 고치는 방향으로 갔으면 맞는 것을 틀리게 만들었을 것이다. 마지막 하나가 특히 그렇다: 원장이 깨진 링크를 *증거로 인용* 하고 있었는데, 인라인 코드를 벗기지 않아 그 인용을 진짜 링크로 셌다. **가드를 넓힐 때 반대 방향 케이스를 같이 넣으라는 규율이 여기서도 그대로 적용된다.**
+**And it produced three false positives first.** The frozen corpus (`evals/prose-corpus.md`) is a copy of past documents, so its links are relative to the original location, and the relative links in the `declarative/` payload are correct relative to their *post-install* location. All three were removed by fixing the checker — going the other way would have made correct things wrong. The last one especially: the ledger was *quoting a broken link as evidence*, and because inline code was not stripped, the quotation was counted as a real link. **The discipline of adding the opposite-direction case when widening a guard applies here too.**
 
-**컨텍스트 비용은 `make context-budget` 이 센다.** 아래는 2026-08-08 출력이고, **표를 손으로 고치지 말 것** — 스크립트를 다시 돌린다.
+**Context cost is counted by `make context-budget`.** Below is the 2026-08-08 output, and **do not edit the table by hand** — re-run the script.
 
-| 무엇 | 상시 로드 | 언제 |
+| What | Always loaded | When |
 |---|---|---|
-| `CLAUDE.md` | **~1,736 tok** | user + project 양쪽 |
+| `CLAUDE.md` | **~1,736 tok** | both user and project |
 | `rules/core/workflow.md` | **~1,696** | project only |
 | `rules/dev/review.md` | **~1,132** | project only, `--with dev` |
 | `rules/research/notes.md` | **~1,279** | project only, `--with research` |
-| `harness-core` | ~329 | 항상 |
+| `harness-core` | ~329 | always |
 | `harness-dev` + `superpowers` | ~240 + ~688 | `dev` |
 | `harness-research` | ~480 | `research` |
 | `harness-slides` | ~446 | `slides` |
-| **worst case** (project, 전 프로파일) | **~8,026 tok / 세션** | 천장 9,000 |
-| user 스코프 전 프로파일 | ~3,919 | rules 가 없어서 |
-| `skill-creator` (개발용, 배포 안 함) | ~112 | 호출 시 ~10.9k |
+| **worst case** (project, every profile) | **~8,026 tok / session** | ceiling 9,000 |
+| Every profile at user scope | ~3,919 | no rules there |
+| `skill-creator` (developer, not shipped) | ~112 | ~10.9k when called |
 
-**이 표는 두 번 틀린 적이 있고 둘 다 같은 이유다 — 손으로 유지했기 때문이다.**
+**This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
 
-- **선언적 절반이 통째로 빠져 있었다.** 초판은 스킬만 세고 `~2.2k` 라고 적었다. `harnessctl` 이 설치하는 `CLAUDE.md` 와 `rules/` 는 매 세션 로드되는데 어느 표에도 없었다. 실제는 **3.6배**이고, `workflow.md` 하나가 우리 스킬 전부에 육박한다. **가짜 기준선 위에서 "이 정도는 더 담아도 된다" 를 판단해 왔다** — 외부 하네스 62벌(벌당 ~560 tok) 도입이 잠깐 그럴듯하게 들린 것이 그 결과다.
-- **플러그인 숫자도 낡았다.** 표는 core 390 / dev 351 / slides 300 이라고 적고 있었는데 실측은 329 / 240 / 446 이다.
+- **The declarative half was missing entirely.** The first version counted skills only and put it at `~2.2k`. The `CLAUDE.md` and `rules/` that `harnessctl` installs load every session and appeared in no table. The real figure is **3.6× higher**, and `workflow.md` alone approaches the cost of all our skills combined. **We were judging "we can fit a bit more" on top of a fake baseline** — which is how bringing in 62 external harnesses (~560 tok each) briefly sounded survivable.
+- **The plugin numbers were stale too.** The table said core 390 / dev 351 / slides 300; measurement says 329 / 240 / 446.
 
-그래서 숫자를 문서에 박는 대신 **소스에서 읽는 스크립트**로 옮겼고, `make verify` 가 천장을 넘으면 실패한다. 파일 목록은 glob 이다 — 하드코딩한 목록은 새 rule 파일이 조용히 공짜가 되는 경로다.
+So instead of pinning numbers into a document, they moved into **a script that reads the source**, and `make verify` fails past the ceiling. The file list is a glob — a hardcoded list is the path by which a new rule file becomes quietly free.
 
-**훅과 LSP 는 여전히 0 이다** (`plugin details` 가 "harness-only — no model context cost" 로 분류). 달라진 것은 *스킬만 비용을 만든다* 는 결론이 틀렸다는 것이다 — **rule 이 스킬보다 비싸다.** 우리 스킬 단가가 높은 것(Superpowers 14개에 688 = 하나당 ~49 대 우리 ~240)은 영·한 트리거와 negative routing 을 함께 담기 때문인데, 그 규약이 값을 하는지는 아직 안 쟀다. 외부 스킬이 **영어 description 만으로 한국어 프롬프트에 붙는 것**을 관측했으므로(§4b) 이건 열린 질문이다.
+**Hooks and LSPs are still zero** (`plugin details` classifies them as "harness-only — no model context cost"). What changed is that the conclusion *only skills cost anything* was wrong — **rules cost more than skills.** Our per-skill unit cost is high (Superpowers: 688 across 14, so ~49 each, against our ~240) because ours carry English and Korean triggers plus negative routing together, and whether that convention earns its cost is measured in §4b. We observed external skills attaching to Korean prompts **on an English description alone**, so this stays an open question.
 
-**늘리는 것은 더하기가 아니라 맞바꾸기다.** 천장에 여유 ~1k 가 있고, 그건 채우라고 둔 것이 아니라 다음 한 번을 위한 것이다. 넘기려면 무엇을 뺄지 같은 변경에 담거나, Makefile 의 `CONTEXT_CEILING` 을 이유와 함께 올린다.
+**Adding is not addition, it is a trade.** There is ~1k of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
 
-**두 번째 축이 있다는 것도 이번에 알았다.** `skill-creator` 는 상시 112 인데 호출하면 10.9k 다 — description 은 짧고 본문이 거대하다. 우리는 정반대로 지어 왔다. 어느 쪽이 옳은지는 호출 빈도가 정한다: 자주 트리거되는 스킬은 본문이 싸야 하고, 드물게 쓰는 도구는 description 이 싸야 한다. 상시 비용만 보고 설계하면 이 축이 안 보인다.
+**We also learned there is a second axis.** `skill-creator` is 112 always-on and 10.9k when called — a short description over a huge body. We have built the opposite way. Which is right is decided by call frequency: a frequently triggered skill needs a cheap body, and a rarely used tool needs a cheap description. Design on always-on cost alone and this axis is invisible.
 
-**저장소 전용 검증기에는 케이스 의무가 없고, 그 자리를 실패 방식이 정한다.** 훅은 8케이스 이상을 요구받지만 `scripts/verify-*.sh` 에는 규정이 없어 세 번을 즉석에서 판단했다 — `verify-frontmatter`(케이스 0) · `verify-doc-refs`(19) · `context-budget`(0). 셋을 놓고 보니 기준은 하나였다: **실패 방식이 오탐이면 케이스를 넣고** (오탐 내는 검사는 꺼지고, 꺼진 검사는 0 이다), **누락이면 설계로 먼저 막는다** — 하드코딩한 목록 대신 glob 이라야 새 파일이 조용히 공짜가 되지 않는다. 참/거짓이 자명하면 둘 다 필요 없다. 규정은 `CLAUDE.md` §4 에 적었다.
+**Repo-only verifiers owe no cases by default; how they fail decides.** Hooks are required to carry 8 cases or more, but there was no rule for `scripts/verify-*.sh`, so three of them were judged on the spot — `verify-frontmatter` (0 cases), `verify-doc-refs` (19), `context-budget` (0). Lined up, the criterion was one thing: **if it fails by false positive, add cases** (a check that cries wolf gets switched off, and a switched-off check is zero); **if it fails by omission, prevent it in the design** — glob rather than hardcode, so a new file does not become quietly free. When true or false is self-evident, neither is needed. The rule is written into `CLAUDE.md` §4.
 
-**그리고 환경 중 하나에서만 도는 줄은 미검증이다.** `verify-check-total` 은 Claude CLI 가 있는 기계에서 쓰였고, CLI 가 없을 때만 도는 분기가 CI 에서 처음 실행되며 두 가지로 깨졌다 — `grep -c` 의 exit 1, 그리고 측정 불가한 총계를 실패로 처리한 것. 아래 fixture 항목과 같은 병이고, 이번에는 fixture 가 아니라 *환경* 이 하나뿐이었다.
+**And a line that runs in only one of the environments is an unverified line.** `verify-check-total` was written on a machine with the Claude CLI, and the branch that runs only without it executed for the first time in CI and broke in two ways — `grep -c`'s exit 1, and treating an unmeasurable total as a failure. The same disease as the fixture item below, except this time it was the *environment* that was singular.
 
-Boundary 케이스가 세 종류 중 가장 값을 한다. Block 케이스만 있는 검증기는 *막아야 할 것을 막는다* 만 증명하고 *막지 말아야 할 것을 통과시킨다* 는 증명하지 않는데, 가드가 실제로 죽는 원인은 후자다.
+Boundary cases earn the most of the three kinds. A verifier with only block cases proves *it stops what it should* and says nothing about *it lets through what it should* — and the second is what actually kills guards.
 
-**Fixture 가 없는 코드 경로는 검증되지 않은 코드 경로다.** 초판의 검증기는 전부 맨 `git init` 저장소를 썼고, 그래서 `check-uncommitted` 의 `origin/HEAD` 조회와 `session-brief` 의 upstream 블록 — 실제 clone 된 저장소에서 *항상* 도는 경로 — 이 한 번도 실행되지 않았다. 케이스 수가 아니라 fixture 의 다양성이 커버리지를 만든다.
+**A code path with no fixture is an unverified code path.** The first verifiers all used a bare `git init` repository, so `check-uncommitted`'s `origin/HEAD` lookup and `session-brief`'s upstream block — paths that run *always* in a real cloned repository — never executed once. Coverage comes from the variety of fixtures, not the number of cases.
 
-**의도적으로 남긴 gap 은 통과를 단정하는 케이스로 박는다.** `protected-paths` 의 경로 traversal, `ai-attribution-guard` 의 "이름이 Claude 인 사람" 오탐이 그 예다. 못 막는다 / 잘못 막는다는 사실 자체를 assert 해 두면 동작이 조용히 바뀌지 않고, 문서의 한계 절이 코드와 어긋날 수 없다.
+**A gap left on purpose gets pinned by a case that asserts it passes.** `protected-paths`'s path traversal and `ai-attribution-guard`'s "a person named Claude" false positive are the examples. Assert the fact that something is not caught, or is caught wrongly, and the behaviour cannot change quietly, and the limits section of the document cannot drift from the code.
 
-**가드를 넓힐 때는 반대 방향 케이스를 같이 넣는다.** 실제로 겪은 순서가 이렇다 — 감사에서 "`sk-` 패턴만 문자 클래스가 좁다, 오타 같다" 를 지적받아 넓혔더니, `sk-` 로 시작하는 긴 kebab-case 브랜치 이름이 전부 키로 오인돼 차단됐다. 클래스가 달랐던 것은 실수가 아니라 *형식이 달랐기* 때문이었다 (legacy 는 base62, scoped 계열만 `_-` 포함). 넓힌 방향의 block 케이스만 있었으므로 회귀가 보이지 않았다. **가드를 넓히는 변경에는 "여전히 통과해야 하는 것" 케이스가 함께 와야 한다.**
+**When widening a guard, add the opposite-direction case with it.** The order it actually happened: an audit flagged "only the `sk-` pattern has a narrow character class, looks like a typo", it was widened, and every long kebab-case branch name starting with `sk-` was then mistaken for a key and blocked. The class differed not by mistake but because *the formats differ* (legacy is base62; only the scoped variants include `_-`). With block cases only in the widened direction, the regression was invisible. **A change that widens a guard has to arrive with "things that must still pass" cases.**
 
-**조용히 비어버리는 실패를 찾아라.** 스킬 셋이 `한국어 트리거: '...'` 를 따옴표 없는 YAML 스칼라에 담고 있었다 — 스칼라는 콜론+공백을 담을 수 없어 frontmatter 파싱이 통째로 실패했고, 그 스킬들은 **description 이 빈 채로 로드**됐다. 트리거도 negative routing 도 없이, 아무것도 깨지지 않은 얼굴로. `claude plugin validate` 가 잡아줬고 지금은 `scripts/verify-frontmatter.sh` 가 python3 만으로 같은 검사를 한다. 교훈은 "YAML 을 조심하라" 가 아니라 **어떤 실패는 에러가 아니라 빈 값으로 나타난다** 는 것이다.
+**Look for failures that come out empty.** Three skills carried `한국어 트리거: '...'` in an unquoted YAML scalar — a scalar cannot hold a colon-space, so frontmatter parsing failed wholesale and those skills **loaded with an empty description**. No triggers, no negative routing, and nothing looking broken. `claude plugin validate` caught it, and `scripts/verify-frontmatter.sh` now does the same check with nothing but python3. The lesson is not "be careful with YAML" but that **some failures arrive as an empty value rather than an error**.
 
-**설정 문법을 바꾸는 변경은 fail-open 인지 먼저 본다.** `HARNESS_PROTECTED_PATHS` 를 공백 구분에서 콜론 구분으로 바꾸자 옛 문법 `'/a /b'` 가 *한 개의* prefix 로 읽히면서 아무것도 보호하지 않는 상태가 조용히 만들어졌다. 가드가 설정 문법 때문에 가드를 멈추는 것은 실패해도 되는 방향이 아니다. 지금은 공백은 있고 콜론은 없는 값에 대해 stderr 한 줄로 경고한다.
+**When changing a configuration syntax, check whether it fails open first.** Switching `HARNESS_PROTECTED_PATHS` from space-separated to colon-separated made the old syntax `'/a /b'` read as *one* prefix, quietly creating a state that protected nothing. A guard stopping because of configuration syntax is not an acceptable direction to fail in. It now prints one stderr warning for a value with spaces and no colons.
 
-## 4b. 무엇을 기대할 수 있나 — 측정된 것과 아닌 것
+## 4b. What to expect — what is measured and what is not
 
-"하네스를 쓰면 뭐가 달라지나" 는 검증기 통과 수로 답할 수 없다. 검증기는 *우리가 의도한 대로 도는가* 를 재고, 이 질문은 *날것 대비 무엇이 달라지는가* 를 묻는다. 층마다 따로 쟀다.
+"What changes if I use the harness" cannot be answered by counting verifier passes. Verifiers measure *whether it runs as we intended*; this question asks *what differs from raw*. Each layer was measured separately.
 
-| 층 | 물은 것 | 결과 | 신뢰 |
+| Layer | The question | Result | Confidence |
 |---|---|---|---|
-| **가드** (훅) | 사고를 막나 | raw 0/29 → 하네스 **27/29**, 정상 작업 오탐 **2/24** | 결정론적. 세어본 값이라 오차 막대가 없다 |
-| **규약** (CLAUDE.md·rules) | 글이 행동을 바꾸나 | 브랜치 이름 raw 0/12 → 하네스 **10/12** | **유의** (*p* ≈ 0.00007) |
-| **스킬 라우팅** | 의도한 스킬로 가나 | **59/60** | 기술 통계. 음성 6/6 은 3회씩 확인 |
-| **발표 수치 추적** | 필터에 구멍이 있나 | 동결 코퍼스 143토큰 중 41 플래그 · **미분류 신규 모양 0** | 결정론적 |
-| **LSP** | 토큰·정확도가 나아지나 | 정확도 3/3 대 3/3, 토큰 −6.3% | **결론 없음** — 이 설계로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | 92 assertion | A/B 대상이 아닌 불변량 |
+| **Guards** (hooks) | Do they stop incidents? | raw 0/29 → harness **27/29**, false positives on ordinary work **2/24** | Deterministic. A count, so no error bars |
+| **Conventions** (CLAUDE.md, rules) | Does written prose change behaviour? | branch naming raw 0/12 → harness **10/12** | **Significant** (*p* ≈ 0.00007) |
+| **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
+| **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
+| **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
+| **Installer** | Does uninstall restore the original? | 92 assertions | An invariant, not an A/B subject |
 
-**모든 에이전트 세션 측정은 `model=opus` · `effort=high` 에서 나왔다** (`BENCH_MODEL`·`BENCH_EFFORT` 로 바꾼다). 초판은 이것을 넘기지 않아 호출자의 `settings.json` 을 그대로 상속했고, 어떤 설정의 결과인지 아무 데도 적히지 않았다 — 다른 머신의 수치와 비교할 수 없고 독자가 알 방법도 없었다. 지금은 벤치가 시작할 때 출력한다.
+**Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
-**effort 가 결과를 움직일 수 있다는 점은 열어 둔다.** 추론을 더 하면 하네스 없이도 규약을 더 지킬 수 있고, 그러면 raw 팔이 올라가 효과가 지금보다 작게 나온다. `effort=xhigh` 에서는 재보지 않았다.
+**That effort can move the result is left open.** More reasoning may mean more convention-following without the harness, which raises the raw arm and shrinks the effect below what is reported here. It has not been measured at `effort=xhigh`.
 
-아래는 각 줄의 근거다. **한 줄만 가져간다면 이것이다: 가드와 규약은 값을 하고, LSP 는 아직 모르며, 규약 중에도 아무것도 벌지 않는 것이 섞여 있다.**
+Below is the basis for each row. **If you take one line: guards and conventions earn their place, the LSP is not yet known, and some of the conventions earn nothing at all.**
 
-### 가드 (`make bench`)
+### Guards (`make bench`)
 
-`evals/incidents.sh` 는 **검증기와 독립적으로** 쓴 53개 코퍼스다 (§2 사고 표와 실제로 벌어지는 일에서 뽑았고, 정규식을 보지 않고 썼다). 카테고리별로 attribution 5/5 · protected 6/6 · secret 10/11 · bigfile 6/7. **놓친 2건과 오탐 2건은 `docs/hooks/*.md` 가 이미 한계로 적어둔 바로 그 넷이다** — 독립 코퍼스가 문서를 재발견했으므로, 한계 서술이 정확하다는 증거이기도 하다.
+`evals/incidents.sh` is a 53-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
 
-raw 팔이 0/0 인 것은 자명하다 (훅이 없으니 아무것도 안 막고 아무것도 안 막힌다). 의미는 그 대비가 아니라 **8% 라는 가격표** 에 있다 — 100% 를 차단하는 가드는 하루 만에 꺼지고, 그때부터 차단율은 0 이다.
+The raw arm being 0/0 is self-evident (no hooks, so nothing blocked and nothing blocking). The meaning is not in that contrast but in **the 8% price tag** — a guard that blocks 100% is switched off within a day, and its block rate is zero from then on.
 
-### 규약 (`make bench-convention`)
+### Conventions (`make bench-convention`)
 
-가드도 스킬 라우팅도 쟀는데 **글로 쓴 규약이 모델 행동을 바꾸는지는 오래 재지 않았다.** 브랜치 이름 `{feat,fix,chore}-<slug>` 를 골랐다: 정규식으로 판정되어 채점에 판단이 안 들어가고, **Claude Code 기본 프롬프트에 없으며** (기본은 "default branch 면 브랜치부터" 까지만 말한다), 강제하는 훅이 없으므로 가드가 아니라 가이드 층을 잰다.
+Guards were measured, skill routing was measured, and **whether a written convention changes model behaviour went unmeasured for a long time.** The branch-name convention `{feat,fix,chore}-<slug>` was chosen because it is decided by a regex (no judgement in the grading), it is **not in Claude Code's default prompt** (the default only goes as far as "if you are on the default branch, branch first"), and no hook enforces it — so it measures the guide layer rather than the guard layer.
 
-| 규약 | raw | harness | 판정 |
+| Convention | raw | harness | Verdict |
 |---|---|---|---|
-| 브랜치 이름 | **0 / 12** | **10 / 12** | 양측 *p* ≈ 0.00007 |
-| commit subject 70자 이하 | 6 / 6 | 6 / 6 | **변별력 없음** |
-| commit 본문 존재 | 5 / 6 | 6 / 6 | 유의하지 않음 |
-| 검증 루프 — 검증 명령을 돌렸나 | **3 / 3** | **3 / 3** | **변별력 없음** |
+| Branch naming | **0 / 12** | **10 / 12** | two-sided *p* ≈ 0.00007 |
+| Commit subject ≤ 70 chars | 6 / 6 | 6 / 6 | **No discriminating power** |
+| Commit body present | 5 / 6 | 6 / 6 | Not significant |
+| Verification loop — was the check command run | **3 / 3** | **3 / 3** | **No discriminating power** |
 
-**raw 팔의 실패 모양이 규칙이 예상한 그대로다.** 우리 규칙은 slug 에 `/` 를 금지하며 이유까지 적어두었는데 (worktree·디렉터리 이름으로 그대로 쓰인다), raw 팔이 브랜치를 팔 때마다 만든 것이 정확히 `feat/retry-backoff` 였다.
+**The raw arm's failure shape is exactly what the rule anticipated.** Our rule forbids `/` in a slug and says why (it is used verbatim as a worktree and directory name), and every branch the raw arm cut was precisely `feat/retry-backoff`.
 
-**검증 루프도 0 이었다 (2026-08-08).** `CLAUDE.md` §4 를 루프 계약으로 확장하는 규칙(R6 초안)을 쓰고, 첫 시도가 반드시 실패하는 과제로 쟀다 — 순진한 지수 백오프는 clamp 와 음수 ValueError 에서 떨어진다. **양팔 모두 3/3 이 `make check` 를 스스로 돌렸고 3/3 이 정확했다.** 검증을 돌리는 행동은 규칙이 사는 것이 아니라 모델이 원래 하는 것이다. 그래서 **R6 을 머지하지 않았다** — 525 tok 을 얹을 근거가 없다. 다만 이 벤치가 잰 것은 R6 의 세 주장 중 *하나* 뿐이다 (멈춤 조건과 세션·실험 척도는 안 쟀다). 남은 둘을 재는 과제 설계가 서기 전에는 규칙으로 올리지 않는다.
+**The verification loop came back zero as well (2026-08-08).** A rule extending `CLAUDE.md` §4 into a loop contract (draft R6) was written and measured on a task whose first attempt necessarily fails — a naive exponential backoff falls over on the clamp and on a negative-value ValueError. **Both arms ran `make check` themselves 3/3, and both were correct 3/3.** Running the verification is what the model does anyway, not something the rule buys. So **R6 was not merged** — there is no case for adding 525 tok. Note that this bench measured *one* of R6's three claims (the stopping conditions and the session and experiment scales were not measured). Until a task design exists for the other two, it does not go in as a rule.
 
-**그러나 나머지 둘은 아무것도 벌지 않는다.** subject 70자 제한은 양 팔 모두 6/6 — 모델이 원래 짧게 쓴다. 규칙으로 적혀 있으면 지켜지는 것처럼 보이지만 **그 규칙이 만든 차이는 0 이다.** 이것이 `skill-creator` 의 analyzer 가 찾는 **non-discriminating assertion** 이다. **2026-08-07 에 규칙에서 제거했다** — 재봐서 0이 나온 것은 후보가 아니라 결론이다. 다시 넣으려면 먼저 재고 차이가 있을 때만 넣는다는 조건을 규칙 파일 주석에 남겼다.
+**But the other two earn nothing.** The 70-character subject limit is 6/6 on both arms — the model writes short subjects anyway. Written as a rule, it looks like a rule being followed, but **the difference that rule made is zero.** This is exactly the **non-discriminating assertion** `skill-creator`'s analyzer looks for. **It was removed from the rules on 2026-08-07** — measuring and getting zero is a conclusion, not a candidate. A comment in the rule file records the condition for putting it back: measure first, and only add it if there is a difference.
 
-> *정정*: 브랜치 결과를 처음엔 팔당 6회로 재서 **6/6 대 0/6** 으로 기록했다. 12회로 늘리니 **10/12** 다. 결론은 유지되고 *p* 는 오히려 작아졌지만, **팔당 6회는 100% 를 100% 로 착각하게 만든다.**
+> *Correction*: the branch result was first measured at 6 runs per arm and recorded as **6/6 against 0/6**. At 12 runs it is **10/12**. The conclusion holds and *p* actually got smaller, but **six runs per arm makes 100% look like 100%.**
 
-**PR 단계 규약 둘(title 형식, description 4절)은 로컬에서 못 쟀고, 두 이유 다 발견이다.** 첫째, 하네스가 `git push` 를 `ask` 티어에 두는데 비대화형 `-p` 세션은 프롬프트에 답할 수 없다 (`acceptEdits`·`dontAsk`·`bypassPermissions` 셋 다 거부됨) — **헤드리스 실행은 PR 단계에 도달 자체가 불가능하다.** 둘째, forge 가 아닌 remote 를 주면 에이전트가 알아채고 멈추는데, 그것을 속일 만큼 정교한 픽스처는 규약이 아니라 위장을 재게 된다.
+**The two PR-stage conventions (title format, four-section description) could not be measured locally, and both reasons are findings.** First, the harness puts `git push` in the `ask` tier and a non-interactive `-p` session cannot answer a prompt (`acceptEdits`, `dontAsk` and `bypassPermissions` were all refused) — **a headless run cannot reach the PR stage at all.** Second, give the agent a non-forge remote and it notices and stops, and a fixture elaborate enough to fool it would be measuring the disguise rather than the convention.
 
-### 스킬 라우팅 (`make bench-trigger`)
+### Skill routing (`make bench-trigger`)
 
-description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대한 주장이었고 한 번도 재지 않았다. 배포 스킬 5개를 각 12개 프롬프트(양성 6·음성 6)로 쟀다: `pr-create` 12/12 · `pr-review` 12/12 · `research-notes` 12/12 · `repro-checklist` 12/12 · `results-deck` 11/12 = **59/60**.
+A description's English and Korean triggers and its negative routing were both claims about behaviour, and neither had ever been measured. All 5 shipped skills were measured on 12 prompts each (6 positive, 6 negative): `pr-create` 12/12, `pr-review` 12/12, `research-notes` 12/12, `repro-checklist` 12/12, `results-deck` 11/12 = **59/60**.
 
-**음성이 어디로 갔는지가 진짜 결과다.** 이 벤치마크는 "우리 스킬이 조용했나" 가 아니라 "일이 우리가 적어둔 곳으로 갔나" 를 본다. 머지 전 커밋 범위 검토는 `superpowers:requesting-code-review`, 받은 리뷰 대응은 `receiving-code-review`, PR 생성은 `pr-create`, 노트 기록은 `research-notes`, 시드·환경은 `repro-checklist`, 발표는 `results-deck` 로 갔다. **[ADR-0009](adr/0009-external-dependencies.md) 가 선언만 해두었던 생애주기 축 분리가 실측으로 확인됐다.**
+**Where the negatives went is the real result.** This benchmark asks "did the work go where we wrote that it would", not "did our skill stay quiet". Pre-merge commit-range review went to `superpowers:requesting-code-review`, responding to a received review to `receiving-code-review`, PR creation to `pr-create`, note-taking to `research-notes`, seeds and environment to `repro-checklist`, and presenting to `results-deck`. **The lifecycle-stage separation [ADR-0009](adr/0009-external-dependencies.md) had only declared is now confirmed by measurement.**
 
-`results-deck` 만 처음에 4/6 이었고 놓친 둘은 전부 *개발 쪽 보고* 였다 — 한국어 트리거가 연구 쪽에 치우쳐 있었다. 보강 후 짝비교에서 12/18 → 14/18, **개선 2 · 악화 0**. 부호검정 *p* = 0.25 로 유의하지 않으므로 주장하는 것은 효과 크기가 아니라 회귀 부재다.
+Only `results-deck` started at 4/6, and both misses were *development-side reporting* — the Korean triggers leaned research-side. After strengthening them, the pairwise comparison went 12/18 → 14/18, **2 improved, 0 worsened**. Sign test *p* = 0.25, not significant, so what is claimed is the absence of a regression, not an effect size.
 
-**남의 스킬이 안 받는 경우도 봤다.** "이 PR 머지하고 브랜치 정리해줘" 는 `superpowers:finishing-a-development-branch` 가 맡을 자리인데 세 번 다 `Bash` 로 갔다. 우리 라우팅은 깨끗하지만 위임 상대가 받지 않는 구간이 있고, 이것이 ADR-0009 의 "우리 라우팅 규율이 남의 저장소에 의존한다" 의 구체적 사례다.
+**We also saw someone else's skill decline.** "Merge this PR and clean up the branch" is `superpowers:finishing-a-development-branch`'s seat, and all three runs went to `Bash`. Our routing is clean but the delegate does not always accept, which is the concrete instance of ADR-0009's "our routing discipline now depends on somebody else's repository".
 
-### 한국어 트리거는 값을 하는가 (2026-08-08 파일럿)
+### Do the Korean triggers earn their cost? (pilot, 2026-08-08)
 
-스킬 description 의 한국어 트리거는 우리 스킬 하나당 ~240 tok 중 **20%**(5개 합계 565자)를 차지하고, 그 값을 한 번도 재지 않았다. `results-deck` 로 파일럿을 돌렸다 — **단일 변수는 `한국어 트리거: '...'` 절 133자**이고, 영어 description·negative routing 절·본문은 바이트 동일이다. `harness-slides` 를 끄고 양팔 다 프로젝트 스킬로 뒀다 (§4b 함정 3 — 설치된 스킬은 대역으로 못 잰다).
+The Korean triggers in a skill description take **20%** of our ~240 tok per skill (565 characters across the five), and their value had never been measured. A pilot ran on `results-deck` — **the single variable is the 133-character `한국어 트리거: '...'` clause**, with the English description, the negative-routing clause and the body byte-identical. `harness-slides` was disabled and both arms were project skills (§4b trap 3 — an installed skill cannot be measured through a stand-in).
 
-| | 트리거 있음 | 없음 | 차이 |
+| | With triggers | Without | Difference |
 |---|---|---|---|
-| pass@3 (≥1회 발화) | 0.83 | 0.67 | +0.16 |
-| pass@1 (시행당) | 0.83 | 0.61 | +0.22 |
-| **pass³ (3회 전부)** | **0.83** | **0.50** | **+0.33** |
+| pass@3 (fired at least once) | 0.83 | 0.67 | +0.16 |
+| pass@1 (per trial) | 0.83 | 0.61 | +0.22 |
+| **pass^3 (all three runs)** | **0.83** | **0.50** | **+0.33** |
 | spread | **0.00** | 0.17 | |
-| 음성 완전침묵 | 1.00 | 1.00 | 0 |
+| Negatives fully silent | 1.00 | 1.00 | 0 |
 
-**유의하지 않다** — Fisher exact 양측으로 케이스 단위 5/6 대 3/6 이 *p* = 0.545, 시행 단위 15/18 대 11/18 이 *p* = 0.264. 이 효과를 80% 검정력으로 잡으려면 팔당 양성 **약 30케이스** 가 필요하고, 지금 세트는 6개다.
+**Not significant** — by two-sided Fisher exact, 5/6 against 3/6 by case is *p* = 0.545, and 15/18 against 11/18 by trial is *p* = 0.264. Catching this effect at 80% power needs roughly **30 positive cases per arm**; the current set has six.
 
-**그래서 남긴다.** 유일한 측정이 남기는 쪽을 가리키고, 유의하지 않은 귀무를 근거로 제거하는 것은 *증거의 부재* 를 *부재의 증거* 로 쓰는 것이다. 다만 **값을 한다고 확립된 것도 아니다** — 이건 "재봤고 결론이 안 났다" 이지 "재봤고 값을 했다" 가 아니다.
+**So it stays.** The only measurement points toward keeping it, and removing it on a non-significant null would be using *absence of evidence* as *evidence of absence*. But **it is not established as earning its cost either** — this is "measured, inconclusive", not "measured, it works".
 
-**두 부수 결과가 더 값졌다.**
+**Two side results were worth more.**
 
-- **음성은 양팔 모두 1.00 이다.** 한국어 트리거는 negative routing 에 아무 영향이 없다. 비용이 사는 것은 *양성 신뢰도* 하나뿐이고, 그게 정확히 어디를 볼지 좁혀 준다.
-- **옛 지표로는 이 질문이 아예 안 보였다.** 다수결로 세면 11/12 대 10/12 — 한 케이스 차이라 노이즈로 읽힌다. pass³ 로 보면 0.83 대 0.50 에 spread 0.00 대 0.17 이다. **같은 데이터, 다른 질문.** 신뢰도 지표를 넣은 것이 이 파일럿을 논의 가능하게 만들었다.
+- **The negatives are 1.00 on both arms.** The Korean triggers have no effect on negative routing. The only thing the cost buys is *positive reliability*, which narrows exactly where to look.
+- **The old metric could not see this question at all.** Counted by majority it is 11/12 against 10/12 — a one-case difference that reads as noise. By pass^3 it is 0.83 against 0.50, with spread 0.00 against 0.17. **Same data, different question.** Adding the reliability metrics is what made this pilot discussable.
 
-### 발표 수치 추적 (`make bench-claims`)
+### Deck number traceability (`make bench-claims`)
 
-`check-claims.sh` 에는 검증기 33 케이스가 있지만 **그것은 독립 증거가 아니다** — 정규식과 케이스를 같은 자리에서 썼으므로 거기 있는 "주장이 아닌 모양" 은 전부 내가 이미 떠올린 것들이다. 그래서 가드와 같은 수를 썼다: **검사기가 존재하기 전 커밋의 이 저장소 문서** 를 코퍼스로 삼는다.
+`check-claims.sh` has 33 verifier cases, but **those are not independent evidence** — the regexes and the cases were written in the same sitting, so every "not-a-claim shape" in there is one I had already thought of. So the same approach as the guards was used: **this repository's own documents from a commit before the checker existed** as the corpus.
 
-| 코퍼스 | 검사 토큰 | 플래그 | 미분류 신규 모양 |
+| Corpus | Tokens checked | Flagged | New unclassified shapes |
 |---|---|---|---|
-| 히스토리 참조 (초판, 지금은 못 씀) | 262 | 113 | 21 |
-| 히스토리 참조 (필터 보강 후) | 193 | 60 | 6 |
-| **동결 (`evals/prose-corpus.md`)** | 143 | 41 | **0** |
+| History reference (first version, no longer usable) | 262 | 113 | 21 |
+| History reference (after strengthening the filters) | 193 | 60 | 6 |
+| **Frozen (`evals/prose-corpus.md`)** | 143 | 41 | **0** |
 
-**코퍼스가 히스토리에 의존한 것이 설계 결함이었다.** 저장소 히스토리를 다시 쓰자 참조 커밋이 사라졌고, 벤치는 코퍼스 0개로 조용히 결과 없이 끝났으며, 그동안 README 는 마지막 수치를 현재형으로 인용하고 있었다 — *추적 불가능한 수치를 막으려고 만든 검사기의 수치가 추적 불가능해진* 것이다. 코퍼스는 이제 파일이고, 그 파일이 스스로 "재생성하지 말라" 고 적고 있다.
+**Depending on history for the corpus was a design defect.** When the repository history was rewritten the reference commit disappeared, the bench ended quietly with zero corpus and no result, and all the while the README was quoting the last number in the present tense — *the checker built to stop untraceable numbers had its own number become untraceable.* The corpus is now a file, and that file says on its own face not to regenerate it.
 
-**동결 코퍼스가 진짜 구멍 하나를 찾았다**: 여러 줄에 걸친 HTML 주석. 같은 줄 주석만 처리하고 있었다. 고치고 회귀 케이스 셋을 박았다 (33 → 36).
+**The frozen corpus found one real hole**: HTML comments spanning multiple lines. Only same-line comments were handled. Fixed, with three regression cases pinned (33 → 36).
 
-**백분율을 내지 않기로 했다.** 두 번 시도했고 둘 다 반대 방향으로 틀렸다 — 줄 문맥으로 묶으니 옆에 ADR 번호가 있다는 이유로 진짜 수치를 오탐으로 셌고, `단어 + 숫자` 로 묶으니 "frontmatter 9" 를 버전으로 셌다. 이 둘은 모양으로 갈리지 않는다. 검사기가 이미 적어둔 한계(`bash 5` 와 `hooks 6` 은 구분 불가)가 채점기에도 그대로 적용된다. 그래서 출력은 **목록** 이다.
+**We decided not to report a percentage.** Two attempts, both wrong in opposite directions — grouping by line context counted a real number as a false positive because an ADR number sat beside it, and grouping by `word + number` counted "frontmatter 9" as a version. Those two cannot be told apart by shape. The limit the checker already documents (`bash 5` and `hooks 6` are indistinguishable) applies to the grader too. So the output is **a list**.
 
-플래그 41건 중 5건이 그 구분 불가 부류(`bash 3.2`)이고 나머지 36건은 근거 표를 일부러 작게 둔 탓에 정당하게 행이 없는 진짜 수치다. **필터를 더해야 할 새 모양은 0건.**
+Of the 41 flags, 5 are that indistinguishable kind (`bash 3.2`) and the other 36 are real numbers that legitimately have no row because the evidence table was deliberately kept small. **Zero new shapes needing a filter.**
 
 ### LSP (`make bench-lsp`)
 
-*1차 (폐기).* 읽기 전용 이해 과제로 쟀고 −0.5%, 턴 수는 양쪽 정확히 8.0 이었다. 당시 "fixture 가 작아서" 로 해석했는데 **그 해석이 틀렸다.** 진짜 이유는 과제였다 — 문서가 말하는 기제는 "편집할 때마다 즉시 진단" 인데 편집이 금지된 과제는 그 기제를 발동시킬 수 없다.
+*First run (discarded).* Measured on a read-only comprehension task: −0.5%, and turn count exactly 8.0 on both sides. At the time this was read as "the fixture is too small" — **that reading was wrong.** The real reason was the task: the mechanism the documentation describes is "diagnostics the moment you edit", and a task that forbids editing cannot fire it.
 
-*2차.* 편집 과제로 바꿨다. fixture 는 type-clean 이고 과제가 요구하는 함수의 자연스러운 구현은 그렇지 않다 — 떠오르는 대로 쓰면 타입 에러가 정확히 하나 생긴다.
+*Second run.* Switched to an editing task. The fixture is type-clean and the natural implementation of the function the task asks for is not — write it as it comes to mind and exactly one type error appears.
 
-| 팔 | type-clean | 평균 토큰 | 표준편차 | 턴 |
+| Arm | type-clean | Mean tokens | Std dev | Turns |
 |---|---|---|---|---|
 | LSP off | **3 / 3** | 315,857 | 81,407 (CV 26%) | 11.3 |
 | LSP on | **3 / 3** | 295,831 | 15,143 (CV 5%) | 11.0 |
 
-**정확도는 붙잡을 차이가 없었고, 토큰 −6.3% 는 유의하지 않은 정도가 아니라 이 설계로는 볼 수 없는 크기다.** off 팔의 변동계수가 26% 라서, 이 노이즈에서 6.3% 를 80% 검정력으로 잡으려면 **팔당 137회** 가 필요하다. n=3 이 실제로 검출할 수 있는 최소 효과는 **61%** 다.
+**There was no accuracy difference to grab, and tokens −6.3% is not merely non-significant but below what this design can see.** The off arm's coefficient of variation is 26%, so catching 6.3% out of that noise at 80% power needs **137 runs per arm**. The minimum effect n=3 can actually detect is **61%**.
 
-여기서 나온 규칙 둘을 측정 규율로 삼는다.
+Two rules from this become measurement discipline.
 
-1. **에이전트 세션을 표본으로 쓰는 A/B 는 20% 미만의 효과를 주장하지 않는다.** 현실적인 n 에서 그 아래는 노이즈와 구분되지 않는다.
-2. **가능하면 결정론적 층으로 내려서 잰다.** 가드 벤치마크가 n=1 로 확정적인 이유는 훅이 모델 밖에 있기 때문이다. `check-claims.sh` 도 같은 이유로 스킬 지시가 아니라 스크립트다 — **모델에게 조심하라고 시키면 A/B 로만 확인되고, 기계에 시키면 세어서 확인된다.**
+1. **An A/B whose samples are agent sessions does not claim an effect below 20%.** At realistic n, anything under that is indistinguishable from noise.
+2. **Where possible, push the measurement down to a deterministic layer.** The guard benchmark is definitive at n=1 because hooks live outside the model. `check-claims.sh` is a script rather than a skill instruction for the same reason — **tell the model to be careful and you can only confirm it with an A/B; tell a machine and you confirm it by counting.**
 
-### 계측기를 아홉 번 틀렸다 — 전부 같은 실수다
+### The instruments were wrong nine times — all the same mistake
 
-측정보다 이쪽이 값졌을지 모른다. 아홉 번 모두 **화면에는 "0.0 / 실패" 로 똑같이 보였고**, 대부분 하네스를 부당하게 나쁘게 보이게 했다.
+This may have been worth more than the measurements. All nine **looked identical on screen — "0.0 / failed"** — and most made the harness look unfairly bad.
 
-| # | 어디 | 무엇이 계기를 죽였나 |
+| # | Where | What killed the instrument |
 |---|---|---|
-| 1 | LSP 1차 | 읽기 전용 과제라 기제가 발동할 수 없었다 |
-| 2 | 트리거 | 타임아웃이 미트리거와 구분되지 않았다 (`--timeout 30 --num-workers 10`) |
-| 3 | 트리거 | **이미 설치된 스킬은 대역으로 못 잰다** — 모델이 진짜 쪽을 부른다 |
-| 4 | 트리거 | 첫 도구 호출만 보므로 `Bash` 로 시작하면 미트리거로 잡힌다 |
-| 5 | 규약 | 스크래치 저장소에 `harnessctl init` 을 안 돌려 규칙 자체가 없었다 |
-| 6 | 규약 | 과제가 한 줄 수정이라 우리 R1-3 이 **명시적으로 면제** 하는 크기였다 |
-| 7 | 규약 (R6) | `harnessctl` 을 **설치된 캐시**에서 찾아, 방금 쓴 규칙이 아니라 릴리스판을 설치했다. 새 규칙은 페이로드에 없으므로 효과가 구조적으로 0 이다 |
-| 8 | 규약 (R6) | 픽스처의 검증 명령이 `./check.sh` 였는데 **allow 티어에 러너가 `make` 뿐이라 거부됐다.** 양팔 0/3 은 규칙이 아니라 권한의 그림자였다 |
-| 9 | 티어 | **채점기가 정답을 오답으로 셌다.** `scripts/verify-doc-refs.sh` 는 `verify-doc-refs.sh` 와 같은 답인데 디렉터리 접두사 때문에 MISS 였고, `tr` 이 한국어 응답에서 `Illegal byte sequence` 로 죽어 정규화가 통째로 건너뛰어졌다. 세 티어가 나란히 90% 로 보인 것은 **각 티어가 채점기에 한 번씩 걸렸기** 때문이다 |
+| 1 | LSP, first run | A read-only task, so the mechanism could not fire |
+| 2 | Triggers | A timeout was indistinguishable from a non-trigger (`--timeout 30 --num-workers 10`) |
+| 3 | Triggers | **An installed skill cannot be measured through a stand-in** — the model calls the real one |
+| 4 | Triggers | Only the first tool call is examined, so starting with `Bash` is recorded as a non-trigger |
+| 5 | Conventions | `harnessctl init` was never run in the scratch repository, so the rules were simply not there |
+| 6 | Conventions | The task was a one-line edit — a size our R1-3 **explicitly exempts** |
+| 7 | Conventions (R6) | `harnessctl` was found in the **installed cache**, so it installed the released payload rather than the rule just written. The new rule is not in that payload, so the effect is structurally zero |
+| 8 | Conventions (R6) | The fixture's verification command was `./check.sh`, and **the allow tier's only runner was `make`, so it was refused.** 0/3 on both arms was the shadow of permissions, not of the rule |
+| 9 | Tiers | **The grader counted a correct answer wrong.** `scripts/verify-doc-refs.sh` is the same answer as `verify-doc-refs.sh` but the directory prefix made it a MISS, and `tr` died with `Illegal byte sequence` on a Korean response, skipping normalisation entirely. Three tiers appearing side by side at 90% was **each tier hitting the grader once** |
 
-**7 과 8 이 같은 자리를 두 방향에서 찌른다**: 재려는 규칙이 *페이로드에 있는가* 와, 규칙이 명령하는 행동이 *권한상 가능한가*. 둘 다 화면에는 "규칙이 아무것도 안 벌었다" 로 나온다. 그래서 `bench-convention` 은 이제 워킹트리의 `harnessctl` 을 먼저 찾고 **어느 사본을 썼는지 출력한다**, 그리고 8 은 원장에 권한 gap 으로 올라갔다 — 픽스처를 `make check` 로 바꾼 것은 계측기를 허용된 러너에 맞춘 것이지 gap 을 고친 것이 아니다.
+**7 and 8 stab the same spot from two directions**: is the rule you are measuring *in the payload*, and is the behaviour the rule mandates *permitted*. Both appear on screen as "the rule earned nothing". So `bench-convention` now looks for the working tree's `harnessctl` first and **prints which copy it used**, and 8 went into the ledger as a permissions gap — changing the fixture to `make check` fitted the instrument to an allowed runner; it did not fix the gap.
 
-**규칙: 음성 결과를 얻으면 결론 내기 전에 기제가 발동할 조건이 갖춰졌는지부터 확인한다.** 트리거 측정에는 설치되지 않은 확실한 양성 대조군을 같이 돌린다 — 2·3·4 는 그 대조군 하나로 전부 걸러졌을 것이다. 그리고 **쿼리당 1회는 측정이 아니다**: `results-deck` 은 1회로 재면 수정 전후 둘 다 4/6 인데 구성원만 달랐다.
+**Rule: when you get a negative result, check whether the conditions for the mechanism to fire were met before concluding anything.** Run a positive control alongside any trigger measurement — an uninstalled skill that must certainly fire. Traps 2, 3 and 4 would all have been caught by that one control. And **one run per query is not a measurement**: measured once, `results-deck` is 4/6 both before and after the fix, with different members.
 
-### 아직 측정하지 않은 것
+### Not yet measured
 
-- **규약 중 PR 단계 둘.** 위에 적은 두 이유로 로컬에서는 불가능하다. 실제 forge 에 throwaway 저장소를 두면 된다.
-- **`CLAUDE.md` 나머지 원칙.** 브랜치 규약은 쟀지만 "Simplicity First" 가 실제로 코드를 단순하게 만드는지는 채점 기준을 세우기 어렵다. `skill-creator` 의 grader 서브에이전트가 이 자리를 메울 후보다.
-- **설치기는 원리상 A/B 대상이 아니다.** "제거하면 원래대로" 는 비교군이 있는 주장이 아니라 불변량이고, `scripts/verify-install.sh` 의 92 assertion 이 그것을 단정한다 (특히 uninstall 후 `settings.json` 정준 동일).
+- **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
+- **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 92 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
 
 ## 5. Guide vs Guard
 
-- **Guard** — 통과 못 하면 도구 호출 자체가 성립하지 않는다. Permissions · 차단 훅. 사고 방어선은 항상 여기다.
-- **Guide** — 에이전트의 판단으로 따른다. Conventions · Skills · 정보성 훅. 위반해도 도구는 호출된다.
+- **Guard** — fail it and the tool call does not happen at all. Permissions and blocking hooks. The line of defence against accidents is always here.
+- **Guide** — followed by the agent's judgement. Conventions, skills, informational hooks. Violate one and the tool still runs.
 
-가드를 가이드로 대체할 수 없고 (에이전트는 가이드를 무시할 수 있다), 가이드를 가드로 강제할 수도 없다 (모든 케이스를 사전에 인코딩할 수 없다). **두 레이어가 모두 필요하다.**
+A guard cannot be replaced by a guide (the agent can ignore a guide), and a guide cannot be enforced as a guard (not every case can be encoded in advance). **Both layers are necessary.**
 
-따라오는 규칙 하나: **차단하는 훅만 exit 2 를 쓴다.** 정보성 훅이 턴을 막으면 사용자는 그 훅을 끄고, 그러면 정보도 함께 사라진다.
+One rule follows: **only blocking hooks use exit 2.** An informational hook that stops a turn gets switched off by the user, and the information goes with it.
 
-## 6. 소유권 모델
+## 6. The ownership model
 
-컨슈머의 설정은 우리 것과 그들 것이 섞이는 공간이다. 무엇이 우리 것인지 판정하는 근거는 이제 둘로 줄었다 — 훅이 플러그인으로 넘어가면서 가장 복잡했던 하나가 사라졌다.
+A consumer's configuration is a space where our things and theirs mix. There are now two bases for deciding what is ours — the most complicated one disappeared when hooks moved into the plugin.
 
-- **플러그인 캐시 = 컴포넌트 소유권.** 훅·스킬·커맨드·검증기는 플러그인 디렉터리 안에만 살고 컨슈머 트리에 복사되지 않는다. `settings.json` 의 `hooks` 블록은 **우리가 손대지 않는다** — 검증기가 설치 전후 `.hooks` 바이트 동일을 단정한다. 예전의 경로 마커와 strip-then-append 는 폐기됐다.
-- **`harness-manifest.json` = 나머지 전부의 영수증.** 실제로 추가한 permission 문자열, 설정한 스칼라 키, 우리가 만든 JSON 컨테이너, `.gitignore` 에 붙인 줄. 제거는 이 영수증만 되돌린다 — 컨슈머가 원래 갖고 있던 값은 같은 문자열이어도 지워지지 않는다.
+- **The plugin cache is component ownership.** Hooks, skills, commands and verifiers live only inside the plugin directory and are never copied into the consumer tree. The `hooks` block of `settings.json` is **something we do not touch** — a verifier asserts `.hooks` is byte-identical before and after install. The old path marker and strip-then-append are retired.
+- **`harness-manifest.json` is the receipt for everything else.** The permission strings actually added, the scalar keys set, the JSON containers we created, the line appended to `.gitignore`. Uninstall reverses this receipt and nothing more — a value the consumer already had is not deleted even when it is the same string.
 
-두 tier 는 그대로다: **managed** (재설치 시 덮어씀 — 현재는 `rules/` 뿐) 와 **template** (최초 1회만, 이후 컨슈머 소유 — `CLAUDE.md` 와 경로 설정 둘).
+The two tiers are unchanged: **managed** (overwritten on reinstall — currently just `rules/`) and **template** (copied once, the consumer's thereafter — `CLAUDE.md` and the two path config files).
 
-`harnessctl` 은 `bin/` 으로 배포되어 Bash 도구 PATH 에 자동으로 오르고, 자기 페이로드를 `<자기 위치>/../declarative` 로 찾는다. 플러그인 캐시가 충실한 복사본이라 이 상대 경로 하나가 캐시에서도 소스 체크아웃에서도 동작한다 — `${CLAUDE_PLUGIN_ROOT}` 조차 필요 없다.
+`harnessctl` ships in `bin/`, which puts it on the Bash tool's PATH automatically, and it finds its own payload at `<its own location>/../declarative`. The plugin cache is a faithful copy, so that one relative path works from the cache and from a source checkout alike — not even `${CLAUDE_PLUGIN_ROOT}` is needed.
 
-설치되는 index 파일은 **만들지 않는다.** 참조 하네스에서 손으로 유지하는 인벤토리가 실제로 drift 한 사례를 관측했다. 인벤토리는 본 문서 한 곳에 있고, 파일 목록은 트리에서 파생된다.
+**No index file is installed.** We observed a hand-maintained inventory in a reference harness actually drift. The inventory lives in this one document, and the file list is derived from the tree.
 
 ## 7. Backlog
 
-**보류 중 — 두 번째 발생을 기다린다** (§2 에 대응하는 줄이 있고, 아직 한 번만 겪었거나 아예 안 겪은 것):
+**Held, waiting for the second occurrence** (there is a corresponding row in §2, and it has happened once or not at all):
 
-- ✅ ~~Worktree 도우미~~ — 만들지 않기로 했다. Superpowers 의 `using-git-worktrees` 가 upstream 에서 해결한다. 외부 의존을 채택해서 얻은 가장 직접적인 이득이고, 우리가 안 쓴 코드가 곧 이득이다.
-- ⏳ Release / changelog 스킬 — `dev` 모듈 후보. 릴리스 규약이 프로젝트마다 너무 달라 아직 공통분모가 안 보인다.
-- ⏳ 사후 출력 스크러버 — PreToolUse 로 명령을 막는 것과 PostToolUse 로 *출력* 에서 민감 문자열을 잡는 것은 다른 사고다. 미러 쌍 패턴 자체는 검증됐지만 (참조 하네스의 PHI 쌍), 범용 하네스가 쓸 payload 가 없다. 사이트별 패턴이 필요해지면 `protected-paths` 처럼 컨슈머 소유 설정 파일로.
-- ⏳ **모델·effort 오케스트레이션.** 현재 하네스는 컨슈머에게 sub-agent 를 하나도 배포하지 않아 이 레버가 아예 없다. 플러그인 agent frontmatter 는 `model` 과 `effort` 를 지원하므로 (`hooks`·`mcpServers`·`permissionMode` 는 보안상 불가), 메인 루프는 Opus high 로 두고 기계적인 위임 작업만 싼 티어로 내리는 구성이 가능하다. 이 세션 자체가 근거다 — 서브에이전트 12개를 띄웠고 전부 세션 모델을 상속했는데, 경로 치환·개수 세기·문서 갱신처럼 Opus 가 필요 없던 것이 절반이다. 다만 *어떤 일을 어느 티어로 내릴지* 는 판단이 필요하고, 잘못 내리면 싼 모델이 놓친 것을 비싼 모델이 다시 하느라 더 든다. 후보 축: 탐색·개수 세기·기계적 편집 = 낮음, 설계·적대적 검토·근본원인 = 높음.
-- ⏳ `hooks.json` matcher 앵커링. 현재 `Read|Write|...|Bash` 는 앵커가 없다. Claude Code 가 matcher 를 정규식으로 다루면 `Bash` 가 `BashOutput` 에도 걸려 호출마다 가드 네 개가 헛돈다 (각각 stdin 을 읽고 jq 를 부르고 exit 0). `^(...)$` 로 감싸면 공짜로 없앨 수 있지만, **매칭 방식을 확인하지 못했다** — 정규식이 아니라 문자열 비교라면 앵커가 오히려 매칭을 깬다. 참조 하네스 둘 다 앵커 없이 쓰므로 관례를 따랐다. 확인되면 그때 바꾼다.
-- ⏳ `harnessctl --scope local` (`settings.local.json` 대상) — 커밋하지 않을 권한을 넣을 자리. 실수요가 아직 없다.
-- ⏳ 언어 프로파일 확대 (`go` · `rust` · `java` …) — manifest 하나면 되지만 실제로 쓸 때 추가한다.
-- ⏳ `harness-frontend` 프로파일 — `ui-ux-pro-max` 가 스타일·팔레트·스택 레퍼런스를 크게 싣고 있어 후보는 명확하다. 다만 이 저장소에서 발생 0회 ([ADR-0011](adr/0011-ecosystem-survey.md)).
-- ⏳ 개발 쪽 세션 인수인계 — `handoff` 계열이 있고 연구 쪽은 5문서 세트가 이미 덮는다. 개발 쪽 실수요가 두 번 나오면.
-- ✅ 세션 기록 — `claude-mem` 류를 보류한 이유(도구 입출력 전체 저장)를 뒤집어 **저장하지 않는 것을 설계로 삼은** [`harness-log`](harness-log.md) 로 답했다. 프롬프트와 최종 답변만 남기고 도구 출력·서브에이전트·컴팩션 요약은 버린다. 검증 44케이스 중 10개가 *새면 안 되는 것* 을 본다. `claude-mem` 자체는 여전히 보류다 ([ADR-0011](adr/0011-ecosystem-survey.md)).
-- ⏳ MCP 서버 등록 — 병합 대상이 `.mcp.json` 으로 늘어난다. 설치기의 소유권 모델을 그 파일에도 적용해야 하므로 실수요가 생긴 뒤에.
-- ⏳ `dev`: "이 변경으로 거짓이 된 문서·설정 예시" 리뷰 항목. 초안까지 썼다가 뺐다 — 언어 무관하고 그럴듯하지만 아직 발생 0회이고, 정확히 "있으면 좋을 것 같아서" 추가하는 모양이다. 실제 리뷰가 stale 한 README 를 놓치면 그것이 1회차.
-- ⏳ `research`: `FINDINGS.md` 템플릿의 negative-results 절. 죽은 길을 다시 걷지 않게 한다는 근거는 ledger 를 정당화하는 근거와 같다. 템플릿은 뼈대여야 하므로 일단 뺐다.
+- ✅ ~~Worktree helper~~ — decided against building one. Superpowers' `using-git-worktrees` solves it upstream. The most direct gain from adopting an external dependency, and code we did not write is the gain itself.
+- ⏳ Release / changelog skill — a `dev` module candidate. Release conventions differ too much per project for a common core to be visible yet.
+- ⏳ A post-hoc output scrubber — blocking a command with PreToolUse and catching sensitive strings in *output* with PostToolUse are different accidents. The mirror-pair pattern itself is proven (the reference harness's PHI pair), but a general-purpose harness has no payload to use. If site-specific patterns are needed, it goes in a consumer-owned config file like `protected-paths`.
+- ⏳ **Model and effort orchestration.** The harness currently ships no sub-agents to consumers, so this lever does not exist. Plugin agent frontmatter supports `model` and `effort` (`hooks`, `mcpServers` and `permissionMode` are refused for security), so keeping the main loop on Opus high while pushing mechanical delegation down to a cheaper tier is possible. This session is the evidence — 12 subagents were launched and all inherited the session model, and half of them (path substitution, counting, updating documents) did not need Opus. But *which work goes to which tier* takes judgement, and getting it wrong costs more when the expensive model redoes what the cheap one missed. Candidate axis: exploration, counting and mechanical edits low; design, adversarial review and root cause high.
+- ⏳ Anchoring the `hooks.json` matcher. Today `Read|Write|...|Bash` has no anchors. If Claude Code treats a matcher as a regex, `Bash` also matches `BashOutput` and four guards spin uselessly on every call (each reading stdin, calling jq, exiting 0). Wrapping in `^(...)$` would remove that for free, but **we could not confirm how matching works** — if it is string comparison rather than regex, the anchors break matching instead. Both reference harnesses run without anchors, so we followed the convention. When it is confirmed, change it.
+- ⏳ `harnessctl --scope local` (targeting `settings.local.json`) — the place for permissions you will not commit. No real demand yet.
+- ⏳ More language profiles (`go`, `rust`, `java`, …) — one manifest each, added when actually used.
+- ⏳ A `harness-frontend` profile — `ui-ux-pro-max` carries a large body of style, palette and stack references, so the candidate is clear. Zero occurrences in this repository, though ([ADR-0011](adr/0011-ecosystem-survey.md)).
+- ⏳ Session hand-off on the development side — the `handoff` family exists and the research side is already covered by the five-document set. When real demand appears twice on the development side.
+- ✅ Session records — answered by [`harness-log`](harness-log.md), which inverts the reason `claude-mem` was held (storing all tool I/O) by making **not storing** the design. It keeps prompts and final answers and drops tool output, subagent transcripts and compaction summaries. Ten of its 44 verification cases watch for *what must not appear*. `claude-mem` itself is still held ([ADR-0011](adr/0011-ecosystem-survey.md)).
+- ⏳ MCP server registration — the merge surface grows to include `.mcp.json`. The installer's ownership model would have to apply to that file too, so: after real demand.
+- ⏳ `dev`: a review item for "documents and configuration examples this change made false". A draft was written and pulled — it is language-agnostic and plausible, but has zero occurrences, and it looks exactly like adding something because it seems nice to have. If a real review misses a stale README, that is occurrence 1.
+- ⏳ `research`: a negative-results section in the `FINDINGS.md` template. The reasoning (stop people walking a dead path twice) is the same reasoning that justifies the ledger. A template should be a skeleton, so it was left out for now.
 
-**기록해 둔 위험** (해결책이 아직 없고, 컨슈머에서 먼저 드러날 것):
+**Recorded risks** (no solution yet, and they will show up in a consumer first):
 
-- **5문서 세트는 프로젝트에 "run" 이 있다고 가정한다.** 읽기와 종합이 대부분인 연구 (문헌 조사, 설계 검토) 에서는 ledger 가 얇고 `ARTIFACTS.md` 에 넣을 것이 없다. 규율이 깨지지는 않지만 다섯 중 둘이 비고, **비어 있는 의무 문서는 세트 전체를 무시하도록 학습시킨다.** 이 경우의 답은 invariant 를 약화하는 것이 아니라 가벼운 변종을 따로 두는 것이다 — 실제 사례가 나오면.
-- **`ARTIFACTS.md` 의 "모든 주장은 run 으로 추적된다" 는 세다.** 수치가 세션보다 오래 사는 프로젝트에는 정확히 맞고, 아무도 인용하지 않는 일회성 분석에는 순수 오버헤드다. 그럼에도 invariant 로 둔 이유는 "중요한 수치는 기록한다" 로 약화하면 집행 불가능해지기 때문이다.
-- **관측된 도구 마찰**: subagent 의 Write 가 `templates/FINDINGS.md` 에서 파일명 패턴 매칭으로 차단됐다 (리포트 파일 작성 가드). `research` 모듈은 그 이름의 템플릿을 셋 배포하므로, subagent 로 이 템플릿들을 편집·설치하려는 쪽은 같은 벽을 만난다. 하네스가 고칠 수 있는 문제가 아니라 알고 있어야 하는 사실이다.
+- **The five-document set assumes the project has runs.** In research that is mostly reading and synthesis (a literature survey, a design review) the ledger is thin and there is nothing to put in `ARTIFACTS.md`. The discipline does not break, but two of the five sit empty, and **an empty mandatory document teaches people to ignore the whole set.** The answer in that case is not to weaken the invariant but to keep a lighter variant separately — when a real case appears.
+- **`ARTIFACTS.md`'s "every claim traces to a run" is strong.** It is exactly right for a project whose numbers outlive the session, and pure overhead for a one-off analysis nobody will quote. It is kept as an invariant anyway, because weakening it to "record the important numbers" makes it unenforceable.
+- **Observed tool friction**: a subagent's Write was blocked on `templates/FINDINGS.md` by filename pattern matching (a report-file writing guard). The `research` module ships three templates with those names, so anyone editing or installing them through a subagent hits the same wall. Not something the harness can fix, but something to know.
 
-**의도적으로 안 하는 것**:
+**Deliberately not doing**:
 
-- 설치되는 index 파일 (§6).
-- `install.sh` 의 jq 대체 경로. 훅이 jq 를 요구하므로 jq 없는 설치는 전부 자기 비활성화된 가드를 배포하는 것이고, 정직한 실패가 낫다 ([ADR-0002](adr/0002-hook-contract.md)).
-- 모듈 단위 부분 제거. `--with` 로 모듈을 빼면 그 파일들이 지워지므로 별도 명령이 필요 없다.
+- An installed index file (§6).
+- A jq-free path in `install.sh`. Hooks require jq, so an install without it delivers nothing but self-disabled guards, and an honest failure is better ([ADR-0002](adr/0002-hook-contract.md)).
+- Per-module partial uninstall. Dropping a module with `--with` deletes its files, so no separate command is needed.
 
-## 8. 디렉터리 구조
+## 8. Directory layout
 
 ```
 .
-├── .claude-plugin/marketplace.json     # 6개 플러그인 카탈로그
+├── .claude-plugin/marketplace.json     # catalogue of the six plugins
 ├── plugins/
 │   ├── harness-core/
 │   │   ├── .claude-plugin/plugin.json
-│   │   ├── hooks/hooks.json            # 이벤트·matcher 등록
-│   │   ├── hooks/*.sh                  # 차단 4 + 정보 2
+│   │   ├── hooks/hooks.json            # event and matcher registration
+│   │   ├── hooks/*.sh                  # 4 blocking + 2 informational
 │   │   ├── skills/pr-create/SKILL.md
 │   │   ├── commands/verify.md
 │   │   ├── scripts/{_verify-lib,verify-*}.sh
-│   │   ├── bin/harnessctl              # init · doctor · uninstall
-│   │   ├── bin/harness-log             # 세션 기록 → 자체완결 HTML
-│   │   └── declarative/                # 플러그인이 못 나르는 것
-│   │       ├── settings-fragment.json  # permissions + scalars (hooks 없음)
-│   │       ├── CLAUDE.md               # 템플릿
+│   │   ├── bin/harnessctl              # init, doctor, uninstall
+│   │   ├── bin/harness-log             # session history → self-contained HTML
+│   │   └── declarative/                # what a plugin cannot carry
+│   │       ├── settings-fragment.json  # permissions + scalars (no hooks)
+│   │       ├── CLAUDE.md               # template
 │   │       ├── templates/{protected,allowed}-paths.txt
 │   │       └── rules/{core,dev,research}/*.md
 │   ├── harness-dev/            # skills/pr-review + deps: core, superpowers
 │   ├── harness-research/       # skills/{research-notes,repro-checklist} + deps: core
-│   ├── harness-slides/         # deps: core — results-deck 스킬 + check-claims.sh
+│   ├── harness-slides/         # deps: core — the results-deck skill + check-claims.sh
 │   ├── harness-python/         # deps: core, pyright-lsp
 │   └── harness-typescript/     # deps: core, typescript-lsp
-├── install.sh                          # 얇은 bootstrap
+├── install.sh                          # thin bootstrap
 ├── scripts/verify-{install,frontmatter}.sh
-├── Makefile · CLAUDE.md · .claude/     # 저장소 자체 개발용
-├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · 플러그인 매니페스트
+├── Makefile · CLAUDE.md · .claude/     # developing this repository itself
+├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin manifests
 └── docs/ (agent-layer.md · harness-log.md · adr/0001..0013 · hooks/*.md)
 ```
