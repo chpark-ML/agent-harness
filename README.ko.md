@@ -119,13 +119,13 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 less install.sh && bash install.sh --profile dev,python
 
 # 2) 리비전에 고정한다 — main 이 움직여도 받는 것이 안 바뀐다
-bash install.sh --profile dev --ref <commit-sha>
+bash install.sh --profile dev --ref v0.1.0
 
 # 3) 저장소를 받아서 실행한다 (이전 방식)
 git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/install.sh --profile dev
 ```
 
-**릴리스 태그는 아직 없다.** `--ref` 는 태그·브랜치·커밋 SHA 를 다 받지만 이 저장소는 태그를 하나도 발행한 적이 없으므로, 지금 고정할 수 있는 것은 커밋 SHA 다.
+`--ref` 는 태그·브랜치·커밋 SHA 를 다 받는다. 릴리스 태그는 **스냅샷 전체** 를 버저닝한다 — 설치기·선언적 페이로드·그 리비전의 플러그인 버전까지. 여섯 플러그인의 자체 버전과는 독립이다 ([ADR-0013](docs/adr/0013-release-tags.md)).
 
 **클론은 원래 필요 없었다.** 설치기는 체크아웃에서 아무것도 읽지 않는다 — `harnessctl` 을 *플러그인 캐시 → 마켓플레이스 클론 → 이 체크아웃* 순으로 찾는데, 앞의 둘은 스크립트 자신이 방금 만든 것이다. 세 번째는 fallback 일 뿐이라 클론은 스크립트 파일 하나를 얻는 용도였다.
 
