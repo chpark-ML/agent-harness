@@ -5,75 +5,75 @@ description: "Use before starting a run whose result might be quoted, when valid
 
 # repro-checklist
 
-재현성은 실행 *이후* 에 확보할 수 없다. 빠뜨린 것은 대부분 다시 돌려야 알 수 있고, 그때는 이미 원래 결과가 무엇이었는지 확인할 방법이 없다. 그래서 이 점검은 **실행 전** 에 한다.
+Reproducibility cannot be added *after* a run. What was missed is usually only discovered by running again, and by then there is no way to confirm what the original result even was. So this check happens **before** the run.
 
-기둥은 셋 — **seed · environment · config**. 셋 중 하나라도 비면 "같은 걸 돌렸는데 다르다" 를 진단할 수 없다.
+Three pillars — **seed · environment · config**. With any one of them empty, "I ran the same thing and got something different" cannot be diagnosed.
 
-**어떤 실행에 적용하는가.** 아래 규율은 *결과가 인용될 수 있는 실행* 을 대상으로 한다 — 문서·발표·PR 에 수치로 들어가거나, 나중에 비교 기준이 되는 실행. 탐색 중의 반복 실행에는 적용하지 않는다. 그 구분이 중요한 이유는 §2 의 "dirty tree 면 fail-fast" 같은 항목 때문이다: 인용될 실행에는 맞지만, dirty 가 정상 상태인 탐색 단계에 강요하면 규율이 아니라 방해가 되고, 방해가 된 규율은 곧 무시된다. **탐색을 인용으로 승격시키는 시점** — 이 수치를 어딘가에 적기로 한 순간 — 이 이 체크리스트가 걸리는 지점이다.
+**Which runs this applies to.** The discipline below targets *runs whose results might be quoted* — anything that becomes a number in a document, a talk or a PR, or a baseline for later comparison. It does not apply to repeated runs during exploration. That distinction matters because of items like §2's "fail fast on a dirty tree": correct for a run that will be quoted, and an obstruction during exploration where dirty is the normal state — and a discipline that obstructs is a discipline that gets ignored. **The moment exploration is promoted to a citation** — when you decide to write this number down somewhere — is when this checklist applies.
 
-## 1. Seed — 난수 소스를 *전부* 열거하고 고정한다
+## 1. Seed — enumerate *every* source of randomness and pin it
 
-전역 시드 하나를 박는 것으로 끝나지 않는다. 놓치기 쉬운 순서로 적는다.
+Setting one global seed is not the end of it. Listed in order of how easily each is missed.
 
-- **데이터 순서·셔플·샘플링** — 분할·셔플·부트스트랩·서브샘플링. 각각 자체 RNG 를 쓰는 경우가 많다.
-- **병렬 worker** — worker 마다 시드를 파생시키지 않으면 스케줄링에 따라 소비되는 난수가 달라진다. 반대로 모두 같은 시드를 주면 worker 들이 동일한 난수열을 쓴다. 둘 다 틀렸고, 정답은 `base_seed + worker_index` 류의 결정적 파생이다.
-- **집계 순서** — 병렬 리듀스·비순서 컬렉션 순회·부동소수점 합산은 시드와 무관하게 결과를 흔든다. 시드를 고정했는데도 미세하게 달라지면 여기부터 본다.
-- **해시 시딩** — 런타임이 프로세스마다 해시를 randomize 하면 set·dict 순회 순서가 실행마다 바뀐다. 그 순서가 어딘가에서 결과로 새면 시드를 아무리 고정해도 재현 안 된다.
-- **시간·PID·호스트명 기반 기본값** — 시드를 안 주면 이것들로 초기화되는 라이브러리가 흔하다. "기본값이니 괜찮다" 는 재현 불가와 동의어다.
-- **ID 생성** — UUID·랜덤 접미사가 출력 경로나 정렬 키에 들어가면 그것도 난수 소스다.
+- **Data order, shuffling, sampling** — splits, shuffles, bootstrap, subsampling. Each often has its own RNG.
+- **Parallel workers** — without deriving a seed per worker, the random numbers consumed vary with scheduling. Give them all the same seed and every worker draws the identical sequence. Both are wrong; the answer is a deterministic derivation such as `base_seed + worker_index`.
+- **Aggregation order** — parallel reduces, iteration over unordered collections and floating-point summation move results independently of any seed. If a pinned seed still drifts slightly, start here.
+- **Hash seeding** — when the runtime randomises hashing per process, set and dict iteration order changes every run. If that order leaks into a result anywhere, no amount of seed pinning reproduces it.
+- **Defaults derived from time, PID or hostname** — plenty of libraries initialise from these when no seed is given. "It is the default, so it is fine" is a synonym for irreproducible.
+- **ID generation** — UUIDs and random suffixes are a source of randomness too, once they reach output paths or sort keys.
 
-**결정론 옵션이 있으면 켜고, 그 비용을 기록한다.** 상당수 런타임은 결정적 모드를 제공하면서 속도를 희생한다. 켰는지 여부가 결과 해석을 바꾸므로 run record 에 남긴다.
+**Turn on determinism options where they exist, and record what they cost.** Many runtimes offer a deterministic mode that gives up speed. Whether it was on changes how the result is read, so it belongs in the run record.
 
-## 2. Environment — 실행을 감싼 모든 것
+## 2. Environment — everything wrapped around the run
 
-- **의존성 정확한 버전** — lockfile 이 SOT. 없으면 실행 시점의 freeze 출력을 run 디렉터리에 저장한다. "requirements 에 적힌 범위" 는 버전이 아니다.
-- **코드 리비전** — 커밋 해시 + **dirty 여부**. dirty tree 에서 나온 결과는 재현 불가다. 경고가 아니라 fail-fast 로 처리하는 편이 싸다.
-- **런타임 버전** — 인터프리터·컴파일러·컨테이너 이미지 태그(가능하면 digest).
-- **하드웨어와 병렬도** — CPU 모델·코어 수·가속기 모델·드라이버 버전·스레드 수. 결과를 바꾸는 하드웨어 사실만 남기면 되지만, *무엇이 바꾸는지 모를 때는 남기는 쪽* 이 싸다.
-- **locale·timezone** — 정렬 순서와 날짜 파싱을 바꾼다. 조용히 다르고, 다르다는 걸 알아채기 가장 늦는 항목이다.
-- **입력 데이터의 식별자와 해시** — 경로만으로는 부족하다. 그 경로의 내용이 갱신되면 같은 명령이 다른 결과를 낸다.
+- **Exact dependency versions** — the lockfile is the source of truth. Without one, save a freeze taken at run time into the run directory. "The range in requirements" is not a version.
+- **Code revision** — commit hash **and whether the tree was dirty**. A result from a dirty tree is not reproducible. Failing fast is cheaper than warning.
+- **Runtime versions** — interpreter, compiler, container image tag (digest where possible).
+- **Hardware and parallelism** — CPU model, core count, accelerator model, driver version, thread count. Only the hardware facts that change results need keeping, but *when you do not know which ones do*, keeping them is cheaper.
+- **Locale and timezone** — they change sort order and date parsing. They differ silently, and this is the item people notice last.
+- **Input data identifiers and hashes** — a path is not enough. If the content at that path is updated, the same command produces a different result.
 
-## 3. Config — 해석된 최종 설정을 출력 옆에 저장한다
+## 3. Config — save the resolved configuration next to the output
 
-**설정 파일 + "오버라이드는 기억하고 있다" 는 config 가 아니다.** 저장해야 하는 것은 파일·환경변수·CLI 인자·기본값이 모두 합쳐진 *resolved* 설정이다.
+**A config file plus "I remember the overrides" is not a config.** What must be saved is the *resolved* configuration: files, environment variables, CLI arguments and defaults, merged.
 
-- **기본값도 포함한다.** 명시하지 않은 값은 라이브러리 기본값을 따르고, 그 기본값은 버전이 올라가면 바뀐다. 그때 옛 결과가 왜 안 나오는지 알 방법이 사라진다.
-- **실행 명령 원문** (`argv` 그대로) 을 함께 저장한다. resolved config 와 중복처럼 보이지만, 사람이 무엇을 의도했는지는 명령 쪽에만 남는다.
-- **환경변수는 사용한 키만.** 전체 env dump 는 시크릿 유출 경로다.
-- **출력과 같은 디렉터리에 둔다.** 다른 곳에 두면 며칠 안에 어느 config 가 어느 출력에 대응하는지 모르게 된다.
+- **Include the defaults.** Anything unspecified follows a library default, and defaults change between versions. When they do, there is no way left to work out why the old result will not come back.
+- **Save the command verbatim** (`argv` as it was) alongside it. It looks redundant next to the resolved config, but only the command records what a human intended.
+- **Environment variables: only the keys used.** A full env dump is a route for leaking secrets.
+- **Put it in the same directory as the output.** Anywhere else and within days nobody can tell which config produced which output.
 
-## 4. 각 run 과 함께 남기는 것
+## 4. What to keep with each run
 
-run 디렉터리 하나에 아래가 다 있으면 재실행 가능하다. 없으면 그만큼 못 한다.
+A run directory holding all of the below can be re-run. Whatever is missing is what cannot be.
 
-- resolved config + 실행 명령 원문
-- 환경 캡처 (§2 항목들, 기계가 읽을 수 있는 형식으로)
-- 입력 식별자 + 해시
-- 사용한 시드 (파생 규칙 포함)
-- **로그** — 메트릭과 같은 등급의 산출물이다. 메트릭 파일만 보관하고 로그를 버리면 수치는 남고 그 수치가 어떤 경로로 나왔는지는 사라진다.
-- 출력물의 해시
-- **"같다" 의 정의** — 결정적 모드면 bit 일치, 아니면 metric 별 tolerance. 실행 *전* 에 정해 둔다. 나중에 정하면 나온 차이에 맞춰 정하게 된다.
+- resolved config and the verbatim command
+- environment capture (the items in §2, in a machine-readable form)
+- input identifiers and hashes
+- the seeds used, including the derivation rule
+- **logs** — an artefact of the same rank as metrics. Keeping the metrics file and discarding the logs leaves the number and loses the path it came from
+- hashes of the outputs
+- **the definition of "the same"** — bit equality in deterministic mode, otherwise a per-metric tolerance. Decide it *before* the run. Decided afterwards, it gets fitted to the difference you observed.
 
-기록 위치와 어느 노트 문서에 연결하는지는 [`research-notes` 스킬](../research-notes/SKILL.md) — 인용될 수치는 그쪽 `ARTIFACTS.md` 에 행이 있어야 한다.
+Where records live and which note document they attach to is the [`research-notes` skill](../research-notes/SKILL.md) — a number that will be quoted needs a row in its `ARTIFACTS.md`.
 
-## 5. 재현을 시도할 때
+## 5. When attempting a reproduction
 
-1. 기록된 리비전으로 코드를 되돌린다 (dirty 였다면 여기서 이미 실패 — 그 사실을 기록하고 중단).
-2. lockfile / freeze 출력으로 의존성을 복원한다.
-3. 입력 해시를 대조한다. 불일치면 그 이후 비교는 의미 없다.
-4. 같은 시드·같은 병렬도로 실행한다. **병렬도가 다르면 시드가 같아도 다를 수 있다.**
-5. 사전에 정해 둔 tolerance 로 판정한다.
-6. 불일치면 **두 결과를 모두 보존한다.** 한쪽으로 덮어쓰지 않는다 — 차이 자체가 데이터다.
+1. Return the code to the recorded revision. (If it was dirty, this already failed — record that and stop.)
+2. Restore dependencies from the lockfile or freeze output.
+3. Compare input hashes. On a mismatch, nothing after this point is meaningful.
+4. Run with the same seeds and the same parallelism. **Different parallelism can differ even with identical seeds.**
+5. Judge against the tolerance decided in advance.
+6. On a mismatch, **keep both results.** Do not overwrite one with the other — the difference is itself data.
 
-## 6. 재현 불가 판정
+## 6. Declaring something irreproducible
 
-아래 중 하나라도 해당하면 그 수치는 재현 불가이고, 인용하기 전에 다시 만들어야 한다.
+If any of the following holds, the number is irreproducible and has to be regenerated before it is quoted.
 
-- dirty 작업 트리에서 나왔다.
-- 의존성이 lockfile 없이 "최신" 으로 설치됐다.
-- 명령을 손으로 고쳐 돌렸고 그 명령이 어디에도 없다.
-- 입력이 in-place 로 갱신되는 경로에 있고 해시가 없다.
-- 시드는 고정했지만 병렬도·worker 수가 기록되지 않았다.
-- 출력은 있는데 그것을 만든 config 가 다른 곳에 있거나 사라졌다.
-- 산출물이 세션 임시 디렉터리에만 존재한다.
-- 무엇을 "같다" 로 볼지 정해두지 않았다 — 판정 기준이 없으면 재현 성공도 실패도 선언할 수 없다.
+- It came from a dirty working tree.
+- Dependencies were installed as "latest" with no lockfile.
+- The command was edited by hand and exists nowhere.
+- The input sits at a path that is updated in place, with no hash.
+- The seed was pinned but parallelism and worker count were not recorded.
+- The output exists and the config that produced it is elsewhere, or gone.
+- The artefacts exist only in a session temp directory.
+- Nothing defines what counts as "the same" — with no criterion, neither success nor failure can be declared.

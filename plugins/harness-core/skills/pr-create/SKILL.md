@@ -5,13 +5,13 @@ description: "Use when the user wants the current work turned into a pull reques
 
 # pr-create
 
-`.claude/rules/harness/workflow.md` R1–R4 를 end-to-end 로 실행한다. **PR open 까지가 범위** — 머지는 사용자가 한다. 머지 직후의 harness retro (R3.1) 도 별도 trigger.
+Runs `.claude/rules/harness/workflow.md` R1–R4 end to end. **Scope ends at PR open** — merging is the user's. The post-merge harness retro (R3.1) is a separate trigger.
 
-## Step 0 — PR 단위인지 먼저 판정
+## Step 0 — Is this a PR unit at all?
 
-R1 의 세 case 로 판정한다. 단일 파일 typo·한 줄 수정·임시 탐색이면 **여기서 멈추고** 결과만 보고한다. 커밋도 푸시도 하지 않는다. 사용자가 명시적으로 "PR 올려" 라고 했으면 이 판정은 건너뛴다.
+Judge with R1's three cases. A single-file typo, a one-line fix, throwaway exploration — **stop here** and report the result. Do not commit, do not push. Skip this judgement when the user explicitly said "open a PR".
 
-## Step 1 — 상태 파악
+## Step 1 — Establish state
 
 ```bash
 git status --porcelain
@@ -19,110 +19,110 @@ git branch --show-current
 git log --oneline @{upstream}..HEAD 2>/dev/null || git log --oneline -5
 ```
 
-세 가지를 확인한다: 어떤 파일이 변경됐나, 지금 어느 브랜치인가, 이미 커밋됐지만 안 올라간 게 있나.
+Three things: what changed, which branch you are on, and whether something is committed but unpushed.
 
-**변경 파일 목록을 사용자에게 보여주고**, 그 중 이번 PR 에 들어가면 안 되는 것 (다른 작업의 잔재, 로컬 실험, 실수로 생긴 artifact) 이 있는지 확인한다. `git add -A` 를 무비판적으로 쓰지 않는다.
+**Show the user the list of changed files** and confirm none of them belong to something else — leftovers from other work, local experiments, accidental artefacts. Do not reach for `git add -A` uncritically.
 
-## Step 2 — 브랜치
+## Step 2 — Branch
 
-Default branch 위라면 slug 를 정해 분기한다.
+On the default branch, pick a slug and branch.
 
 ```bash
 git switch -c {feat|fix|chore}-<slug>
 ```
 
-- `feat` 새 기능 / `fix` 버그 / `chore` 그 외 (빌드·설정·문서·리팩터)
-- slug 은 2–4 단어 kebab-case, `/` 금지
-- 이미 feature branch 위라면 그대로 쓴다
+- `feat` new capability / `fix` a bug / `chore` everything else (build, config, docs, refactor)
+- the slug is 2–4 words in kebab-case, no `/`
+- already on a feature branch: use it
 
-Slug 은 PR title 의 prefix 로도 쓰이므로, *무엇을 하는 변경인지* 가 드러나야 한다. `chore-fix` 는 slug 이 아니다.
+The slug becomes the PR title's prefix, so it has to say *what the change does*. `chore-fix` is not a slug.
 
-## Step 3 — 커밋
+## Step 3 — Commit
 
-의미 단위로 나눈다. 리팩터와 기능 추가가 섞여 있으면 두 커밋으로.
-
-```bash
-git add <paths>          # -A 대신 명시적 경로
-git commit -m "<동사로 시작하는 70자 이하 제목>" -m "<why>"
-```
-
-R2 를 지킨다: AI 귀속 문구 금지 (`ai-attribution-guard` 훅이 차단하지만, 애초에 쓰지 않는다).
-
-## Step 4 — self-check
-
-R4 체크리스트를 실제로 돌린다. 특히:
+Split by meaning. A refactor mixed with a new capability is two commits.
 
 ```bash
-git status                                    # 누락·잔재 없음
-git log --format='%B' <default-branch>..HEAD  # 귀속 문구 없음
+git add <paths>          # explicit paths, not -A
+git commit -m "<verb-first subject>" -m "<why>"
 ```
 
-그리고 **검증을 실제로 실행한다** — 테스트, 빌드, 린트 중 이 프로젝트에 있는 것. 그 출력이 Step 5 의 verification 섹션에 들어간다. 없으면 "이 프로젝트에는 자동 검증이 없어 <무엇을> 수동 확인했다" 라고 적는다.
+Hold to R2: no AI attribution. The `ai-attribution-guard` hook blocks it, but do not write it in the first place.
 
-## Step 5 — push + PR
+## Step 4 — Self-check
 
-**제목 길이를 먼저 센다.** R4 는 70자 이하를 요구하는데 세는 것이 없어서, 이 규약을 적어둔 저장소가 71자와 79자짜리 PR 을 실제로 열었다. 사람이 세는 규칙은 사람이 잊는다.
+Actually run R4's checklist. In particular:
+
+```bash
+git status                                    # nothing missing, nothing stray
+git log --format='%B' <default-branch>..HEAD  # no attribution
+```
+
+And **actually run the verification** — whichever of tests, build and lint this project has. That output goes into Step 5's verification section. If there is none, write "this project has no automated checks, so <what> was confirmed by hand".
+
+## Step 5 — Push and open
+
+**Count the title first.** R4 asks for 70 characters or fewer and nothing counts them, so the repository that wrote that rule opened PRs at 71 and 79 characters. A rule counted by hand is a rule forgotten by hand.
 
 ```bash
 TITLE="[<slug>] <description>"
-[ "${#TITLE}" -le 70 ] || { echo "제목 ${#TITLE}자 — 70자 이하로 줄인다: $TITLE"; }
+[ "${#TITLE}" -le 70 ] || { echo "title is ${#TITLE} chars — shorten to 70 or fewer: $TITLE"; }
 ```
 
-넘으면 description 을 줄인다. slug 는 브랜치 이름이라 바꾸지 않는다.
+Over the limit, shorten the description. The slug is the branch name and does not change.
 
 ```bash
 git push -u origin <branch>
 gh pr create --title "$TITLE" --body "$(cat <<'EOF'
 ## Motivation
-<왜 이 변경이 필요한가 — 문제 또는 요구>
+<why this change is needed — the problem or the request>
 
 ## Changes
-- <변경 1>
-- <변경 2>
+- <change 1>
+- <change 2>
 
 ## Verification
-<실제로 돌린 명령과 그 결과. 안 돌렸으면 안 돌렸다고 적는다.>
+<the commands you actually ran and their output. If you ran none, say so.>
 
 ## Notes
-<리뷰어가 알아야 할 트레이드오프·후속 작업·의도적으로 안 한 것>
+<trade-offs, follow-ups, and what was deliberately left undone>
 EOF
 )"
 ```
 
-`git push` 와 `git merge` 는 `settings.json` 의 `ask` 티어라 승인 프롬프트가 뜬다. 대화형 세션에서는 정상이다.
+`git push` and `git merge` sit in `settings.json`'s `ask` tier, so an approval prompt appears. That is normal in an interactive session.
 
-**비대화형 세션(`claude -p`·CI)에서는 push 가 반드시 거부된다.** 답할 사람이 없어서이고, `--permission-mode` 로는 못 뚫는다 (`acceptEdits`·`dontAsk`·`bypassPermissions` 셋 다 실측으로 거부됨). 그때 할 일은 정해져 있다.
+**In a non-interactive session (`claude -p`, CI) push is always refused.** There is nobody to answer, and `--permission-mode` does not get around it — `acceptEdits`, `dontAsk` and `bypassPermissions` were all measured as refused. What to do then is fixed.
 
-- **같은 명령을 다시 쏘지 않는다.** 두 번째도 거부된다.
-- **`main` 에 커밋하는 것으로 대체하지 않는다.** 규약 위반이 조용히 들어가는 경로다.
-- 커밋까지는 이미 끝났으므로 **거기서 멈추고**, 남은 두 명령을 그대로 출력한다:
+- **Do not fire the same command again.** The second attempt is refused too.
+- **Do not substitute a commit to `main`.** That is the path by which a convention violation arrives quietly.
+- The commits are already made, so **stop there** and print the two remaining commands verbatim:
 
   ```bash
   git push -u origin <branch>
   gh pr create --title "..." --body "..."
   ```
 
-- 자동화에서 끝까지 돌려야 한다면 그 프로젝트의 `settings.json` 에 `"Bash(git push:*)"` 를 `permissions.allow` 로 올리는 것이 유일한 방법이고, **그건 사람이 내릴 결정이지 이 스킬이 내릴 결정이 아니다.** 그렇게 안내만 한다.
+- If automation genuinely has to reach the end, the only route is that project moving `"Bash(git push:*)"` into `permissions.allow` in its own `settings.json` — and **that is a human's decision, not this skill's.** Say so and stop.
 
-## Step 6 — harness gap 원장 확인
+## Step 6 — Read the harness-gap ledger
 
-PR 은 원장을 읽는 자연스러운 지점이다 — 작업이 한 덩어리로 닫히는 순간이고, `CLAUDE.md` §5 의 "두 번 이상 발생하면 제안한다" 를 판정할 수 있는 유일한 자리이기 때문이다.
+A PR is the natural moment to read it: the work closes as one unit, and it is the only point where `CLAUDE.md` §5's "propose after two occurrences" can be judged.
 
 ```bash
 [ -f .claude/harness-gaps.md ] && tail -40 .claude/harness-gaps.md
 ```
 
-- 같은 파일·같은 증상이 **두 번 이상** 적혀 있으면 PR 본문 `## Notes` 에 한 줄로 올린다: `*harness gap*: <file>:<line> — <진단> (원장 N회차)`.
-- 한 번뿐이면 올리지 않는다. 원장에 남아 두 번째를 기다린다.
-- **원장이 비어 있거나 없다고 해서 gap 이 없다는 뜻이 아니다.** 대개는 아무도 안 적었다는 뜻이다. 이번 작업에서 뭔가 걸렸는데 안 적혀 있으면 지금 적는다.
+- If the same file and the same symptom appear **twice or more**, put one line in the PR body under `## Notes`: `*harness gap*: <file>:<line> — <diagnosis> (occurrence N)`.
+- Once only: leave it. It stays in the ledger waiting for a second.
+- **An empty or missing ledger is not evidence there are no gaps.** It usually means nobody wrote to one. If something snagged during this work and is not written down, write it now.
 
-## Step 7 — 보고
+## Step 7 — Report
 
-PR URL 과 title 을 보고한다. **머지하지 않는다.** 사용자가 머지한 뒤 R3.1 retro 를 별도로 요청하거나, 다음 turn 에서 자연스럽게 이어간다.
+Report the PR URL and title. **Do not merge.** The user merges, then asks for the R3.1 retro separately or it follows naturally in the next turn.
 
-## 하지 않는 것
+## What this skill does not do
 
-- `gh pr merge` — 범위 밖.
-- Force push — `deny` 티어.
-- 사용자에게 안 보여준 파일을 커밋에 포함.
-- 검증을 안 돌리고 verification 섹션을 채우기.
+- `gh pr merge` — out of scope.
+- Force push — `deny` tier.
+- Include a file in a commit that the user has not seen.
+- Fill in the verification section without running the verification.

@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-research",
   "displayName": "Harness Research",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Research profile: the five-document note discipline and a reproducibility checklist",
   "author": {
     "name": "chpark-ML"

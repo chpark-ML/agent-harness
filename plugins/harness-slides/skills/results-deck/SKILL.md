@@ -5,58 +5,58 @@ description: "Use when development or research results in this repository need t
 
 # results-deck
 
-산출물을 **서사** 로 바꾼다. 렌더링은 하지 않는다 — 그건 `slides-grab` 이 훨씬 잘 하고, 이 스킬의 출력은 그쪽 입력이다.
+Turns artefacts into a **narrative**. It does not render — `slides-grab` does that far better, and this skill's output is that tool's input.
 
-이 스킬이 존재하는 이유는 하나다. **결과 발표는 추적 불가능한 수치가 인용되는 자리다.** 노트에는 "이 표가 어느 run 에서 나왔는지" 가 적혀 있어도, 슬라이드로 옮겨지는 순간 숫자만 남고 근거는 떨어져 나간다. 그리고 그 숫자는 발표를 들은 사람이 인용하고 의사결정에 쓴다.
+There is one reason this skill exists. **A results talk is where untraceable numbers get quoted.** The notes may record which run produced a table, but the moment it moves onto a slide the number survives and the evidence falls away. And then the audience quotes that number and decides things with it.
 
-## Step 0 — 무엇을 발표하는가
+## Step 0 — What is being presented
 
-둘 중 하나다. 섞지 않는다.
+One of two. Do not mix them.
 
-- **연구 결과** — 출처는 `FINDINGS.md`(무엇을 믿게 됐나), `experiment_plan.md`(어떻게 알아냈나), `ARTIFACTS.md`(어디서 나왔나). 노트 세트가 없으면 `research-notes` 를 먼저 돌린다.
-- **개발 결과** — 출처는 변경 이력, PR 본문, 릴리스 노트, 벤치마크 출력.
+- **Research results** — sourced from `FINDINGS.md` (what came to be believed), `experiment_plan.md` (how it was found out), `ARTIFACTS.md` (where it came from). If the note set does not exist, run `research-notes` first.
+- **Development results** — sourced from the change history, PR bodies, release notes, benchmark output.
 
-## Step 1 — 근거부터 모은다
+## Step 1 — Collect the evidence first
 
-**슬라이드를 쓰기 전에 수치를 모은다.** 순서가 반대면 서사에 맞는 숫자를 찾게 되고, 그건 결론을 정해놓고 근거를 고르는 것이다.
+**Gather the numbers before writing any slides.** Reversed, you end up looking for numbers that fit the narrative, which is choosing evidence to match a conclusion already decided.
 
-`ARTIFACTS.md` 가 있으면 그것이 인용 가능한 수치의 목록이다. 없으면 이 발표에서 쓸 수치를 먼저 표로 만든다 — claim · 만든 명령 · 출력 위치 · 날짜. 이 표에 없는 숫자는 슬라이드에 올리지 않는다.
+If `ARTIFACTS.md` exists, that is the list of quotable numbers. If it does not, build the table first — claim · the command that produced it · where the output is · date. A number not in that table does not go on a slide.
 
-## Step 2 — 서사
+## Step 2 — The narrative
 
-한 장에 한 주장. 결과 발표의 기본 골격:
+One claim per slide. The skeleton of a results talk:
 
 ```
-1  무엇이 문제였나        (왜 이 작업을 했나 — 청중이 아는 언어로)
-2  무엇을 했나            (접근, 한 장)
-3  무엇을 알아냈나        (핵심 결과 — 수치가 여기 모인다)
-4  얼마나 믿을 수 있나    (표본, 변동, 통제, 재현 방법)
-5  무엇이 아직 아닌가     (한계와 뒤집힌 결과)
-6  다음                   (구체적 행동 하나)
+1  what the problem was      (why this work happened — in the audience's language)
+2  what was done             (the approach, one slide)
+3  what was found            (the core result — the numbers gather here)
+4  how much to believe it    (sample, variance, controls, how to reproduce)
+5  what is not established    (limits, and results that were overturned)
+6  next                      (one concrete action)
 ```
 
-4번과 5번을 빼지 않는다. **뒤집힌 결과가 없는 발표는 뒤집힌 것을 지운 발표로 읽힌다** — `FINDINGS.md` 가 번복을 보존하는 것과 같은 이유다. 음성 결과도 결과다.
+Do not drop 4 and 5. **A talk with no overturned results reads as a talk where they were deleted** — the same reason `FINDINGS.md` preserves reversals. A negative result is a result.
 
-## Step 3 — 추적 검사
+## Step 3 — The traceability check
 
-초안이 나오면 기계로 검사한다. 사람이 눈으로 대조하는 것과 다르다.
+Once there is a draft, check it by machine. That is not the same as reading it over.
 
 ```bash
 bash "$CLAUDE_PLUGIN_ROOT/scripts/check-claims.sh" <deck.md> [ARTIFACTS.md]
 ```
 
-덱의 모든 숫자가 근거 파일에 있는지 본다. 걸린 숫자는 둘 중 하나다 — 아무도 재현할 수 없는 수치이거나, 근거 표에 행이 빠진 것이다. **먼저 어느 쪽인지 판단한다**: 행이 빠진 것이면 근거 표에 행을 더하고, 재현할 수 없는 수치면 슬라이드에서 뺀다.
+It asks whether every number in the deck appears in the evidence file. A flagged number is one of two things — a figure nobody can reproduce, or a row missing from the evidence table. **Decide which before acting**: if the row is missing, add it; if the number cannot be reproduced, take it off the slide.
 
-연도·날짜·버전·목록 번호·슬라이드 참조·`ADR-0008` 꼴 식별자·링크 주소·인라인 코드·HTML 주석은 검사기가 알아서 뺀다. 그래도 남는 예외 — `bash 5` 처럼 단어 뒤의 맨 숫자 — 만 그 줄에 `<!-- no-claim -->` 를 단다. **`<!-- no-claim -->` 를 근거 없는 수치를 통과시키는 데 쓰지 않는다.** 그 순간 검사는 장식이 된다.
+Years, dates, versions, list numbers, slide references, identifiers shaped like `ADR-0008`, link targets, inline code and HTML comments are excluded by the checker itself. Only the remaining exceptions — a bare number after a word, like `bash 5` — get a `<!-- no-claim -->` on that line. **Never use `<!-- no-claim -->` to let an unsupported number through.** The moment you do, the check becomes decoration.
 
-**검사를 통과하지 못한 초안을 렌더링으로 넘기지 않는다.**
+**Do not hand a draft that fails the check to the renderer.**
 
-## Step 4 — 렌더링으로 넘긴다
+## Step 4 — Hand off to rendering
 
-`slides-grab` 이 설치돼 있으면 그쪽 스킬에 개요를 넘긴다 (`slides-grab-plan` → `slides-grab-html` → `slides-grab-export`). 없으면 `harnessctl doctor` 가 설치 명령을 알려준다. 이 스킬은 여기서 끝난다 — 디자인·레이아웃·PDF 는 다시 만들지 않는다.
+If `slides-grab` is installed, pass the outline to its skills (`slides-grab-plan` → `slides-grab-html` → `slides-grab-export`). If it is not, `harnessctl doctor` prints the install command. This skill ends here — design, layout and PDF are not rebuilt.
 
-## 하지 않는 것
+## What this skill does not do
 
-- 슬라이드를 직접 렌더링하거나 디자인하기.
-- 근거 표에 없는 수치를 "대략" 으로 올리기.
-- 한계 절 생략하기. 분량이 부족하면 다른 장을 줄인다.
+- Render or design slides.
+- Put an approximate number on a slide because the evidence table has no row for it.
+- Drop the limits section. If space is short, shorten a different slide.
