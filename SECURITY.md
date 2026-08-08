@@ -40,7 +40,7 @@ Measured on an independently written corpus: 27 of 29 staged incidents stopped, 
 ## Supply chain
 
 - Dependencies are declared plugins: [`superpowers`](https://github.com/obra/superpowers) and the official LSP plugins. They are installed by `claude plugin install`, not vendored.
-- `install.sh` runs `claude plugin marketplace add` against this repository. Pin it with `--ref <commit-sha>` if a moving `main` is a concern. **No release tags are published yet.**
+- `install.sh` runs `claude plugin marketplace add` against this repository. Pin it with `--ref <tag>` if a moving `main` is a concern; tags version the snapshot a consumer receives ([ADR-0013](docs/adr/0013-release-tags.md)).
 - `--with-tools` runs `npm install -g` for language servers. It is opt-in for that reason.
 - The installer requires `jq` and refuses to proceed without it. Shipping guards that silently self-disable is worse than an honest failure ([ADR-0002](docs/adr/0002-hook-contract.md)).
 

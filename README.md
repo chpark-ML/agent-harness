@@ -52,13 +52,13 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 less install.sh && bash install.sh --profile dev,python
 
 # 2) Pin to a revision so a moving main cannot change what you get
-bash install.sh --profile dev --ref <commit-sha>
+bash install.sh --profile dev --ref v0.1.0
 
 # 3) Clone, as before
 git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/install.sh --profile dev
 ```
 
-**No release tags are published yet**, so a commit SHA is what `--ref` can point at today.
+`--ref` takes a tag, a branch or a commit SHA. Release tags version the whole snapshot — the installer, the declarative payload, and the plugin versions at that revision — and are independent of the six plugins' own versions ([ADR-0013](docs/adr/0013-release-tags.md)).
 
 The clone was never required: the installer reads nothing from the checkout. It looks for `harnessctl` in the plugin cache, then the marketplace clone, then the checkout — and the first two are what the script itself just created.
 
