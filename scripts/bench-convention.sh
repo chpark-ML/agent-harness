@@ -59,7 +59,10 @@ set -uo pipefail
 
 ARM="${1:-}"
 N="${2:-5}"
-case "$ARM" in raw|harness) ;; *) echo "usage: bench-convention.sh raw|harness [trials]" >&2; exit 2 ;; esac
+TASK=branch
+case "$ARM" in raw|harness) ;; *) echo "usage: bench-convention.sh raw|harness [trials] [--task branch|loop]" >&2; exit 2 ;; esac
+for a in "$@"; do case "$a" in --task=*) TASK="${a#--task=}" ;; esac; done
+case "$TASK" in branch|loop) ;; *) echo "bench-convention: --task is branch or loop" >&2; exit 2 ;; esac
 . "$(cd "$(dirname "$0")" && pwd)/_bench-lib.sh"
 BENCH_NAME="bench-convention ($ARM arm, $N trials)"
 for a in "$@"; do [ "$a" = --yes ] && BENCH_YES=1; done
@@ -81,7 +84,15 @@ USER_MD="$HOME/.claude/CLAUDE.md"
 STASH="$HOME/.claude/CLAUDE.md.bench-stashed"
 PLUGINS="harness-core@agent-harness harness-dev@agent-harness"
 WORK="$(mktemp -d)" || exit 1
-HARNESSCTL="$(command -v harnessctl 2>/dev/null)"
+# The working tree comes first, and that ordering is the whole point: harnessctl
+# reads its payload from <self>/../declarative, so the installed shim installs
+# the *released* rules. Measuring a rule you just wrote against the cached
+# release scores it at zero and reads as "the rule earns nothing" — the same
+# shape as trap 5 in docs/agent-layer.md §4b, where the scratch repo had no
+# rules at all. Which copy ran is printed, because that is the difference
+# between measuring what you are about to ship and what you already shipped.
+HARNESSCTL="$(cd "$(dirname "$0")/.." && pwd)/plugins/harness-core/bin/harnessctl"
+[ -x "$HARNESSCTL" ] || HARNESSCTL="$(command -v harnessctl 2>/dev/null)"
 [ -n "$HARNESSCTL" ] || HARNESSCTL="$(ls -d "$HOME"/.claude/plugins/cache/agent-harness/harness-core/*/bin/harnessctl 2>/dev/null | tail -1)"
 if [ "$ARM" = harness ] && [ ! -x "$HARNESSCTL" ]; then
   echo "bench-convention: harnessctl not found — the harness arm needs it" >&2; exit 1
@@ -109,17 +120,70 @@ fi
 PROMPT='app/config.py 에 재시도 백오프 설정(base_delay_s, max_delay_s)을 추가하고, app/client.py 가 그 설정으로 지수 백오프를 계산하는 backoff_for(attempt) 함수를 갖게 해줘. 커밋까지 해줘.'
 RE='^(feat|fix|chore)-[a-z0-9]+(-[a-z0-9]+)*$'
 
-echo "=== convention benchmark — arm: $ARM, $N trials ==="
-echo "checking: branch name matches {feat,fix,chore}-<slug>"
+# Deliberately silent about `make check`. Naming it would measure obedience; the
+# question is whether the agent establishes a verification step on its own,
+# which is what R6 asks for.
+LOOP_PROMPT='app/backoff.py 의 backoff_for(attempt) 를 구현해줘.'
+
+echo "=== convention benchmark — arm: $ARM, task: $TASK, $N trials ==="
+case "$TASK" in
+  branch) echo "checking: branch name matches {feat,fix,chore}-<slug>" ;;
+  loop)   echo "checking: R6 — was the verification command actually run before done" ;;
+esac
+[ "$ARM" = harness ] && echo "harnessctl: $HARNESSCTL"
 echo
 
-hits=0; committed=0; ok_subj=0; ok_body=0; i=0
+hits=0; committed=0; ok_subj=0; ok_body=0; ran=0; correct=0; i=0
 while [ "$i" -lt "$N" ]; do
   i=$((i + 1))
   R="$WORK/t$i"; mkdir -p "$R/app"
-  printf 'TIMEOUT_S = 5\nRETRIES = 3\n' > "$R/app/config.py"
-  printf 'from .config import TIMEOUT_S, RETRIES\n\n\ndef timeout_ms() -> int:\n    return TIMEOUT_S * 1000\n' > "$R/app/client.py"
-  : > "$R/app/__init__.py"
+  if [ "$TASK" = branch ]; then
+    printf 'TIMEOUT_S = 5\nRETRIES = 3\n' > "$R/app/config.py"
+    printf 'from .config import TIMEOUT_S, RETRIES\n\n\ndef timeout_ms() -> int:\n    return TIMEOUT_S * 1000\n' > "$R/app/client.py"
+    : > "$R/app/__init__.py"
+  else
+    mkdir -p "$R/tests"
+    : > "$R/app/__init__.py"
+    cat > "$R/app/backoff.py" <<'PY'
+BASE_DELAY_S = 0.5
+MAX_DELAY_S = 8.0
+
+
+def backoff_for(attempt: int) -> float:
+    """Delay before retry number `attempt`. See tests/check_backoff.py."""
+    raise NotImplementedError
+PY
+    # The spec lives in the checker, so "read the check" and "know the spec" are
+    # the same act. A naive exponential passes the first two assertions and
+    # fails the last two, which is what makes a second pass worth anything.
+    cat > "$R/tests/check_backoff.py" <<'PY'
+import sys
+sys.path.insert(0, ".")
+from app.backoff import backoff_for, BASE_DELAY_S, MAX_DELAY_S
+
+assert backoff_for(0) == BASE_DELAY_S, "attempt 0 must be exactly BASE_DELAY_S"
+assert backoff_for(1) == BASE_DELAY_S * 2, "each attempt doubles"
+assert backoff_for(99) == MAX_DELAY_S, "must clamp at MAX_DELAY_S"
+try:
+    backoff_for(-1)
+except ValueError:
+    pass
+else:
+    raise AssertionError("negative attempt must raise ValueError")
+print("ok")
+PY
+    # A Makefile, not a shell script, and that is not cosmetic. The harness's
+    # own allow tier carries exactly one runner — Bash(make:*) — and no python3,
+    # pytest or sh. A fixture whose check is `./check.sh` measures the
+    # permission tier, not the rule: the first pilot scored 0/3 on both arms
+    # because the agent asked to run it and was denied. Recorded in
+    # docs/agent-layer.md §4b as instrument failure 7.
+    cat > "$R/Makefile" <<'MK'
+check:
+	@echo run >> .check.log
+	@python3 tests/check_backoff.py
+MK
+  fi
   ( cd "$R" && git init -q -b main && git add -A \
       && git -c user.name=bench -c user.email=b@e commit -qm "initial" ) || continue
 
@@ -128,8 +192,25 @@ while [ "$i" -lt "$N" ]; do
       || { echo "  !! harnessctl init failed — arm invalid" >&2; exit 1; }
   fi
 
+  [ "$TASK" = loop ] && PROMPT="$LOOP_PROMPT"
   ( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p $BENCH_CLAUDE_ARGS \
       --permission-mode acceptEdits >/dev/null 2>&1 )
+
+  if [ "$TASK" = loop ]; then
+    # Two independent facts. Whether the check ran is read from the log the
+    # check itself writes; whether the code is right is decided by running the
+    # checker here, so a trial that never ran it is still graded on output.
+    [ -s "$R/.check.log" ] && { ran=$((ran + 1)); rmark="ran "; } || rmark="none"
+    if ( cd "$R" && python3 tests/check_backoff.py >/dev/null 2>&1 ); then
+      correct=$((correct + 1)); cmark="ok  "
+    else
+      cmark="FAIL"
+    fi
+    nruns=0
+    [ -f "$R/.check.log" ] && nruns="$(wc -l < "$R/.check.log" | tr -d ' ')"
+    printf '  check=%s code=%s  trial %d  (%s runs logged)\n' "$rmark" "$cmark" "$i" "$nruns"
+    continue
+  fi
 
   br="$(cd "$R" && git branch --show-current 2>/dev/null)"
   n_commits="$(cd "$R" && git rev-list --count HEAD 2>/dev/null || echo 0)"
@@ -150,6 +231,15 @@ while [ "$i" -lt "$N" ]; do
 done
 
 echo
+if [ "$TASK" = loop ]; then
+  printf '  ran the check:           %d / %d\n' "$ran" "$N"
+  printf '  code actually correct:   %d / %d\n' "$correct" "$N"
+  echo
+  echo "Read both. Correct-without-running is luck, and running-without-correct"
+  echo "means the loop started and stopped early — different failures, different"
+  echo "fixes. R6's claim is about the first number."
+  exit 0
+fi
 printf '  committed at all:        %d / %d\n' "$committed" "$N"
 printf '  branch name conformant:  %d / %d\n' "$hits" "$N"
 printf '  commit subject <= 70:    %d / %d\n' "$ok_subj" "$N"
