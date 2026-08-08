@@ -214,6 +214,26 @@ def main() -> int:
     print(f"\n  should-trigger:     {sum(r['pass'] for r in pos)}/{len(pos)}")
     print(f"  should-not-trigger: {sum(r['pass'] for r in neg)}/{len(neg)}")
     print(f"  overall:            {sum(r['pass'] for r in rows)}/{len(rows)}")
+
+    # Reliability, not just a rate. A majority vote hides the difference between
+    # "fires every time" and "fires two runs in three", and the field reports
+    # that gap as the number that matters: tau-bench measured a model at 61%
+    # pass@1 and 25% pass^8 on the same tasks. These come free — the runs
+    # already happened.
+    if pos and a.runs > 1:
+        k = a.runs
+        at1 = sum(r["rate"] for r in pos) / len(pos)          # mean per-trial
+        atk = sum(1 for r in pos if r["rate"] > 0) / len(pos)  # >=1 trial fired
+        allk = sum(1 for r in pos if r["rate"] == 1.0) / len(pos)  # every trial
+        print(f"\n  positives, {k} runs each")
+        print(f"    pass@{k} (>=1 fired):  {atk:.2f}")
+        print(f"    pass@1  (per trial):  {at1:.2f}")
+        print(f"    pass^{k} (all fired):  {allk:.2f}")
+        print(f"    spread {atk - allk:.2f} — the gap between 'can trigger' and"
+              f" 'triggers reliably'.")
+        if neg:
+            quiet = sum(1 for r in neg if r["rate"] == 0) / len(neg)
+            print(f"  negatives silent in every run: {quiet:.2f}")
     if timeouts:
         print(f"  timeouts:           {timeouts}  (counted as neither — raise --timeout)")
     # Beside the eval set, not at a fixed path: an eval set for another repo's

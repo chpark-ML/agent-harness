@@ -133,7 +133,7 @@ esac
 [ "$ARM" = harness ] && echo "harnessctl: $HARNESSCTL"
 echo
 
-hits=0; committed=0; ok_subj=0; ok_body=0; ran=0; correct=0; i=0
+hits=0; committed=0; ok_subj=0; ok_body=0; ran=0; correct=0; i=0; total_s=0
 while [ "$i" -lt "$N" ]; do
   i=$((i + 1))
   R="$WORK/t$i"; mkdir -p "$R/app"
@@ -193,8 +193,13 @@ MK
   fi
 
   [ "$TASK" = loop ] && PROMPT="$LOOP_PROMPT"
+  # Wall clock, because nothing in this repo ever recorded how long a trial
+  # took even while runs lasted minutes. SECONDS is bash 3.2 and needs no
+  # change to how claude is invoked.
+  t0=$SECONDS
   ( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p $BENCH_CLAUDE_ARGS \
       --permission-mode acceptEdits >/dev/null 2>&1 )
+  elapsed=$((SECONDS - t0)); total_s=$((total_s + elapsed))
 
   if [ "$TASK" = loop ]; then
     # Two independent facts. Whether the check ran is read from the log the
@@ -208,7 +213,8 @@ MK
     fi
     nruns=0
     [ -f "$R/.check.log" ] && nruns="$(wc -l < "$R/.check.log" | tr -d ' ')"
-    printf '  check=%s code=%s  trial %d  (%s runs logged)\n' "$rmark" "$cmark" "$i" "$nruns"
+    printf '  check=%s code=%s  trial %d  %ds  (%s runs logged)\n' \
+      "$rmark" "$cmark" "$i" "$elapsed" "$nruns"
     continue
   fi
 
@@ -234,6 +240,7 @@ echo
 if [ "$TASK" = loop ]; then
   printf '  ran the check:           %d / %d\n' "$ran" "$N"
   printf '  code actually correct:   %d / %d\n' "$correct" "$N"
+  printf '  mean wall clock:         %ds\n' "$((total_s / (N > 0 ? N : 1)))"
   echo
   echo "Read both. Correct-without-running is luck, and running-without-correct"
   echo "means the loop started and stopped early — different failures, different"
@@ -244,6 +251,7 @@ printf '  committed at all:        %d / %d\n' "$committed" "$N"
 printf '  branch name conformant:  %d / %d\n' "$hits" "$N"
 printf '  commit subject <= 70:    %d / %d\n' "$ok_subj" "$N"
 printf '  commit has a body:       %d / %d\n' "$ok_body" "$N"
+printf '  mean wall clock:         %ds\n' "$((total_s / (N > 0 ? N : 1)))"
 echo
 echo "A trial that never committed is not evidence either way — read the two"
 echo "numbers together before comparing arms."

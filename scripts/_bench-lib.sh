@@ -58,3 +58,44 @@ bench_confirm() { # bench_confirm <line about cost> [line about what it touches.
   read -r a
   case "$a" in y|Y|yes|YES) return 0 ;; *) echo "  aborted."; exit 1 ;; esac
 }
+
+# ---- what every bench should record ------------------------------------------
+# The field reports four axes for a coding agent — outcome, cost, tokens and
+# wall-clock time — and this repo measured only the first. Nothing here recorded
+# how long anything took, even while benchmark runs were taking minutes.
+#
+# `claude -p --output-format json` already carries all of it, so the cost is a
+# jq call rather than another agent session:
+#
+#   .result                     what it answered
+#   .total_cost_usd             cost — not tokens. A haiku token and an opus
+#                               token are not the same purchase, so comparing
+#                               token counts across tiers answers nothing
+#   .duration_ms                wall clock
+#   .num_turns                  how many turns it took to get there
+#   .usage.input_tokens         input dominates: an agent resends its
+#   .usage.output_tokens        accumulated context every step, which is why a
+#   .usage.cache_read_input_tokens   single SWE-bench task averages ~4M tokens
+#
+# Token counts are reported alongside cost rather than instead of it, because
+# they are separately interesting: usage is wildly stochastic — up to 30x
+# between runs of the same task — and a stable cost with unstable tokens means
+# something different from both being unstable.
+
+bench_json_field() { # bench_json_field <json> <jq path> [default]
+  local v
+  v="$(printf '%s' "$1" | jq -r "$2 // empty" 2>/dev/null)"
+  [ -n "$v" ] && printf '%s' "$v" || printf '%s' "${3:-0}"
+}
+
+# Prints one tab-separated record: cost, duration_ms, turns, in, out, cache_read.
+# Feed it the raw stdout of `claude -p --output-format json`.
+bench_metrics() { # bench_metrics <json>
+  printf '%s\t%s\t%s\t%s\t%s\t%s' \
+    "$(bench_json_field "$1" .total_cost_usd)" \
+    "$(bench_json_field "$1" .duration_ms)" \
+    "$(bench_json_field "$1" .num_turns)" \
+    "$(bench_json_field "$1" .usage.input_tokens)" \
+    "$(bench_json_field "$1" .usage.output_tokens)" \
+    "$(bench_json_field "$1" .usage.cache_read_input_tokens)"
+}
