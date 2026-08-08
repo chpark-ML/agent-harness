@@ -10,7 +10,8 @@
 # silently stopped being findable. `claude plugin validate` catches it, but that
 # needs the Claude CLI, so this runs the same check with nothing but python3.
 #
-# Run:  bash scripts/verify-frontmatter.sh
+# Run:  make frontmatter          # declares TRIGGER_LANGS for you
+#       bash scripts/verify-frontmatter.sh   # skips the trigger-language check
 
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,6 +23,7 @@ python3 - "$REPO" <<'PY'
 import glob, os, re, sys
 
 repo = sys.argv[1]
+LANGS = [x.strip() for x in os.environ.get('HARNESS_TRIGGER_LANGS', '').split(',') if x.strip()]
 try:
     import yaml
 except ImportError:
@@ -85,13 +87,18 @@ def check(path, kind, required):
         # Japanese team unable to pass CI without adding a Korean marker, which
         # is a defect rather than a convention. A deployment now declares which
         # languages it serves and only those are checked; unset means the check
-        # does not run. Which languages a description should carry is a property
+        # does not run, and the summary line says so rather than printing a
+        # clean pass. Which languages a description should carry is a property
         # of the deployment, not of the harness.
+        #
+        # Each comma-separated entry must appear. `|` inside an entry accepts
+        # any one of its labels, which is what the hardcoded check did: a
+        # description could mark its Korean triggers as 한국어 or as Korean.
         desc = data['description']
-        for lang in [x for x in os.environ.get('HARNESS_TRIGGER_LANGS', '').split(',') if x.strip()]:
-            if lang.strip() not in desc:
+        for entry in LANGS:
+            if not any(alt in desc for alt in entry.split('|')):
                 failed += 1
-                problems.append((rel, "description has no %s triggers" % lang.strip()))
+                problems.append((rel, "description has no %s triggers" % entry))
                 return
         if '말고' not in desc and 'not this skill' not in desc.lower():
             failed += 1
@@ -113,6 +120,8 @@ for p in sorted(glob.glob(os.path.join(repo, 'plugins/*/commands/*.md'))
 total = passed + failed
 print("=== frontmatter verification ===")
 print("  %d / %d passed" % (passed, total))
+print("  trigger languages: %s" % (" + ".join(LANGS) if LANGS
+      else "none declared — HARNESS_TRIGGER_LANGS unset, that check did not run"))
 for rel, why in problems:
     print("  FAIL  %s — %s" % (rel, why))
 sys.exit(1 if failed else 0)

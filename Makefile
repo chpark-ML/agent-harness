@@ -52,13 +52,20 @@ syntax:
 # should not need a Korean marker to pass CI. This repository serves Korean
 # prompts today, so it declares that and the check applies to its own skills.
 # Whether those triggers earn what they cost is being measured; see §4b.
-TRIGGER_LANGS ?= 한국어
+# Comma separates languages that must ALL appear; `|` inside one entry accepts
+# any of its labels. `한국어|Korean` is the check this replaced — a description
+# may mark its Korean triggers in either script.
+TRIGGER_LANGS ?= 한국어|Korean
 
 # A skill whose frontmatter fails to parse loads with empty metadata and
 # silently stops being routable. Needs nothing but python3, so it runs in
 # every environment.
+#
+# The value is quoted: unquoted, a two-word list word-splits and the second
+# word runs as a command, which fails the whole verify chain with a `command
+# not found` that names a language.
 frontmatter:
-	@HARNESS_TRIGGER_LANGS=$(TRIGGER_LANGS) $(BASH) scripts/verify-frontmatter.sh
+	@HARNESS_TRIGGER_LANGS='$(TRIGGER_LANGS)' $(BASH) scripts/verify-frontmatter.sh
 
 # A dead link or a mistyped path in an instruction file is not an error — the
 # step just never runs, and nothing says so. Selftest first: this checker's own
