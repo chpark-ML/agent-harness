@@ -52,7 +52,24 @@
 
 설치는 하지 않는다. 같은 규칙 두 벌이 로드되고, 한 벌은 우리가 고칠 수 있고 한 벌은 아니다.
 
-### 5. 나머지는 들이지 않는다
+### 5. `harness-100` — 의존으로 두고 흡수하지 않는다
+
+[`revfactory/harness-100`](https://github.com/revfactory/harness-100) (Apache-2.0) 은 10개 도메인의 프로젝트 템플릿 100벌이다 (en/ko 각 100). 벌마다 `{NN}-{name}/.claude/{CLAUDE.md, agents/, skills/}` 로 오케스트레이터 스킬 1 + 전문가 에이전트 4–5 + 도메인 스킬 2–3.
+
+**판정: 의존. 저장소 파일 증가 0.** ADR-0009 가 Superpowers 로 이미 푼 것과 같은 문제다 — 범용 작업 능력은 남의 것으로 조합하고 우리는 가드·규약·설치만 갖는다 ([agent-layer.md §1](../agent-layer.md) Non-goal). 개별 harness 는 ADR-0001 의 편입 기준(*다른 도메인·다른 스택에 그대로 설치해도 말이 되는가*)을 설계상 통과할 수 없다. `01-youtube-production` 을 우리가 배포하는 것은 다른 제품이다.
+
+**흡수를 검토했고 재서 접었다.** 6개 도메인 ≈ 62벌 × 벌당 ~560 tok ≈ **35k tok/세션** 이다. 상시 컨텍스트 천장이 9,000 이고 현재 소진이 8,026 이므로 도메인 하나(12–15벌, ~7–8k)도 안 들어간다. **설치 단위는 harness 한 벌이어야 하고, 저쪽이 이미 그 모양으로 쪼개 놨다** — 우리가 다시 묶을 이유가 없다.
+
+**공존은 실측했다.** `31-ml-experiment` 를 우리 하네스가 깔린 세션에 얹고 12케이스 × 3회:
+
+| | 결과 |
+|---|---|
+| 우리 자리를 뺏었나 (음성 6) | **0건.** `repro-checklist` · `research-notes`×2 · `results-deck` · `pr-review` · `pr-create` 가 **각 3/3 만장일치**로 지켰다 |
+| 저쪽 오케스트레이터가 자기 자리를 받았나 (양성 6) | 4/6. 놓친 둘 중 하나는 `Bash` 선행(계측기 한계), 하나는 `superpowers:brainstorming` 이 3/3 선점 — **우리 교리대로다** (*"Let's build X" → brainstorming 먼저*) |
+
+**알고 써야 할 것 둘.** ① 스킬 파일이 `skill.md` 소문자다 (`SKILL.md` 0건) — macOS 기본 FS 는 대소문자를 안 가려 붙지만 Linux·컨테이너에서는 안 붙는다. ② 검증이 0 이다: md 1,808개에 테스트도 eval 세트도 CI 도 없고, README 의 *"Trigger Boundaries — Should-trigger + NOT-trigger **defined**"* 는 정의했다는 말이지 쟀다는 말이 아니다.
+
+### 6. 나머지는 들이지 않는다
 
 | 후보 | 판정 근거 |
 |---|---|
