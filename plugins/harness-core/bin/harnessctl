@@ -196,7 +196,7 @@ if [ "$CMD" = doctor ]; then
   fi
 
   say ""
-  [ "$fail" -eq 0 ] && say "nothing wrong." || warn "look at the FAIL entries above."
+  [ "$fail" -eq 0 ] && say "no problems found." || warn "look at the FAIL entries above."
   exit "$fail"
 fi
 
@@ -461,8 +461,10 @@ while IFS="$(printf '\t')" read -r src rel; do
 done <<EOF
 $PLAN_MANAGED
 EOF
-[ -z "$conflicts" ] || die "these paths hold files the harness does not own — stopping:
-$conflicts"
+[ -z "$conflicts" ] || die "these paths hold files the harness does not own — stopping before writing anything:
+$conflicts
+   Move or delete them, or re-run with a scope that does not target them.
+   The harness only overwrites files its own manifest records."
 
 say ""
 say "files (managed):"
