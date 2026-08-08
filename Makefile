@@ -9,13 +9,20 @@ BASH ?= bash
 TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
-.PHONY: help verify syntax frontmatter doc-refs verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+# Always-on context the harness costs a consumer, worst case (project scope,
+# every profile). Measured at 8026; the gap is deliberate headroom, not spare
+# room to fill. Raising this number is a decision to make explicitly and say why
+# — see scripts/context-budget.sh.
+CONTEXT_CEILING ?= 9000
+
+.PHONY: help verify syntax frontmatter doc-refs context-budget verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
 	@echo "make syntax           parse every shipped script"
 	@echo "make frontmatter      YAML frontmatter of every skill, agent, rule, command"
 	@echo "make doc-refs         links, anchors and paths that documents point at"
+	@echo "make context-budget   always-on token cost, all of it, against the ceiling"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
 	@echo "make verify-plugins   claude plugin validate (skipped when the CLI is absent)"
@@ -27,7 +34,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs context-budget verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -51,6 +58,13 @@ frontmatter:
 doc-refs:
 	@$(BASH) scripts/verify-doc-refs.sh --selftest
 	@$(BASH) scripts/verify-doc-refs.sh
+
+# Every skill and rule is a per-session tax on the consumer, forever. The old
+# cost table counted skills only and was wrong by 3.6x, which is how "62 more
+# harnesses" once sounded survivable. A number nobody sums is a number nobody
+# owns.
+context-budget:
+	@$(BASH) scripts/context-budget.sh --ceiling $(CONTEXT_CEILING)
 
 verify-benches:
 	@$(BASH) scripts/verify-benches.sh
