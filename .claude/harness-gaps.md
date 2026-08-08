@@ -359,3 +359,19 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   소개 없이 등장한 이름(`체커`) · 앞 턴 참조(`Problem ②`). **그 셋만** `CLAUDE.md` §6
   으로 넣었다 (+277 tok, 여유 974 → 697).
 - **회차**: 1 (부분 해결 — 규약은 넣고, 게이트는 근거를 갖고 보류)
+
+## 2026-08-08 — Makefile recipe 의 셸은 어떤 검사도 안 거친다
+
+- **어디**: `Makefile` — `verify-all` recipe
+- **무슨 일**: recipe 에 `set -o pipefail` 을 썼다. macOS 에서는 `/bin/sh` 가 bash 라
+  통과했고, **우분투 CI 에서 3초 만에 죽었다** — GNU make 는 recipe 를 `/bin/sh` 로
+  돌리고 우분투의 `/bin/sh` 는 dash 라 `pipefail` 이 없다.
+- **왜 안 잡혔나**: `make verify BASH=/bin/bash` 가 bash 3.2 바닥을 지키지만 그건
+  **스크립트** 에만 적용된다. `make syntax` 도 `bash -n` 으로 `.sh` 만 본다.
+  **Makefile recipe 본문은 어떤 문법 검사도 안 거친다.**
+- **고친 방법**: 파이프를 없애고 임시 파일로 캡처했다. 이유를 recipe 주석에 적었다.
+- **왜 규칙을 안 늘리나**: 1회차다. 그리고 답이 자명하지 않다 — recipe 를 dash 로
+  `-n` 검사하려면 make 가 무엇을 셸에 넘기는지 재현해야 하고, `--dry-run` 출력을
+  파싱하는 방식은 취약하다. `SHELL := /bin/bash` 를 Makefile 에 박는 쪽이 더 싸지만
+  그건 모든 recipe 의 셸을 바꾸는 변경이라 별도 판단이 필요하다.
+- **회차**: 1

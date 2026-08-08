@@ -70,10 +70,15 @@ context-budget:
 # The published total is a claim about this suite, and for four releases it was
 # maintained by editing three documents by hand. It cannot live inside `verify`
 # — it has to read what verify printed — so it wraps it. CI runs this one.
+# No pipe, and that is deliberate: `set -o pipefail` is not POSIX, and GNU make
+# runs recipes under /bin/sh, which is dash on Ubuntu. The first version used a
+# pipe and died in CI in three seconds while passing on macOS, where /bin/sh is
+# bash. Capture, print, then check.
 verify-all:
-	@set -o pipefail; $(MAKE) verify BASH=$(BASH) 2>&1 | tee /tmp/harness-verify.$$$$.log; \
-	  st=$$?; $(BASH) scripts/verify-check-total.sh /tmp/harness-verify.$$$$.log; \
-	  tot=$$?; rm -f /tmp/harness-verify.$$$$.log; \
+	@log=`mktemp`; $(MAKE) verify BASH=$(BASH) > $$log 2>&1; st=$$?; \
+	  cat $$log; \
+	  $(BASH) scripts/verify-check-total.sh $$log; tot=$$?; \
+	  rm -f $$log; \
 	  [ $$st -eq 0 ] && [ $$tot -eq 0 ]
 
 verify-benches:
