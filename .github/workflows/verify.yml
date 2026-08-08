@@ -17,7 +17,7 @@ jobs:
           jq --version
           git --version
           python3 --version
-      - run: make verify
+      - run: make verify-all
 
   macos-bash32:
     # The floor is stock macOS /bin/bash 3.2. Running the same suite under it is

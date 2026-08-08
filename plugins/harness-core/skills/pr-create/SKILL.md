@@ -61,9 +61,18 @@ git log --format='%B' <default-branch>..HEAD  # 귀속 문구 없음
 
 ## Step 5 — push + PR
 
+**제목 길이를 먼저 센다.** R4 는 70자 이하를 요구하는데 세는 것이 없어서, 이 규약을 적어둔 저장소가 71자와 79자짜리 PR 을 실제로 열었다. 사람이 세는 규칙은 사람이 잊는다.
+
+```bash
+TITLE="[<slug>] <description>"
+[ "${#TITLE}" -le 70 ] || { echo "제목 ${#TITLE}자 — 70자 이하로 줄인다: $TITLE"; }
+```
+
+넘으면 description 을 줄인다. slug 는 브랜치 이름이라 바꾸지 않는다.
+
 ```bash
 git push -u origin <branch>
-gh pr create --title "[<slug>] <description>" --body "$(cat <<'EOF'
+gh pr create --title "$TITLE" --body "$(cat <<'EOF'
 ## Motivation
 <왜 이 변경이 필요한가 — 문제 또는 요구>
 
