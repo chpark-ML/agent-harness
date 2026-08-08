@@ -218,7 +218,10 @@ if mode == '--selftest':
     sys.exit(1 if failed else 0)
 
 # ---- the real run -----------------------------------------------------------
-DOCS = ['README.md', 'CLAUDE.md', 'docs/**/*.md', 'plugins/**/*.md',
+# '*.md' at the root, not a list: README.ko.md, CONTRIBUTING.md and SECURITY.md
+# were added and none of them were checked, because a hardcoded list is exactly
+# how a new document becomes invisible to its own checker.
+DOCS = ['*.md', 'docs/**/*.md', 'plugins/**/*.md',
         '.claude/**/*.md', 'evals/*.md']
 # Frozen copies of documents that used to live elsewhere, kept as bench-claims
 # input and marked DO NOT EDIT. Their links were relative to the originals, so

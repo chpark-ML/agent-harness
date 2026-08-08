@@ -38,8 +38,8 @@ fi
 
 # ---- 1. what the documents claim -------------------------------------------
 badge="$(grep -oE 'badge/checks-[0-9]+' "$REPO/README.md" | head -1 | grep -oE '[0-9]+')"
-table="$(grep -E '^\| \*\*합계\*\* \|' "$REPO/README.md" | grep -oE '[0-9]+' | tail -1)"
-sot="$(grep -oE '합계 [0-9]+' "$REPO/docs/agent-layer.md" | head -1 | grep -oE '[0-9]+')"
+table="$(grep -E '^\| \*\*(Total|합계)\*\* \|' "$REPO/README.md" | grep -oE '[0-9]+' | tail -1)"
+sot="$(grep -oE '(합계|total of) [0-9]+' "$REPO/docs/agent-layer.md" | head -1 | grep -oE '[0-9]+')"
 
 echo "=== published check total ==="
 printf '  %-34s %s\n' "README badge" "${badge:-<none>}"
