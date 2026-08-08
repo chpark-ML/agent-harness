@@ -15,7 +15,7 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify syntax frontmatter doc-refs context-budget verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -23,6 +23,7 @@ help:
 	@echo "make frontmatter      YAML frontmatter of every skill, agent, rule, command"
 	@echo "make doc-refs         links, anchors and paths that documents point at"
 	@echo "make context-budget   always-on token cost, all of it, against the ceiling"
+	@echo "make verify-all       verify, then confirm the published check total matches"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
 	@echo "make verify-plugins   claude plugin validate (skipped when the CLI is absent)"
@@ -65,6 +66,15 @@ doc-refs:
 # owns.
 context-budget:
 	@$(BASH) scripts/context-budget.sh --ceiling $(CONTEXT_CEILING)
+
+# The published total is a claim about this suite, and for four releases it was
+# maintained by editing three documents by hand. It cannot live inside `verify`
+# — it has to read what verify printed — so it wraps it. CI runs this one.
+verify-all:
+	@set -o pipefail; $(MAKE) verify BASH=$(BASH) 2>&1 | tee /tmp/harness-verify.$$$$.log; \
+	  st=$$?; $(BASH) scripts/verify-check-total.sh /tmp/harness-verify.$$$$.log; \
+	  tot=$$?; rm -f /tmp/harness-verify.$$$$.log; \
+	  [ $$st -eq 0 ] && [ $$tot -eq 0 ]
 
 verify-benches:
 	@$(BASH) scripts/verify-benches.sh
