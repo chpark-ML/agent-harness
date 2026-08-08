@@ -265,10 +265,20 @@ if [ "$PHYS" = "$LOGICAL" ]; then
 else
   session s14
   add "$(ev_user 'reached through a symlink')"; add "$(ev_asst 'found anyway')"
-  # Move the fixture to where a session run under the resolved path would have
-  # left it. Now the logical slug matches nothing.
+  # The fixture has to sit where a session run under the *resolved* path would
+  # have left it, so the logical slug matches nothing and the fallback must
+  # fire. Whether that is a move depends on which branch above ran:
+  #
+  #   macOS  — LOGICAL is $PROJ under /var, PHYS is /private/var. Different
+  #            slugs, so the fixture moves.
+  #   Linux  — no such indirection, so we made the symlink ourselves and PHYS
+  #            *is* $PROJ. The fixture is already at the physical slug, and
+  #            moving it onto itself deletes it.
   PHYS_TDIR="$CFG/projects/$(printf '%s' "$PHYS" | sed 's/[\/.]/-/g')"
-  rm -rf "$PHYS_TDIR"; mv "$TDIR" "$PHYS_TDIR"
+  MOVED=0
+  if [ "$PHYS_TDIR" != "$TDIR" ]; then
+    rm -rf "$PHYS_TDIR"; mv "$TDIR" "$PHYS_TDIR"; MOVED=1
+  fi
 
   ( cd "$LOGICAL" && env -i PATH="$PATH_SAVE" HOME="$WORK" LC_ALL=C \
       CLAUDE_CONFIG_DIR="$CFG" "$BASH_SAVE" "$HOOK" \
@@ -282,8 +292,8 @@ else
   fi
 
   # And the fallback must not fire when the logical path is the right one:
-  # putting the fixture back under the logical slug has to keep working.
-  mv "$PHYS_TDIR" "$TDIR"
+  # asking for $PROJ, whose slug is where the fixture lives, has to keep working.
+  [ "$MOVED" -eq 1 ] && mv "$PHYS_TDIR" "$TDIR"
   render
   expect_match "and the logical path is still preferred when it exists" "$OUT" "reached through a symlink"
 fi
