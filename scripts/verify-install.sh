@@ -68,7 +68,7 @@ new_consumer() {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "statusLine": { "type": "command", "command": "~/.claude/statusline.sh", "padding": 0 },
   "permissions": {
-    "allow": ["Bash(npm test:*)"],
+    "allow": ["Bash(echo consumer-owned:*)"],
     "deny": []
   },
   "hooks": {
@@ -201,7 +201,7 @@ check "unrelated top-level key (statusLine) untouched" \
   "$([ "$(jq -c '.statusLine' "$S")" = '{"type":"command","command":"~/.claude/statusline.sh","padding":0}' ] && echo 0 || echo 1)"
 check "\$schema untouched" "$([ "$(jq -r '."$schema"' "$S")" != "null" ] && echo 0 || echo 1)"
 check "consumer allow entry survives" \
-  "$(jq -e '.permissions.allow | index("Bash(npm test:*)")' "$S" >/dev/null 2>&1 && echo 0 || echo 1)"
+  "$(jq -e '.permissions.allow | index("Bash(echo consumer-owned:*)")' "$S" >/dev/null 2>&1 && echo 0 || echo 1)"
 check "consumer PreToolUse hook survives" \
   "$(jq -e '[.hooks.PreToolUse[].hooks[].command] | index("bash .claude/hooks/mine/audit.sh")' "$S" >/dev/null 2>&1 && echo 0 || echo 1)"
 check "consumer Stop hook survives" \
@@ -359,7 +359,7 @@ section "user scope (--scope user)"
 U="$WORK/usercfg"
 mkdir -p "$U"
 cat > "$U/settings.json" <<'EOF'
-{ "model": "opus", "permissions": { "allow": ["Bash(npm test:*)"] } }
+{ "model": "opus", "permissions": { "allow": ["Bash(echo consumer-owned:*)"] } }
 EOF
 U_BEFORE="$(jq -S . "$U/settings.json")"
 

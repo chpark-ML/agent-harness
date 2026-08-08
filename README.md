@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-427-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-428-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -40,7 +40,7 @@
 | | `core`<br><sub>항상</sub> | `+dev`<br><sub>역할</sub> | `+research`<br><sub>역할</sub> | `+slides`<br><sub>산출물</sub> | `+python`·`+typescript`<br><sub>언어</sub> |
 |---|---|---|---|---|---|
 | **가드 훅** | **6** — 차단 4 · 정보 2 | | | | |
-| **권한 3티어** | allow 42 / ask 3 / deny 8 | | | | |
+| **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | |
 | **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | |
@@ -242,7 +242,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 | 티어 | 무엇 |
 |---|---|
-| allow | 읽기 전용, 안전한 git (`status`·`diff`·`add`·`commit`·`switch` …) |
+| allow | 읽기 전용, 안전한 git (`status`·`diff`·`add`·`commit`·`switch` …), 테스트 러너 5 |
 | ask | `push` · `rebase` · `merge` — 되돌리기 비싼 것 |
 | deny | 되돌릴 수 없는 것, `.env`·`secrets/` 읽기, force push |
 
@@ -369,9 +369,9 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | frontmatter 파싱 | **11** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **12** |
-| 문서 내부 참조 (`verify-doc-refs`) | **51** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **52** 파일 + 자체 **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **427** |
+| **합계** | **428** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

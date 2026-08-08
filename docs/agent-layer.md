@@ -62,7 +62,7 @@
 | Phase | 카테고리 | 위치 | 현재 |
 |---|---|---|---|
 | **0** | Conventions | `CLAUDE.md` · `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
-| **0** | Permissions | `settings.json` (fragment 로 병합) | ✅ allow 42 / ask 3 / deny 8 |
+| **0** | Permissions | `settings.json` (fragment 로 병합) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — `hooks.json` 이 등록 | ✅ 6 (차단 4 · 정보 2) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, 그 위에 Superpowers 14 |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 하네스 자체용 1 (`harness-reviewer`) — 컨슈머용은 없음 |
@@ -116,7 +116,7 @@
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 51 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 427. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 52 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 428. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
