@@ -167,20 +167,32 @@ done
 # creates a new directory, so anything pinned to today's path breaks tomorrow.
 # So this writes a shim that resolves the newest version at run time. It is a
 # plain executable, which means it works the same in zsh, bash and fish.
+#
+# One shim per executable in the plugin's bin/, discovered rather than listed.
+# A hardcoded name means the next executable ships with a documented terminal
+# command that does not exist, and nothing fails to say so.
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 say "shell shim"
 if mkdir -p "$BIN_DIR" 2>/dev/null; then
-  cat > "$BIN_DIR/harnessctl" <<'SHIM'
+  bindir="$(ls -d "$HOME"/.claude/plugins/cache/*/harness-core/*/bin 2>/dev/null | sort -V | tail -1)"
+  shimmed=0
+  for exe in "$bindir"/*; do
+    [ -f "$exe" ] && [ -x "$exe" ] || continue
+    name="$(basename "$exe")"
+    sed "s/@NAME@/$name/g" > "$BIN_DIR/$name" <<'SHIM'
 #!/bin/sh
-# harnessctl shim — resolves the installed plugin at run time.
+# @NAME@ shim — resolves the installed plugin at run time.
 # Installed by agent-harness/install.sh. Safe to delete; re-created on install.
 d=$(ls -d "$HOME"/.claude/plugins/cache/*/harness-core/*/bin 2>/dev/null | sort -V | tail -1)
-[ -n "$d" ] || { echo "harnessctl: harness-core plugin not found. Install it first:" >&2
+[ -n "$d" ] || { echo "@NAME@: harness-core plugin not found. Install it first:" >&2
                  echo "  claude plugin install harness-core@agent-harness --scope user" >&2; exit 1; }
-exec "$d/harnessctl" "$@"
+exec "$d/@NAME@" "$@"
 SHIM
-  chmod +x "$BIN_DIR/harnessctl"
-  say "  $BIN_DIR/harnessctl"
+    chmod +x "$BIN_DIR/$name"
+    say "  $BIN_DIR/$name"
+    shimmed=$((shimmed + 1))
+  done
+  [ "$shimmed" -gt 0 ] || warn "  harness-core 의 bin/ 을 찾지 못했습니다 — 플러그인 설치를 먼저 확인하세요."
   case ":$PATH:" in
     *":$BIN_DIR:"*) say "  PATH 에 이미 있습니다" ;;
     *)

@@ -6,7 +6,7 @@
 
 | 산출물 | 위치 | 역할 |
 |---|---|---|
-| 플러그인 | `plugins/harness-{core,dev,research,python,typescript}/` | 훅 · 스킬 · 커맨드 · 검증기 · `bin/harnessctl`. Claude Code 가 직접 로드한다 |
+| 플러그인 | `plugins/harness-{core,dev,research,python,typescript}/` | 훅 · 스킬 · 커맨드 · 검증기 · `bin/` 실행파일 (`harnessctl` · [`harness-log`](harness-log.md)). Claude Code 가 직접 로드하고 `bin/` 은 Bash 도구 PATH 에 올린다 |
 | 선언적 설치기 | `plugins/harness-core/bin/harnessctl` | 플러그인이 못 나르는 것 — permissions · `CLAUDE.md` · `rules` — 을 대상에 쓰고 대칭 제거 |
 | Bootstrap | `install.sh` | 한 명령으로 전체 설치 — marketplace 등록 → 플러그인 → `harnessctl init` → 언어 서버 → `doctor`. 하네스 로직은 담지 않고 두 절반을 순서대로 호출한다 |
 | 검증 러너 | `plugins/harness-core/scripts/verify-*.sh` · `scripts/verify-{install,frontmatter}.sh` | 훅 동작 · harnessctl 왕복 · frontmatter |
@@ -57,7 +57,7 @@
 
 ## 3. 카테고리 · 채택 사다리
 
-7 카테고리. **채택 순서가 곧 진행 축** — 가드레일 → 가이드 → 자동화 → 위임 → 외부 연결. 역순으로 가면 자동화가 사고를 키운다.
+8 카테고리. **채택 순서가 곧 진행 축** — 가드레일 → 가이드 → 자동화 → 위임 → 외부 연결. 역순으로 가면 자동화가 사고를 키운다.
 
 | Phase | 카테고리 | 위치 | 현재 |
 |---|---|---|---|
@@ -67,6 +67,7 @@
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, 그 위에 Superpowers 14 |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 하네스 자체용 1 (`harness-reviewer`) — 컨슈머용은 없음 |
 | **3** | Slash commands | `.claude/commands/*.md` | ✅ 1 (`/verify`) |
+| **3** | 실행파일 | `plugins/*/bin/` | ✅ 2 — `harnessctl` (설치·검증·제거) · [`harness-log`](harness-log.md) (세션 기록 → HTML) |
 | **4** | MCP servers | `.mcp.json` | ⏳ 없음 |
 | **—** | 외부 플러그인 | profile 의 `dependencies` | ✅ Superpowers · LSP 2 ([ADR-0009](adr/0009-external-dependencies.md)) |
 | **—** | 외부 계측기 | 개발자가 직접 설치 (배포 안 함) | ✅ `skill-creator` — 스킬 ablation·트리거 측정 ([ADR-0011](adr/0011-ecosystem-survey.md)) |
@@ -114,6 +115,7 @@
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
 | 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복, **그리고 `install.sh` 자체** (헤더에 실행 가능한 줄이 없는가 · `--help` 와 인자 거부가 Claude CLI 없이 도는가). 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
 | Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 negative routing 과 `TRIGGER_LANGS` 가 선언한 제2언어 트리거 (이 저장소는 `한국어\|Korean`; 영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
+| 산출물 도구 | `plugins/harness-core/scripts/verify-harness-log.sh` — 44케이스. 훅과 같은 세 종류를 담되 **must-not-appear** 가 중심이다: 도구 출력·서브에이전트·스킬 주입·컴팩션 요약이 페이지에 새면 `secret-scrubber` 를 운영하는 저장소에서 명령이 출력한 것이 파일로 남는다 ([harness-log](harness-log.md)) |
 | 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
 | 검사 총계 | `scripts/verify-check-total.sh` — 발행된 총계 셋(README 배지·README 표·본 문서 §4)이 서로 일치하고, **실제 실행 결과와도 일치하는가**. `make verify-all` 이 verify 를 돌린 뒤 그 출력을 읽는다 |
 | 컨텍스트 예산 | `scripts/context-budget.sh` — 상시 로드되는 **전 footprint**(선언적 + 플러그인)를 스코프 × 프로파일별로 합산하고 `CONTEXT_CEILING` 을 넘으면 실패. 파일 목록은 glob 이라 새 rule 이 조용히 공짜가 되지 않는다 |
@@ -121,7 +123,7 @@
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 55 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 438. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, 세션 로그 렌더러 44, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 56 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 483. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
@@ -346,7 +348,7 @@ description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대
 - ⏳ 언어 프로파일 확대 (`go` · `rust` · `java` …) — manifest 하나면 되지만 실제로 쓸 때 추가한다.
 - ⏳ `harness-frontend` 프로파일 — `ui-ux-pro-max` 가 스타일·팔레트·스택 레퍼런스를 크게 싣고 있어 후보는 명확하다. 다만 이 저장소에서 발생 0회 ([ADR-0011](adr/0011-ecosystem-survey.md)).
 - ⏳ 개발 쪽 세션 인수인계 — `handoff` 계열이 있고 연구 쪽은 5문서 세트가 이미 덮는다. 개발 쪽 실수요가 두 번 나오면.
-- ⏳ 세션 메모리 (`claude-mem` 류) — 도구 입출력 전체를 저장하므로 `secret-scrubber` 를 운영하는 저장소에서는 무엇이 삼켜지는지 먼저 확인해야 한다. 그 확인을 하기 전에는 후보로만 둔다.
+- ✅ 세션 기록 — `claude-mem` 류를 보류한 이유(도구 입출력 전체 저장)를 뒤집어 **저장하지 않는 것을 설계로 삼은** [`harness-log`](harness-log.md) 로 답했다. 프롬프트와 최종 답변만 남기고 도구 출력·서브에이전트·컴팩션 요약은 버린다. 검증 44케이스 중 10개가 *새면 안 되는 것* 을 본다. `claude-mem` 자체는 여전히 보류다 ([ADR-0011](adr/0011-ecosystem-survey.md)).
 - ⏳ MCP 서버 등록 — 병합 대상이 `.mcp.json` 으로 늘어난다. 설치기의 소유권 모델을 그 파일에도 적용해야 하므로 실수요가 생긴 뒤에.
 - ⏳ `dev`: "이 변경으로 거짓이 된 문서·설정 예시" 리뷰 항목. 초안까지 썼다가 뺐다 — 언어 무관하고 그럴듯하지만 아직 발생 0회이고, 정확히 "있으면 좋을 것 같아서" 추가하는 모양이다. 실제 리뷰가 stale 한 README 를 놓치면 그것이 1회차.
 - ⏳ `research`: `FINDINGS.md` 템플릿의 negative-results 절. 죽은 길을 다시 걷지 않게 한다는 근거는 ledger 를 정당화하는 근거와 같다. 템플릿은 뼈대여야 하므로 일단 뺐다.
@@ -377,6 +379,7 @@ description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대
 │   │   ├── commands/verify.md
 │   │   ├── scripts/{_verify-lib,verify-*}.sh
 │   │   ├── bin/harnessctl              # init · doctor · uninstall
+│   │   ├── bin/harness-log             # 세션 기록 → 자체완결 HTML
 │   │   └── declarative/                # 플러그인이 못 나르는 것
 │   │       ├── settings-fragment.json  # permissions + scalars (hooks 없음)
 │   │       ├── CLAUDE.md               # 템플릿
@@ -391,5 +394,5 @@ description 의 한·영 트리거와 negative routing 은 둘 다 행동에 대
 ├── scripts/verify-{install,frontmatter}.sh
 ├── Makefile · CLAUDE.md · .claude/     # 저장소 자체 개발용
 ├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · 플러그인 매니페스트
-└── docs/ (agent-layer.md · adr/0001..0011 · hooks/*.md)
+└── docs/ (agent-layer.md · harness-log.md · adr/0001..0013 · hooks/*.md)
 ```

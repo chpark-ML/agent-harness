@@ -41,8 +41,8 @@ verify: syntax frontmatter doc-refs context-budget verify-hooks verify-install v
 # reach — which is most of harnessctl's error paths.
 syntax:
 	@fail=0; \
-	for f in install.sh scripts/*.sh plugins/harness-core/bin/harnessctl \
-	         plugins/*/scripts/*.sh plugins/harness-core/hooks/*.sh; do \
+	for f in install.sh scripts/*.sh plugins/*/bin/* \
+	         plugins/*/scripts/*.sh plugins/*/hooks/*.sh; do \
 	  if $(BASH) -n "$$f"; then echo "  ok    $$f"; else echo "  FAIL  $$f"; fail=1; fi; \
 	done; \
 	exit $$fail
