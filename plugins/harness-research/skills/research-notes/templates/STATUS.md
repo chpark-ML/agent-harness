@@ -1,41 +1,42 @@
 # <PROJECT> — STATUS (<YYYY-MM-DD>)
 
-> **이 문서가 단일 진입점이다.** 새 세션은 여기부터 읽는다. 갱신할 때 위 날짜도 함께 고친다.
-> 시간순 근거는 [`experiment_plan.md`](experiment_plan.md), 확립된 결과는 [`FINDINGS.md`](FINDINGS.md),
-> 수치의 출처는 [`ARTIFACTS.md`](ARTIFACTS.md), 리뷰 이력은 [`review_log.md`](review_log.md).
+> **This document is the single entry point.** A new session starts here. Update the date above when you update it.
+> Evidence in time order is [`experiment_plan.md`](experiment_plan.md), established results are [`FINDINGS.md`](FINDINGS.md),
+> where each number came from is [`ARTIFACTS.md`](ARTIFACTS.md), and review history is [`review_log.md`](review_log.md).
 
-## 현재 상태
+## Where things stand
 
-<한 문단. 무엇이 확립됐고 무엇이 아직 미결인가.>
+<One paragraph. What is established, and what is still open.>
 
-## 진행 중
+## In flight
 
-| 항목 | 상태 | 근거 |
+| Item | State | Evidence |
 |---|---|---|
 | | | [`experiment_plan.md`](experiment_plan.md) §N |
 
-## 다음 행동
+## Next
 
-1. <다음 세션이 손댈 것. 여러 개면 순서를 매기고, 순서의 이유를 한 줄 붙인다.>
+1. <What the next session picks up. If there is more than one, order them and give the ordering a one-line reason.>
 
-## 결정 대기
+## Waiting on a decision
 
-- <사용자 판단이 없으면 진행이 막히는 항목. 없으면 "없음".>
+- <Anything that blocks progress until someone rules on it. Write "none" if there is nothing.>
 
-<!-- EXAMPLE — 삭제할 것. 채워진 모습:
+<!-- EXAMPLE — delete this. What a filled-in status looks like:
 
-## 현재 상태
-파이프라인 A 는 §3 에서 재현됐다 (보고치 대비 −0.4, 임계 ±2 안). 남은 미결은 B 의 처리량이
-같은 입력에서 왜 절반인가 — §5 에서 재현되나 원인 미상.
+## Where things stand
+Pipeline A reproduced in §3 (−0.4 against the reported figure, inside the ±2 threshold). What remains
+open is why B's throughput is half on the same input — reproducible in §5, cause unknown.
 
-## 진행 중
-| 항목 | 상태 | 근거 |
+## In flight
+| Item | State | Evidence |
 |---|---|---|
-| B 프로파일링 재실행 | running (2026-01-20 14:00 시작) | §5 |
+| re-running the profile on B | running (started 2026-01-20 14:00) | §5 |
 
-## 다음 행동
-1. §5 run 이 끝나면 hot path 상위 3 개를 §6 항목으로 기록. 원인이 I/O 면 §4 의 결론이 뒤집힌다.
+## Next
+1. When the §5 run finishes, record the top three hot paths as a §6 entry. If the cause turns out to be
+   I/O, §4's conclusion is overturned.
 
-## 결정 대기
-- B 를 이번 범위에 포함할지 — 포함하면 일정 2 주 증가.
+## Waiting on a decision
+- Whether B is in scope this cycle — including it adds two weeks.
 -->

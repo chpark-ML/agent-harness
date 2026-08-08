@@ -44,7 +44,7 @@ usage() {
 case "$1" in
   init|doctor|uninstall) CMD="$1"; shift ;;
   -h|--help) usage; exit 0 ;;
-  *) die "알 수 없는 명령: $1  (init | doctor | uninstall)" ;;
+  *) die "unknown command: $1  (init | doctor | uninstall)" ;;
 esac
 
 join_with() { # join two comma lists, dropping empties
@@ -55,25 +55,25 @@ join_with() { # join two comma lists, dropping empties
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --scope)            shift; [ $# -gt 0 ] || die "--scope 값이 필요합니다"; SCOPE="$1" ;;
+    --scope)            shift; [ $# -gt 0 ] || die "--scope needs a value"; SCOPE="$1" ;;
     --scope=*)          SCOPE="${1#--scope=}" ;;
     # Repeating --with accumulates rather than overwriting. `--with dev --with
     # research` is a reasonable thing to type, and silently installing only the
     # last one loses a module the user explicitly asked for, with no warning.
-    --with)             shift; [ $# -gt 0 ] || die "--with 값이 필요합니다"; WITH="$(join_with "$WITH" "$1")"; WITH_SET=1 ;;
+    --with)             shift; [ $# -gt 0 ] || die "--with needs a value"; WITH="$(join_with "$WITH" "$1")"; WITH_SET=1 ;;
     --with=*)           WITH="$(join_with "$WITH" "${1#--with=}")"; WITH_SET=1 ;;
     --purge-templates)  PURGE_TEMPLATES=1 ;;
     --dry-run)          DRY_RUN=1 ;;
     -h|--help)          usage; exit 0 ;;
-    *)                  die "알 수 없는 인자: $1" ;;
+    *)                  die "unknown argument: $1" ;;
   esac
   shift
 done
 
 case "$SCOPE" in
   user|project) ;;
-  local) die "--scope local 은 아직 지원하지 않습니다. settings.local.json 대상은 backlog." ;;
-  *) die "--scope 는 user 또는 project 입니다 (받은 값: $SCOPE)" ;;
+  local) die "--scope local is not supported yet. Targeting settings.local.json is backlog." ;;
+  *) die "--scope takes user or project (got: $SCOPE)" ;;
 esac
 
 # ---- payload ----------------------------------------------------------------
@@ -81,22 +81,22 @@ esac
 # is a faithful copy, so one relative resolution works both from the cache and
 # from a source checkout. No $CLAUDE_PLUGIN_ROOT needed.
 SELF="${BASH_SOURCE[0]:-}"
-[ -n "$SELF" ] && [ -f "$SELF" ] || die "harnessctl 을 파일에서 실행해야 합니다 (파이프 실행 미지원)."
+[ -n "$SELF" ] && [ -f "$SELF" ] || die "harnessctl must be run from a file; piping it in is not supported."
 PLUGIN_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 PAYLOAD="$PLUGIN_ROOT/declarative"
-[ -d "$PAYLOAD" ] || die "페이로드를 찾을 수 없습니다: $PAYLOAD"
+[ -d "$PAYLOAD" ] || die "payload not found: $PAYLOAD"
 
 validate_manifest() {
   [ -f "$MANIFEST" ] || return 0
   jq -e 'type == "object"' "$MANIFEST" >/dev/null 2>&1 && return 0
-  die "$MANIFEST 을 읽을 수 없습니다 (유효한 JSON 객체가 아님).
-   이 파일은 커밋되므로 브랜치 간 머지 충돌로 깨질 수 있습니다.
-   설치 기록이 사라져도 무방하면 지우고 다시 실행하세요:
+  die "cannot read $MANIFEST (not a valid JSON object).
+   This file is committed, so a merge across branches can corrupt it.
+   If losing the install record is acceptable, delete it and re-run:
      rm '$MANIFEST' && harnessctl init --scope $SCOPE"
 }
 
-command -v jq >/dev/null 2>&1 || die "jq 가 필요합니다.
-   설치: brew install jq | apt-get install jq | dnf install jq | apk add jq"
+command -v jq >/dev/null 2>&1 || die "jq is required.
+   Install: brew install jq | apt-get install jq | dnf install jq | apk add jq"
 
 if [ "$SCOPE" = user ]; then
   TARGET="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -117,7 +117,7 @@ fi
 GITIGNORE_WANT='.claude/settings.local.json
 .claude/settings.json.bak-*'
 
-TMP="$(mktemp -d)" || die "임시 디렉터리 생성 실패"
+TMP="$(mktemp -d)" || die "could not create a temp directory"
 trap 'rm -rf "$TMP"' EXIT
 
 # ---- doctor -----------------------------------------------------------------
@@ -128,37 +128,37 @@ if [ "$CMD" = doctor ]; then
 
   say "harnessctl doctor  (scope: $SCOPE, target: $TARGET)"
   say ""
-  say "필수 도구:"
-  command -v jq >/dev/null 2>&1 && ok "jq $(jq --version)" || bad "jq 없음" "brew install jq"
-  command -v git >/dev/null 2>&1 && ok "git $(git --version | awk '{print $3}')" || bad "git 없음"
+  say "required tools:"
+  command -v jq >/dev/null 2>&1 && ok "jq $(jq --version)" || bad "jq missing" "brew install jq"
+  command -v git >/dev/null 2>&1 && ok "git $(git --version | awk '{print $3}')" || bad "git missing"
 
   say ""
-  say "언어 서버 (설치한 language 프로파일이 요구 — LSP 플러그인은 바이너리를 번들하지 않습니다):"
+  say "language servers (required by an installed language profile — the LSP plugins do not bundle a binary):"
   for pair in "pyright-langserver:harness-python:npm install -g pyright" \
               "typescript-language-server:harness-typescript:npm install -g typescript-language-server typescript"; do
     binname="${pair%%:*}"; rest="${pair#*:}"; prof="${rest%%:*}"; how="${rest#*:}"
     if command -v "$binname" >/dev/null 2>&1; then
       ok "$binname ($prof)"
     else
-      say "  --    $binname 없음 — $prof 를 쓴다면: $how"
+      say "  --    $binname missing — if you use $prof: $how"
     fi
   done
 
   say ""
-  say "외부 도구 (프로파일이 요구):"
+  say "external tools (required by a profile):"
   if command -v npx >/dev/null 2>&1 && npx --no-install slides-grab --version >/dev/null 2>&1; then
     ok "slides-grab (harness-slides)"
   elif [ -d node_modules/slides-grab ]; then
-    ok "slides-grab (harness-slides, 로컬 설치)"
+    ok "slides-grab (harness-slides, installed locally)"
   else
-    say "  --    slides-grab 없음 — harness-slides 를 쓴다면: npm install slides-grab && npx playwright install chromium"
+    say "  --    slides-grab missing — if you use harness-slides: npm install slides-grab && npx playwright install chromium"
   fi
 
   say ""
-  say "설치 상태:"
+  say "install state:"
   if [ -f "$MANIFEST" ]; then
-    jq empty "$MANIFEST" 2>/dev/null && ok "manifest 유효 (modules: $(jq -r '(.modules // []) | if length==0 then "core only" else join(", ") end' "$MANIFEST"))" \
-      || bad "manifest 가 깨진 JSON" "$MANIFEST"
+    jq empty "$MANIFEST" 2>/dev/null && ok "manifest valid (modules: $(jq -r '(.modules // []) | if length==0 then "core only" else join(", ") end' "$MANIFEST"))" \
+      || bad "manifest is broken JSON" "$MANIFEST"
     manifest_ok=1
     jq -e 'type == "object"' "$MANIFEST" >/dev/null 2>&1 || manifest_ok=0
     missing=""
@@ -167,36 +167,36 @@ if [ "$CMD" = doctor ]; then
       [ -e "$TARGET/$rel" ] || missing="$missing $rel"
     done < <(jq -r '((.files.managed // []) + (.files.template // []))[]' "$MANIFEST" 2>/dev/null)
     if [ "$manifest_ok" -eq 0 ]; then
-      say "  --    파일 대조 생략 (manifest 를 읽을 수 없음)"
-    elif [ -z "$missing" ]; then ok "manifest 가 기록한 파일이 모두 존재"
-    else bad "누락된 파일" "$missing"; fi
+      say "  --    file check skipped (manifest unreadable)"
+    elif [ -z "$missing" ]; then ok "every file the manifest records exists"
+    else bad "missing files" "$missing"; fi
   else
-    say "  --    harnessctl init 미실행 (manifest 없음)"
+    say "  --    harnessctl init has not run (no manifest)"
   fi
   if [ -f "$SETTINGS" ]; then
-    jq empty "$SETTINGS" 2>/dev/null && ok "settings.json 유효한 JSON" || bad "settings.json 이 깨진 JSON" "$SETTINGS"
+    jq empty "$SETTINGS" 2>/dev/null && ok "settings.json is valid JSON" || bad "settings.json is broken JSON" "$SETTINGS"
   else
-    say "  --    settings.json 없음"
+    say "  --    no settings.json"
   fi
 
   say ""
-  say "가드 (플러그인이 등록 — 여기서 직접 실행해 확인):"
+  say "guards (registered by the plugin — run here directly to confirm):"
   hook="$PLUGIN_ROOT/hooks/secret-scrubber.sh"
   if [ -f "$hook" ]; then
     printf '%s' '{"tool_name":"Bash","tool_input":{"command":"export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"}}' | bash "$hook" >/dev/null 2>&1
-    [ $? -eq 2 ] && ok "secret-scrubber 가 리터럴 키를 차단" || bad "secret-scrubber 가 차단하지 않음"
+    [ $? -eq 2 ] && ok "secret-scrubber blocks a literal key" || bad "secret-scrubber did not block"
     printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | bash "$hook" >/dev/null 2>&1
-    [ $? -eq 0 ] && ok "secret-scrubber 가 정상 명령을 통과" || bad "secret-scrubber 가 정상 명령을 차단"
+    [ $? -eq 0 ] && ok "secret-scrubber passes an ordinary command" || bad "secret-scrubber blocked an ordinary command"
   else
-    bad "훅을 찾을 수 없음" "$hook"
+    bad "hook not found" "$hook"
   fi
   if [ -f "$CONFIG_DIR/protected-paths.txt" ] \
      && ! grep -q '^[[:space:]]*[^[:space:]#]' "$CONFIG_DIR/protected-paths.txt" 2>/dev/null; then
-    say "  --    protected-paths 비활성 — 보호할 절대경로 prefix 를 $CONFIG_DIR/protected-paths.txt 에 적으면 켜집니다"
+    say "  --    protected-paths inactive — list absolute path prefixes in $CONFIG_DIR/protected-paths.txt to turn it on"
   fi
 
   say ""
-  [ "$fail" -eq 0 ] && say "이상 없음." || warn "위 FAIL 항목을 확인하세요."
+  [ "$fail" -eq 0 ] && say "nothing wrong." || warn "look at the FAIL entries above."
   exit "$fail"
 fi
 
@@ -213,7 +213,7 @@ elif [ -f "$MANIFEST" ]; then
   MODULES="$(jq -r '(.modules // []) | sort | join(" ")' "$MANIFEST" 2>/dev/null)"
 fi
 for m in $MODULES; do
-  [ -d "$PAYLOAD/rules/$m" ] || die "모듈 '$m' 이 없습니다. 사용 가능: $(ls "$PAYLOAD/rules" 2>/dev/null | grep -v '^core$' | tr '\n' ' ')"
+  [ -d "$PAYLOAD/rules/$m" ] || die "no such module '$m'. Available: $(ls "$PAYLOAD/rules" 2>/dev/null | grep -v '^core$' | tr '\n' ' ')"
 done
 
 PLAN_MANAGED=""
@@ -228,7 +228,7 @@ addt "$PAYLOAD/CLAUDE.md" "CLAUDE.md"
 if [ "$SCOPE" = user ]; then
   addt "$PAYLOAD/templates/protected-paths.txt" "protected-paths.txt"
   addt "$PAYLOAD/templates/allowed-paths.txt"   "allowed-paths.txt"
-  PLAN_SKIPPED="rules/ (path-scoped rules 는 프로젝트에서만 읽힙니다)"
+  PLAN_SKIPPED="rules/ (path-scoped rules are only read in a project)"
 else
   addt "$PAYLOAD/templates/protected-paths.txt" ".claude/protected-paths.txt"
   addt "$PAYLOAD/templates/allowed-paths.txt"   ".claude/allowed-paths.txt"
@@ -295,19 +295,19 @@ lines_to_json() { jq -Rs 'split("\n") | map(select(length > 0))'; }
 install_one() {
   local src="$1" rel="$2" dst="$TARGET/$2"
   if [ -e "$dst" ] && cmp -s "$src" "$dst"; then say "  =  $rel"; return 0; fi
-  if [ -e "$dst" ]; then say "  ↻  $rel  (덮어씀)"; else say "  +  $rel"; fi
+  if [ -e "$dst" ]; then say "  ↻  $rel  (overwritten)"; else say "  +  $rel"; fi
   [ "$DRY_RUN" -eq 1 ] && return 0
-  mkdir -p "$(dirname "$dst")" || die "디렉터리 생성 실패: $rel"
-  cp "$src" "$dst" || die "복사 실패: $rel"
+  mkdir -p "$(dirname "$dst")" || die "could not create directory: $rel"
+  cp "$src" "$dst" || die "could not copy: $rel"
   return 0
 }
 install_template() {
   local src="$1" rel="$2" dst="$TARGET/$2"
-  if [ -e "$dst" ]; then say "  =  $rel  (기존 유지 — 템플릿)"; return 0; fi
-  say "  +  $rel  (템플릿)"
+  if [ -e "$dst" ]; then say "  =  $rel  (kept as it was — template)"; return 0; fi
+  say "  +  $rel  (template)"
   [ "$DRY_RUN" -eq 1 ] && return 0
-  mkdir -p "$(dirname "$dst")" || die "디렉터리 생성 실패: $rel"
-  cp "$src" "$dst" || die "복사 실패: $rel"
+  mkdir -p "$(dirname "$dst")" || die "could not create directory: $rel"
+  cp "$src" "$dst" || die "could not copy: $rel"
 }
 remove_file() {
   local rel="$1" dst="$TARGET/$1"
@@ -336,7 +336,7 @@ snapshot_settings() {
   local stamp backup n
   stamp="$(date +%Y%m%d-%H%M%S)"; backup="$SETTINGS.bak-$stamp"; n=1
   while [ -e "$backup" ]; do backup="$SETTINGS.bak-$stamp-$n"; n=$((n + 1)); done
-  cp "$SETTINGS" "$backup" || die "설정 백업 실패"
+  cp "$SETTINGS" "$backup" || die "could not back up settings"
   SETTINGS_BACKUP="$backup"
 }
 GITIGNORE_ADDED=""
@@ -363,7 +363,7 @@ remove_gitignore_line() {
 
 # ---- uninstall --------------------------------------------------------------
 if [ "$CMD" = uninstall ]; then
-  [ -f "$MANIFEST" ] || die "$MANIFEST 이 없습니다 — 제거할 설치 기록이 없습니다."
+  [ -f "$MANIFEST" ] || die "no $MANIFEST — there is no install record to remove."
   old_managed="$(jq -r '(.files.managed // [])[]' "$MANIFEST")"
   old_template="$(jq -r '(.files.template // [])[]' "$MANIFEST")"
   old_gitignore="$(jq -r '(.gitignore_added // [])[]' "$MANIFEST")"
@@ -374,33 +374,33 @@ if [ "$CMD" = uninstall ]; then
   rm_created="$(jq -c '.settings.created_paths // []' "$MANIFEST")"
 
   say "harnessctl uninstall  (scope: $SCOPE, target: $TARGET)"
-  [ "$DRY_RUN" -eq 1 ] && say "  (dry-run — 아무것도 쓰지 않습니다)"
+  [ "$DRY_RUN" -eq 1 ] && say "  (dry-run — nothing is written)"
   say ""
-  say "설정:"
+  say "settings:"
   if [ -f "$SETTINGS" ]; then
     snapshot_settings
     jq --argjson rmperm "$rm_perm" --argjson rmscalars "$rm_scalars" --argjson created "$rm_created" \
-      "$JQ_REVERT" "$SETTINGS" > "$TMP/s.json" || die "설정 되돌리기 실패"
+      "$JQ_REVERT" "$SETTINGS" > "$TMP/s.json" || die "could not revert settings"
     if [ "$(jq -c '.' "$TMP/s.json")" = "{}" ] && [ "$old_settings_created" = "true" ]; then
-      say "  -  ${SETTINGS#"$TARGET"/}  (설치기가 만든 파일, 비어서 삭제)"
-      [ "$DRY_RUN" -eq 1 ] || rm -f "$SETTINGS" || die "설정 삭제 실패 — manifest 는 그대로 두므로 원인을 고친 뒤 다시 실행하세요: $SETTINGS"
+      say "  -  ${SETTINGS#"$TARGET"/}  (created by the installer, now empty — deleted)"
+      [ "$DRY_RUN" -eq 1 ] || rm -f "$SETTINGS" || die "could not delete settings — the manifest is left alone, so fix the cause and re-run: $SETTINGS"
     else
-      say "  ↻  ${SETTINGS#"$TARGET"/}  (기록된 권한·스칼라 제거)"
+      say "  ↻  ${SETTINGS#"$TARGET"/}  (recorded permissions and scalars removed)"
       # Must not continue past this: the manifest is the only record of which
       # permission strings are ours, and it is deleted a few steps below.
-      [ "$DRY_RUN" -eq 1 ] || mv "$TMP/s.json" "$SETTINGS" || die "설정 쓰기 실패 — manifest 는 그대로 두므로 원인을 고친 뒤 다시 실행하세요: $SETTINGS"
+      [ "$DRY_RUN" -eq 1 ] || mv "$TMP/s.json" "$SETTINGS" || die "could not write settings — the manifest is left alone, so fix the cause and re-run: $SETTINGS"
     fi
   else
-    say "  =  설정 파일 없음"
+    say "  =  no settings file"
   fi
 
   say ""
-  say "파일:"
+  say "files:"
   printf '%s\n' "$old_managed" | while IFS= read -r r; do [ -n "$r" ] && remove_file "$r"; done
   if [ "$PURGE_TEMPLATES" -eq 1 ]; then
     printf '%s\n' "$old_template" | while IFS= read -r r; do [ -n "$r" ] && remove_file "$r"; done
   elif [ -n "$old_template" ]; then
-    say "  (템플릿 보존 — 지우려면 --purge-templates)"
+    say "  (templates kept — use --purge-templates to remove them)"
   fi
 
   if [ -n "$GITIGNORE" ]; then
@@ -410,7 +410,7 @@ if [ "$CMD" = uninstall ]; then
 $old_gitignore
 EOF
     if [ "$old_gi_created" = "true" ] && [ -f "$GITIGNORE" ] && [ ! -s "$GITIGNORE" ]; then
-      say "  -  .gitignore  (설치기가 만든 파일, 비어서 삭제)"
+      say "  -  .gitignore  (created by the installer, now empty — deleted)"
       [ "$DRY_RUN" -eq 1 ] || rm -f "$GITIGNORE"
     fi
   fi
@@ -425,11 +425,11 @@ EOF
 
   say ""
   if [ "$DRY_RUN" -eq 1 ]; then
-    say "dry-run 종료 — 변경 없음."
+    say "dry-run finished — nothing changed."
   else
-    say "제거 완료. 플러그인은 그대로입니다 — 함께 지우려면:"
+    say "removed. The plugins are untouched — to remove those too:"
     say "  claude plugin uninstall harness-core@agent-harness --prune"
-    [ -n "$SETTINGS_BACKUP" ] && say "  제거 직전 스냅샷: $SETTINGS_BACKUP"
+    [ -n "$SETTINGS_BACKUP" ] && say "  snapshot taken just before removal: $SETTINGS_BACKUP"
   fi
   exit 0
 fi
@@ -437,15 +437,15 @@ fi
 # ---- init -------------------------------------------------------------------
 say "harnessctl init  (scope: $SCOPE, target: $TARGET)"
 say "  modules: core${MODULES:+ + $(printf '%s' "$MODULES" | tr -s ' ' | sed 's/ *$//; s/ /, /g')}"
-[ "$DRY_RUN" -eq 1 ] && say "  (dry-run — 아무것도 쓰지 않습니다)"
+[ "$DRY_RUN" -eq 1 ] && say "  (dry-run — nothing is written)"
 
 if [ "$SCOPE" = project ] && [ ! -e "$TARGET/.git" ]; then
-  die "현재 디렉터리에 .git 이 없습니다. 프로젝트 루트에서 실행하거나 --scope user 를 쓰세요."
+  die "no .git in the current directory. Run this from the project root, or use --scope user."
 fi
 if [ -f "$SETTINGS" ]; then
-  [ -r "$SETTINGS" ] || die "$SETTINGS 을 읽을 수 없습니다 (권한 확인)."
+  [ -r "$SETTINGS" ] || die "cannot read $SETTINGS (check the permissions)."
   jq -e 'type == "object"' "$SETTINGS" >/dev/null 2>&1 \
-    || die "$SETTINGS 이 JSON 객체가 아닙니다 (배열·스칼라·null 은 병합할 수 없습니다)."
+    || die "$SETTINGS is not a JSON object (arrays, scalars and null cannot be merged into)."
 fi
 
 OWNED=""
@@ -461,31 +461,31 @@ while IFS="$(printf '\t')" read -r src rel; do
 done <<EOF
 $PLAN_MANAGED
 EOF
-[ -z "$conflicts" ] || die "다음 경로에 하네스가 관리하지 않는 파일이 있습니다 — 중단합니다:
+[ -z "$conflicts" ] || die "these paths hold files the harness does not own — stopping:
 $conflicts"
 
 say ""
-say "파일 (관리):"
+say "files (managed):"
 while IFS="$(printf '\t')" read -r src rel; do
   [ -n "$rel" ] && install_one "$src" "$rel"
 done <<EOF
 $PLAN_MANAGED
 EOF
 say ""
-say "파일 (템플릿):"
+say "files (template):"
 while IFS="$(printf '\t')" read -r src rel; do
   [ -n "$rel" ] && install_template "$src" "$rel"
 done <<EOF
 $PLAN_TEMPLATE
 EOF
-[ -n "$PLAN_SKIPPED" ] && { say ""; say "이 스코프에서 제외: $PLAN_SKIPPED"; }
+[ -n "$PLAN_SKIPPED" ] && { say ""; say "excluded in this scope: $PLAN_SKIPPED"; }
 
 if [ -n "$OWNED" ]; then
   stale="$(printf '%s\n' "$OWNED" | grep -v '^$' | LC_ALL=C sort \
            | comm -23 - <(printf '%s\n%s\n' "$NEW_MANAGED" "$NEW_TEMPLATE" | grep -v '^$' | LC_ALL=C sort -u))"
   if [ -n "$stale" ]; then
     say ""
-    say "파일 (이번 선택에 없음 — 제거):"
+    say "files (not in this selection — removed):"
     printf '%s\n' "$stale" | while IFS= read -r r; do [ -n "$r" ] && remove_file "$r"; done
     printf '%s\n' "$stale" | prune_dirs_for
   fi
@@ -504,7 +504,7 @@ if [ "$DRY_RUN" -eq 0 ] && [ -z "$MANIFEST_BEFORE" ]; then
       files:{managed:$managed, template:$template},
       settings:{permissions_added:{}, scalars_added:{}, created_paths:[], file_created:false},
       gitignore_added:[], gitignore_created:false, incomplete:true}' > "$MANIFEST" \
-    || die "manifest 초안 쓰기 실패"
+    || die "could not write the draft manifest"
 fi
 
 FRAG="$(cat "$PAYLOAD/settings-fragment.json")"
@@ -515,43 +515,43 @@ if [ -n "$MANIFEST_BEFORE" ]; then
   jq --argjson rmperm "$(jq -c '.settings.permissions_added // {}' "$MANIFEST")" \
      --argjson rmscalars "$(jq -c '.settings.scalars_added // {}' "$MANIFEST")" \
      --argjson created "$(jq -c '.settings.created_paths // []' "$MANIFEST")" \
-     "$JQ_REVERT" "$TMP/base.json" > "$TMP/base2.json" || die "이전 설치분 되돌리기 실패"
+     "$JQ_REVERT" "$TMP/base.json" > "$TMP/base2.json" || die "could not revert the previous install"
   mv "$TMP/base2.json" "$TMP/base.json"
   [ "$(jq -r '.settings.file_created // false' "$MANIFEST")" = "true" ] && SETTINGS_FILE_CREATED=true
 fi
-ADDITIONS="$(jq -c --argjson frag "$FRAG" "$JQ_ADDITIONS" "$TMP/base.json")" || die "추가분 계산 실패"
+ADDITIONS="$(jq -c --argjson frag "$FRAG" "$JQ_ADDITIONS" "$TMP/base.json")" || die "could not compute the additions"
 
 # Documented behaviour: a scalar the consumer already set is left alone. Saying
 # so matters most for includeCoAuthoredBy — leaving it true silently defeats the
 # guard the harness exists to provide.
 while IFS= read -r k; do
   [ -n "$k" ] || continue
-  warn "$k 이(가) 이미 $(jq -c --arg k "$k" '.[$k]' "$TMP/base.json") 로 설정돼 있어 그대로 둡니다 (하네스 권장값: $(printf '%s' "$FRAG" | jq -c --arg k "$k" '.scalars[$k]'))."
+  warn "$k is already set to $(jq -c --arg k "$k" '.[$k]' "$TMP/base.json") and is left alone (the harness would suggest $(printf '%s' "$FRAG" | jq -c --arg k "$k" '.scalars[$k]'))."
 done < <(printf '%s' "$FRAG" | jq -r --slurpfile base "$TMP/base.json" \
   '(.scalars // {}) | to_entries[] | . as $e
    | select(($base[0] | has($e.key)) and ($base[0][$e.key] != $e.value)) | $e.key')
 jq --argjson addperm "$(printf '%s' "$ADDITIONS" | jq -c '.permissions_added')" \
    --argjson addscalars "$(printf '%s' "$ADDITIONS" | jq -c '.scalars_added')" \
-   "$JQ_APPLY" "$TMP/base.json" > "$TMP/settings.json" || die "설정 병합 실패"
+   "$JQ_APPLY" "$TMP/base.json" > "$TMP/settings.json" || die "could not merge settings"
 
 say ""
-say "설정 (${SETTINGS#"$TARGET"/} — 파싱 후 재직렬화, 기존 키는 보존):"
+say "settings (${SETTINGS#"$TARGET"/} — re-serialised after parsing, existing keys preserved):"
 if [ -f "$SETTINGS" ] && cmp -s "$TMP/settings.json" "$SETTINGS"; then
-  say "  =  변경 없음"
+  say "  =  no change"
 else
   added_any="$(printf '%s' "$ADDITIONS" | jq -r '((.permissions_added | to_entries | map(.value | length) | add) + (.scalars_added | length)) > 0')"
   if [ "$added_any" = "true" ]; then
     printf '%s' "$ADDITIONS" | jq -r '
       (.permissions_added | to_entries[] | select((.value | length) > 0)
-        | "  +  permissions." + .key + ": " + ((.value | length) | tostring) + " 항목"),
+        | "  +  permissions." + .key + ": " + ((.value | length) | tostring) + " entries"),
       (.scalars_added | to_entries[] | "  +  " + .key + " = " + (.value | tostring))'
   else
-    say "  ↻  내용 변화 없음 — 재직렬화만 수행"
+    say "  ↻  no content change — re-serialised only"
   fi
   if [ "$DRY_RUN" -eq 0 ]; then
     snapshot_settings
     mkdir -p "$(dirname "$SETTINGS")"
-    mv "$TMP/settings.json" "$SETTINGS" || die "설정 쓰기 실패"
+    mv "$TMP/settings.json" "$SETTINGS" || die "could not write settings"
   fi
 fi
 
@@ -580,7 +580,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
                    created_paths: $additions.created_paths,
                    file_created: $file_created },
        gitignore_added: ($gitignore_added | unique),
-       gitignore_created: $gitignore_created }' > "$TMP/m.json" || die "manifest 생성 실패"
+       gitignore_created: $gitignore_created }' > "$TMP/m.json" || die "could not build the manifest"
   if [ -n "$MANIFEST_BEFORE" ]; then
     printf '%s' "$MANIFEST_BEFORE" > "$TMP/mold.json"
     jq -s '.[0] as $o | .[1]
@@ -595,17 +595,17 @@ if [ "$DRY_RUN" -eq 0 ]; then
   else
     [ -n "$MANIFEST_BEFORE" ] && say "  ↻  ${MANIFEST#"$TARGET"/}" || say "  +  ${MANIFEST#"$TARGET"/}"
     mkdir -p "$(dirname "$MANIFEST")"
-    mv "$TMP/m.json" "$MANIFEST" || die "manifest 쓰기 실패"
+    mv "$TMP/m.json" "$MANIFEST" || die "could not write the manifest"
   fi
 fi
 
 say ""
 if [ "$DRY_RUN" -eq 1 ]; then
-  say "dry-run 종료 — 변경 없음."
+  say "dry-run finished — nothing changed."
 else
-  say "완료. 다음 단계:"
-  say "  - 점검:  harnessctl doctor --scope $SCOPE"
-  [ "$SCOPE" = project ] && say "  - 검토:  git status && git diff"
-  [ -n "$SETTINGS_BACKUP" ] && say "  - 직전 스냅샷: $SETTINGS_BACKUP"
+  say "done. Next:"
+  say "  - check:   harnessctl doctor --scope $SCOPE"
+  [ "$SCOPE" = project ] && say "  - review:  git status && git diff"
+  [ -n "$SETTINGS_BACKUP" ] && say "  - snapshot just before: $SETTINGS_BACKUP"
 fi
 exit 0

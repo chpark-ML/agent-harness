@@ -49,24 +49,24 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --profile)    shift; [ $# -gt 0 ] || die "--profile 값이 필요합니다"; PROFILES="$1" ;;
+    --profile)    shift; [ $# -gt 0 ] || die "--profile needs a value"; PROFILES="$1" ;;
     --profile=*)  PROFILES="${1#--profile=}" ;;
-    --scope)      shift; [ $# -gt 0 ] || die "--scope 값이 필요합니다"; SCOPE="$1" ;;
+    --scope)      shift; [ $# -gt 0 ] || die "--scope needs a value"; SCOPE="$1" ;;
     --scope=*)    SCOPE="${1#--scope=}" ;;
     --with-tools) WITH_TOOLS=1 ;;
-    --ref)        shift; [ $# -gt 0 ] || die "--ref 값이 필요합니다"; REF="$1" ;;
+    --ref)        shift; [ $# -gt 0 ] || die "--ref needs a value"; REF="$1" ;;
     --ref=*)      REF="${1#--ref=}" ;;
     -h|--help)    usage; exit 0 ;;
-    *)            die "알 수 없는 인자: $1  (--help 참조)" ;;
+    *)            die "unknown argument: $1  (see --help)" ;;
   esac
   shift
 done
 
-case "$SCOPE" in user|project) ;; *) die "--scope 는 user 또는 project 입니다 (받은 값: $SCOPE)" ;; esac
+case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $SCOPE)" ;; esac
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
 for p in $PROFILE_LIST; do
-  case "$p" in core|dev|research|slides|python|typescript) ;; *) die "알 수 없는 profile: $p" ;; esac
+  case "$p" in core|dev|research|slides|python|typescript) ;; *) die "unknown profile: $p" ;; esac
 done
 
 # Only dev and research carry declarative rules. The language profiles are
@@ -77,9 +77,9 @@ for p in $PROFILE_LIST; do
   case "$p" in dev|research) WITH="${WITH:+$WITH,}$p" ;; esac
 done
 
-command -v claude >/dev/null 2>&1 || die "Claude Code 가 PATH 에 없습니다."
-claude plugin --help >/dev/null 2>&1 || die "이 Claude Code 버전은 플러그인을 지원하지 않습니다. 'claude update' 후 다시 실행하세요."
-[ "$SCOPE" = project ] && [ ! -e "$PWD/.git" ] && die "--scope project 는 git 저장소 루트에서 실행해야 합니다."
+command -v claude >/dev/null 2>&1 || die "Claude Code is not on PATH."
+claude plugin --help >/dev/null 2>&1 || die "This Claude Code does not support plugins. Run 'claude update' and try again."
+[ "$SCOPE" = project ] && [ ! -e "$PWD/.git" ] && die "--scope project must be run from the root of a git repository."
 
 # ---- 1. marketplace -----------------------------------------------------------
 SOURCE="$MARKETPLACE_REPO"
@@ -87,17 +87,17 @@ SOURCE="$MARKETPLACE_REPO"
 say "marketplace: $SOURCE"
 if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE_NAME"; then
   claude plugin marketplace update "$MARKETPLACE_NAME" >/dev/null 2>&1 \
-    && say "  이미 등록됨 — 최신으로 갱신" || warn "  갱신 실패, 기존 캐시로 계속"
+    && say "  already registered — updated to latest" || warn "  update failed, continuing with the existing cache"
 else
-  claude plugin marketplace add "$SOURCE" >/dev/null || die "marketplace 등록 실패"
-  say "  등록 완료"
+  claude plugin marketplace add "$SOURCE" >/dev/null || die "could not register the marketplace"
+  say "  registered"
 fi
 
 # ---- 2. plugins ---------------------------------------------------------------
 for p in $PROFILE_LIST; do
-  say "플러그인: harness-$p (scope: $SCOPE)"
+  say "plugin: harness-$p (scope: $SCOPE)"
   out="$(claude plugin install "harness-$p@$MARKETPLACE_NAME" --scope "$SCOPE" 2>&1)"
-  if [ $? -ne 0 ]; then printf '%s\n' "$out" >&2; die "harness-$p 설치 실패"; fi
+  if [ $? -ne 0 ]; then printf '%s\n' "$out" >&2; die "could not install harness-$p"; fi
   printf '%s\n' "$out" | sed 's/^/    /' | tail -2
 done
 
@@ -131,12 +131,12 @@ if [ -z "$HCTL" ]; then
   [ -n "$SELF" ] && [ -f "$SELF" ] && \
     HCTL="$(cd "$(dirname "$SELF")" && pwd)/plugins/harness-core/bin/harnessctl"
 fi
-[ -n "$HCTL" ] && [ -f "$HCTL" ] || die "harnessctl 을 찾을 수 없습니다. 새 Claude Code 세션에서 'harnessctl init --scope $SCOPE' 를 직접 실행하세요."
+[ -n "$HCTL" ] && [ -f "$HCTL" ] || die "harnessctl not found. Start a new Claude Code session and run 'harnessctl init --scope $SCOPE' yourself."
 
 # ---- 4. declarative half ------------------------------------------------------
 say "harnessctl init (scope: $SCOPE${WITH:+, modules: $WITH})"
 bash "$HCTL" init --scope "$SCOPE" ${WITH:+--with "$WITH"} 2>&1 | sed 's/^/    /' \
-  || die "harnessctl init 실패"
+  || die "harnessctl init failed"
 
 # ---- 5. language servers ------------------------------------------------------
 # The LSP plugins do not bundle their server binary. Installing one is a global
@@ -145,10 +145,10 @@ install_tool() {
   local bin="$1" pkgs="$2"
   command -v "$bin" >/dev/null 2>&1 && return 0
   if [ "$WITH_TOOLS" -eq 0 ]; then return 0; fi
-  command -v npm >/dev/null 2>&1 || { warn "npm 이 없어 $bin 을 설치할 수 없습니다"; return 0; }
-  say "언어 서버 설치: $pkgs"
+  command -v npm >/dev/null 2>&1 || { warn "no npm, so $bin cannot be installed"; return 0; }
+  say "installing language server: $pkgs"
   # shellcheck disable=SC2086
-  npm install -g $pkgs >/dev/null 2>&1 && say "  완료" || warn "  설치 실패 — 수동: npm install -g $pkgs"
+  npm install -g $pkgs >/dev/null 2>&1 && say "  done" || warn "  install failed — do it by hand: npm install -g $pkgs"
 }
 for p in $PROFILE_LIST; do
   case "$p" in
@@ -192,17 +192,17 @@ SHIM
     say "  $BIN_DIR/$name"
     shimmed=$((shimmed + 1))
   done
-  [ "$shimmed" -gt 0 ] || warn "  harness-core 의 bin/ 을 찾지 못했습니다 — 플러그인 설치를 먼저 확인하세요."
+  [ "$shimmed" -gt 0 ] || warn "  could not find harness-core's bin/ — check that the plugin installed."
   case ":$PATH:" in
-    *":$BIN_DIR:"*) say "  PATH 에 이미 있습니다" ;;
+    *":$BIN_DIR:"*) say "  already on PATH" ;;
     *)
       # Name the file for the shell the user actually runs, not for bash.
       case "${SHELL##*/}" in
         zsh)  rc="~/.zshrc" ;;
         fish) rc="~/.config/fish/config.fish" ;;
-        *)    rc="~/.bashrc (또는 ~/.bash_profile)" ;;
+        *)    rc="~/.bashrc (or ~/.bash_profile)" ;;
       esac
-      warn "  $BIN_DIR 가 PATH 에 없습니다. $rc 에 추가하세요:"
+      warn "  $BIN_DIR is not on PATH. Add it in $rc:"
       if [ "${SHELL##*/}" = fish ]; then
         say "    fish_add_path $BIN_DIR"
       else
@@ -211,7 +211,7 @@ SHIM
       ;;
   esac
 else
-  warn "  $BIN_DIR 를 만들 수 없어 건너뜁니다 — 플러그인 경로로 직접 부르세요."
+  warn "  cannot create $BIN_DIR, skipping — call the plugin path directly."
 fi
 echo
 
@@ -222,14 +222,15 @@ rc=$?
 
 cat <<EOF
 
-설치 완료 — 두 절반이 모두 들어갔습니다.
+Installed — both halves are in place.
 
-  플러그인   훅 · 스킬 · 커맨드 · 검증기
-  harnessctl 권한 · CLAUDE.md$([ "$SCOPE" = project ] && printf ' · rules')
+  plugins     hooks, skills, commands, verifiers
+  harnessctl  permissions, CLAUDE.md$([ "$SCOPE" = project ] && printf ', rules')
 
-**Claude Code 를 재시작하세요.** 플러그인은 새 세션에서 로드되고, 그때부터
-가드가 동작합니다. harnessctl 은 위 shim 으로 어느 셸에서든 부를 수 있습니다.
+**Restart Claude Code.** Plugins load in a new session, and the guards start
+working from then on. The shims above make harnessctl and harness-log callable
+from any shell.
 
-재시작 후 확인:  harnessctl doctor
+After restarting, check with:  harnessctl doctor
 EOF
 exit "$rc"

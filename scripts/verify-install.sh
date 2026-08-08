@@ -272,7 +272,7 @@ H2="$(tree_hash "$C")"
 check "re-install exits 0" "$rc"
 check "re-install changes nothing on disk" "$([ "$H1" = "$H2" ] && echo 0 || echo 1)"
 check "re-install reports no settings change" \
-  "$(printf '%s' "$out" | grep -q '변경 없음' && echo 0 || echo 1)"
+  "$(printf '%s' "$out" | grep -q '=  no change' && echo 0 || echo 1)"
 # A run that rewrites nothing must not leave a snapshot either, or the project
 # accumulates one .bak file per no-op install.
 check "re-install writes no new backup" "$([ "$B1" = "$(nbak "$C")" ] && echo 0 || echo 1)" \
