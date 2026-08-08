@@ -109,7 +109,7 @@
 |---|---|
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
 | 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복. 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
-| Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 한국어 트리거와 negative routing (영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
+| Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 negative routing 과 `TRIGGER_LANGS` 가 선언한 제2언어 트리거 (이 저장소는 `한국어\|Korean`; 영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
 | 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
 | 검사 총계 | `scripts/verify-check-total.sh` — 발행된 총계 셋(README 배지·README 표·본 문서 §4)이 서로 일치하고, **실제 실행 결과와도 일치하는가**. `make verify-all` 이 verify 를 돌린 뒤 그 출력을 읽는다 |
 | 컨텍스트 예산 | `scripts/context-budget.sh` — 상시 로드되는 **전 footprint**(선언적 + 플러그인)를 스코프 × 프로파일별로 합산하고 `CONTEXT_CEILING` 을 넘으면 실패. 파일 목록은 glob 이라 새 rule 이 조용히 공짜가 되지 않는다 |
