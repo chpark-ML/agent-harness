@@ -123,8 +123,9 @@ The §2 this repository preaches at consumers applies to this repository. One of
 
 ## 8. What stays in Korean, and why
 
-Everything shipped is English. Three things are not, and each is a decision rather than an omission — so nobody "finishes the job" by translating them.
+Everything shipped is English. Four things are not, and each is a decision rather than an omission — so nobody "finishes the job" by translating them.
 
 - **`README.ko.md`** — the mirror, chosen deliberately. It tracks `README.md`; do not let them drift.
 - **`.claude/harness-gaps.md`** — a repo-local, append-only ledger. Translating it would mean rewriting history entries, which is the one thing an append-only record must not do. It is not shipped.
+- **Benchmark prompts** in `scripts/bench-convention.sh` and `scripts/bench-tier.sh`, and the trigger phrases quoted in ADR-0011's measurement table. These are measurement *inputs*: translate one and the recorded number describes a run that never happened. If a bench is ever re-run in English, that is a new measurement with its own row, not an edit to an old one.
 - **The `한국어 트리거` clauses in the five skill descriptions** — measured, not assumed: pass^3 0.83 against 0.50, Fisher *p* = 0.545, kept because the result was not significant either way (§4b). `TRIGGER_LANGS` in the `Makefile` makes the requirement a property of this deployment rather than of the harness, so a contributor writing for another language is not asked for a Korean marker.
