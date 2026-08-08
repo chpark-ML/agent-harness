@@ -5,7 +5,7 @@
 #   ./install.sh --profile dev,python             # profiles compose
 #   ./install.sh --profile dev --scope project    # this repo only
 #   ./install.sh --profile python --with-tools    # also install the language server
-  ./install.sh --profile research,slides        # research notes + results decks
+#   ./install.sh --profile research,slides        # research notes + results decks
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The

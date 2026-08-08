@@ -447,6 +447,62 @@ check "rejection lists the available modules" \
 out="$(run_install "$C4" --bogus 2>&1)"; rc=$?
 check "unknown flag is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 
+# --- 11. install.sh itself ---------------------------------------------------
+# This file is named verify-install and until now it verified only harnessctl.
+# install.sh got `bash -n` and nothing else — and parsing cannot tell a comment
+# from a command.
+#
+# It found out the hard way. A line in the usage header lost its `#` and became
+# `./install.sh --profile research,slides`, executed before anything else on
+# every run. From a clone, that is unbounded self-invocation; from a
+# `curl -o`'d copy it is a permission-denied line the user is told to ignore.
+# It sat on main through five releases. `bash -n` passed the whole time,
+# because the line is perfectly good bash.
+section "install.sh"
+
+INSTALL_SH="$HARNESS/install.sh"
+
+# Everything above `set -uo pipefail` is documentation and must look like it.
+# Static, deterministic, and it catches the whole class rather than the one
+# line that bit us.
+header_code="$(awk '/^set -uo pipefail/{exit} /^[[:space:]]*$/{next} /^[[:space:]]*#/{next} {print NR": "$0}' "$INSTALL_SH")"
+check "nothing executable hides in the usage header" \
+  "$([ -z "$header_code" ] && echo 0 || echo 1)"
+[ -n "$header_code" ] && printf '        %s\n' "$header_code"
+
+# --help must be inert. It runs before the Claude CLI is looked for, so this
+# works on a machine that has never seen Claude Code — including CI.
+#
+# The probe deliberately runs from an EMPTY directory with the script reached by
+# absolute path. Running it from a directory that contains install.sh is what a
+# consumer does, but it is also what turns a header self-invocation into
+# unbounded recursion — and a verifier that fork-bombs the machine it is meant
+# to protect is worse than the bug. From an empty cwd the same `./install.sh`
+# resolves to nothing, so the attempt still shows up in stderr and nothing
+# spawns. The static check above is what covers the class; this covers the rest
+# of the argument surface.
+probe="$WORK/probe"
+probe_cwd="$WORK/probe-cwd"
+mkdir -p "$probe" "$probe_cwd"
+cp "$INSTALL_SH" "$probe/install.sh"
+chmod 755 "$probe/install.sh"
+
+run_probe() { ( cd "$probe_cwd" && "$BASH_BIN" "$probe/install.sh" "$@" 2>&1 ); }
+
+out="$(run_probe --help)"; rc=$?
+check "--help exits 0" "$rc"
+check "--help prints the usage block" \
+  "$(printf '%s' "$out" | grep -q -- '--profile <list>' && echo 0 || echo 1)"
+check "--help runs nothing on the way there" \
+  "$(printf '%s' "$out" | grep -qE 'Permission denied|No such file or directory|command not found' && echo 1 || echo 0)"
+
+out="$(run_probe --scope nowhere)"; rc=$?
+check "an unknown --scope is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+out="$(run_probe --profile nope)"; rc=$?
+check "an unknown --profile is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+out="$(run_probe --bogus)"; rc=$?
+check "an unknown flag is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+
 # --- summary -----------------------------------------------------------------
 total=$((PASS + FAIL))
 echo

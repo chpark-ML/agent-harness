@@ -108,7 +108,7 @@
 | 카테고리 | 검증 |
 |---|---|
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — 훅마다 하나, 8케이스 이상, no-op · block · boundary 세 종류를 모두 담는다 |
-| 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복. 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
+| 설치기 | `scripts/verify-install.sh` — harnessctl 의 init → 재설치 → 모듈 교체 → uninstall 왕복, **그리고 `install.sh` 자체** (헤더에 실행 가능한 줄이 없는가 · `--help` 와 인자 거부가 Claude CLI 없이 도는가). 사용자 스코프는 `CLAUDE_CONFIG_DIR` 로 scratch 디렉터리를 잡아 검사하므로 실제 `~/.claude` 를 건드리지 않는다 |
 | Frontmatter | `scripts/verify-frontmatter.sh` — 모든 skill·agent·rule·command 의 YAML 파싱 + 스킬 description 의 negative routing 과 `TRIGGER_LANGS` 가 선언한 제2언어 트리거 (이 저장소는 `한국어\|Korean`; 영어 트리거는 기계 검사 불가 — 사람 리뷰 항목). python3 만 필요 |
 | 문서 참조 | `scripts/verify-doc-refs.sh` — 링크가 가리키는 파일이 실재하고 `#anchor` 가 heading 으로 해석되는가, 그리고 instruction 파일이 부르는 경로의 첫 세그먼트가 존재하는가. 자기 케이스 19개를 먼저 돌린다 (오탐이 이 검사기의 유일한 실패 방식이므로) |
 | 검사 총계 | `scripts/verify-check-total.sh` — 발행된 총계 셋(README 배지·README 표·본 문서 §4)이 서로 일치하고, **실제 실행 결과와도 일치하는가**. `make verify-all` 이 verify 를 돌린 뒤 그 출력을 읽는다 |
@@ -117,7 +117,7 @@
 | 문법 | `make syntax` — 배포되는 모든 스크립트를 `bash -n` 으로 파싱 |
 | Conventions · Skills | 사람 리뷰 + [`harness-reviewer`](../.claude/agents/harness-reviewer.md) 의 구조 감사 |
 
-**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 92 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 55 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 431. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
+**현재**: 훅 검증기 6개 / 198 케이스, claim 검사 36, harnessctl 왕복 + install.sh 99 assertion, frontmatter 11, 플러그인 매니페스트 7, 벤치마크 건강 12, 문서 참조 55 파일 + 자체 케이스 19, 컨텍스트 예산 천장 1 — 합계 438. 이 숫자 자체는 `make verify-all` 이 검사한다 (`verify-check-total.sh`) — 총계는 `verify` 를 감싸서 그 출력을 읽어야 하므로 총계에 자기를 포함하지 않는다. `make verify` 가 전부 돌리고, CI 가 ubuntu (bash 5) · macOS (`/bin/bash` 3.2) · 매니페스트 세 job 으로 실행한다.
 
 **문서 참조 검사기는 첫 실행에서 자기 값을 했다.** `pr-review` 와 `research-notes` 의 본문이 체크리스트 위치를 `rules/harness/…` 로 적고 있었다 — `pr-create` 는 같은 자리를 `.claude/rules/harness/…` 로 적는다. 프로젝트 루트에서 해석되지 않는 경로이고, 스킬 본문이라 아무도 안 보던 자리다. 이 검사기가 존재하게 된 원장 2회차가 정확히 그 부류였다.
 
