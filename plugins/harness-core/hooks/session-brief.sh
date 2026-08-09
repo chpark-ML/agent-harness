@@ -36,6 +36,20 @@ fi
 dirty="$(git -C "$root" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
 [ "$dirty" != "0" ] && echo "- uncommitted: ${dirty} files"
 
+# The rule files only load at project scope, so a machine-wide install leaves
+# every new repository without them and nothing says so. This line is the whole
+# remedy: it costs one line when the install is missing and nothing when it is
+# not, and the agent reading it can offer to run the command.
+#
+# It reports; it does not install. A SessionStart hook fires in whatever
+# directory you happened to open — including a repository you cloned for five
+# minutes — and writing rules, settings and a .gitignore line into someone
+# else's tree is not a thing a guard does uninvited. It would not even help:
+# settings and plugins load at session start, so anything written here applies
+# from the next session, which is exactly when being told would have worked too.
+[ -f "$root/.claude/harness-manifest.json" ] \
+  || echo "- harness: project rules not installed (harnessctl init --scope project)"
+
 echo "- recent commits:"
 # Truncate the subject so a rendered line fits 80 columns (2 indent + 7 hash +
 # 1 space + 66 = 76). The budget is about how much context this costs, and a

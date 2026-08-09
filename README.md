@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-484-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-489-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -34,10 +34,10 @@ Most agent harnesses are a pile of rules nobody checked. This one keeps a rule o
 
 ## Quick start
 
-One command. Pick the profile that matches what you do.
+One command. It installs everything.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
 ```
 
 <details>
@@ -64,19 +64,33 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 </details>
 
-### Choosing a profile
+### Taking less than everything
 
-Only `--profile` changes. Append it to the command above.
+**You do not have to choose a profile.** Everything is ~8,000 tokens of always-on
+context against a ceiling of 9,000, so the default is all of it. `--profile`
+exists for taking *less* — the whole content set costs about 2,100 tokens per
+session more than development alone, which is worth declining only if you know
+you want it back.
 
-| You are doing | Flags | You get |
+| You want | Flags | Difference from the default |
 |---|---|---|
-| **Development** (most common) | `--profile dev,python --with-tools` | 6 guards, [Superpowers](https://github.com/obra/superpowers) 14 skills, `pr-create` · `pr-review`, Python language server. Swap `python` for `typescript` as needed |
-| **Research** | `--profile research` | 6 guards, the five-document note discipline, `research-notes` · `repro-checklist` |
-| **Research + talks** | `--profile research,slides` | Adds `results-deck` — turns artefacts into a talk and **machine-checks that every number on a slide traces to a run**. Rendering is left to [`slides-grab`](https://www.npmjs.com/package/slides-grab) |
-| **This repository only** | `--profile dev --scope project` | Leaves the machine alone. Only this repo's `.claude/` and `settings.json` change, and everyone who clones it gets the same conventions |
-| **Minimum** | *(none)* | 6 guards, the three permission tiers, the six-principle `CLAUDE.md`, and `pr-create` |
+| **Everything** | *(none)* | 6 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, and the rules for both roles |
+| Development only | `--profile dev` | Drops the five-document note discipline and `results-deck`. Saves ~2,100 tok per session |
+| Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
+| A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
+| Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
 
-**Choose `--scope` deliberately.** It defaults to `user` (machine-wide), but the **rule files for `dev` and `research` install at project scope only** — `~/.claude/rules` is not a location Claude Code reads. To use either profile properly, install once more inside the working repository with `--scope project`.
+**The one thing to know about `--scope`.** It defaults to `user`, which covers the whole machine — but the **rule files install at project scope only**, because `~/.claude/rules` is not a location Claude Code reads. So a new project needs one more run inside it:
+
+```bash
+bash install.sh --scope project
+```
+
+You do not have to remember that. From the next session in an uninstalled project, the brief says so on its first line, and the agent can run it for you:
+
+```
+- harness: project rules not installed (harnessctl init --scope project)
+```
 
 Restart Claude Code when the installer finishes. Plugins load at session start.
 
@@ -198,7 +212,7 @@ make context-budget          # always-on token cost per scope and profile
 
 | Target | Cases |
 |---|---|
-| 6 hook verifiers | **198** |
+| 6 hook verifiers | **203** |
 | session-log renderer | **44** |
 | installer round trip | **99** assertions |
 | slide claim checker | **36** |
@@ -207,7 +221,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **7** |
 | benchmark health | **12** |
 | context-budget ceiling | **1** |
-| **Total** | **484** |
+| **Total** | **489** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

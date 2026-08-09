@@ -14,13 +14,16 @@ Output order:
 2. `- branch:` — `git branch --show-current`, replaced by `(detached: <short sha>)` when empty
 3. `- upstream(<ref>): ahead N / behind M` — only when an upstream is configured **and** ahead and behind are not both zero
 4. `- uncommitted: N files` — `git status --porcelain | wc -l`, **only when non-zero**
-5. `- recent commits:` followed by `git log -5 --pretty='  %h %s'`
+5. `- harness: project rules not installed (harnessctl init --scope project)` — **only when `.claude/harness-manifest.json` is absent**
+6. `- recent commits:` followed by `git log -5 --pretty='  %h %s'`
 
 It resolves the repository root once with `git rev-parse --show-toplevel` and sends every later call through `git -C "$root"` — the session may start in a subdirectory, and this matches its sibling Stop hook, [check-uncommitted](check-uncommitted.md). Outside a repository it prints nothing and exits 0.
 
 It does not use `jq`. It never parses stdin and only calls `git`, so unlike the pre-tool-use hooks it has no jq self-disable branch.
 
-**The output budget is ten lines.** This hook runs on every start, resume, clear and compact, so verbosity here is a tax levied on every session for the life of the project. It therefore carries only facts the model would otherwise spend a tool call to learn.
+**It reports the missing install; it does not perform it.** A SessionStart hook fires in whatever directory you happened to open, including a repository cloned for five minutes, and writing rules, settings and a `.gitignore` line into someone else's tree is not something a guard does uninvited. It would not even help: settings and plugins load at session start, so anything written from here applies from the *next* session — which is exactly when being told would have worked too. The line goes into context, so the agent reading it can offer to run the command.
+
+**The output budget is eleven lines, and ten in the steady state.** This hook runs on every start, resume, clear and compact, so verbosity here is a tax levied on every session for the life of the project. It therefore carries only facts the model would otherwise spend a tool call to learn.
 
 ## What passes
 
@@ -44,7 +47,7 @@ There is nothing to bypass; it does not block. Registration lives in the plugin'
 
 ## Verification
 
-[`plugins/harness-core/scripts/verify-session-brief.sh`](../../plugins/harness-core/scripts/verify-session-brief.sh) — 19 cases (2 outside a repository, 5 clean repo, 1 output budget, 3 dirty repo, 2 detached HEAD, **4 upstream and worst-case budget**). The `expect_absent` helper, which checks for lines that must *not* appear, lives in [`_verify-lib.sh`](../../plugins/harness-core/scripts/_verify-lib.sh) — used in two places here and one in protected-paths.
+[`plugins/harness-core/scripts/verify-session-brief.sh`](../../plugins/harness-core/scripts/verify-session-brief.sh) — 24 cases (2 outside a repository, 5 clean repo, 1 output budget, 3 dirty repo, 2 detached HEAD, **4 upstream and worst-case budget**, 5 the not-installed notice and its absence). The `expect_absent` helper, which checks for lines that must *not* appear, lives in [`_verify-lib.sh`](../../plugins/harness-core/scripts/_verify-lib.sh) — used in two places here and one in protected-paths.
 
 The last four run against a fixture that attaches a bare repository as a remote and builds a dirty tree one commit ahead. It is the only fixture that reaches the upstream block — before it, that code path never executed at all — and it is the budget worst case, where every optional line renders at once.
 
