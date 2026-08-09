@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-484-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-489-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -363,7 +363,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 
 | 대상 | 케이스 |
 |---|---|
-| 훅 6종 동작 | **198** |
+| 훅 6종 동작 | **203** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **44** |
 | 설치기 왕복 | **99** assertion |
 | 발표 수치 검사기 | **36** |
@@ -372,7 +372,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 벤치마크 건강 (`verify-benches`) | **12** |
 | 문서 내부 참조 (`verify-doc-refs`) | **57** 파일 + 자체 **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **484** |
+| **합계** | **489** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

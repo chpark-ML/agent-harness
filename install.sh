@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # agent-harness — one command, complete install.
 #
-#   ./install.sh                                  # core, user scope
-#   ./install.sh --profile dev,python             # profiles compose
-#   ./install.sh --profile dev --scope project    # this repo only
-#   ./install.sh --profile python --with-tools    # also install the language server
-#   ./install.sh --profile research,slides        # research notes + results decks
+#   ./install.sh                                  # everything, user scope
+#   ./install.sh --scope project                  # everything, this repo only
+#   ./install.sh --profile dev                    # less than everything
+#   ./install.sh --profile dev,python --with-tools  # plus a language server
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The
@@ -26,7 +25,7 @@ set -uo pipefail
 
 MARKETPLACE_REPO="chpark-ML/agent-harness"
 MARKETPLACE_NAME="agent-harness"
-PROFILES="core"
+PROFILES="core,dev,research,slides"
 SCOPE="user"
 REF=""
 WITH_TOOLS=0
@@ -40,6 +39,7 @@ usage() {
   cat <<'EOF'
 
   --profile <list>   comma-separated: core, dev, research, slides, python, typescript
+                     (default: core,dev,research,slides — pass this only to get less)
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
   --ref <ref>        pin the marketplace to a git tag or branch

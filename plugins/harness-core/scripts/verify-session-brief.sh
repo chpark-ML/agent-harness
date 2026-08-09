@@ -119,13 +119,36 @@ expect "repo with an upstream → exit 0" 0 "$RC"
 expect_match "reports the upstream ref" "$OUT" "upstream(origin/main)"
 expect_match "reports the divergence" "$OUT" "ahead 1 / behind 0"
 
-# Every optional line renders here. If this ever exceeds ten, a field was added
-# without a corresponding cut — the budget has no headroom by design.
+# Every optional line renders here, including the not-installed notice. The
+# ceiling was 10 and is 11 because of that notice, which is a deliberate
+# exception rather than headroom: it appears only while the harness is missing
+# from the project, and it extinguishes itself the moment somebody acts on it.
+# The steady state is pinned separately, two cases below, and is still 10.
+lines="$(printf '%s\n' "$OUT" | grep -c .)"
+if [ "$lines" -le 11 ]; then
+  _pass "worst case (upstream + dirty + 5 commits + notice) fits the budget ($lines lines)"
+else
+  _fail "worst case (upstream + dirty + 5 commits + notice) fits the budget" "got $lines lines"
+fi
+
+# --- the not-installed notice, and its absence --------------------------------
+# A brief that nagged about the install in every session of an installed
+# project would be tuned out, and the rest of the brief with it.
+
+expect_match "an uninstalled project is told so" "$OUT" "project rules not installed"
+expect_match "and told the command that fixes it" "$OUT" "harnessctl init --scope project"
+
+mkdir -p "$WORK/ahead/.claude"
+printf '{"modules":["dev"]}\n' > "$WORK/ahead/.claude/harness-manifest.json"
+CASE_CWD="$WORK/ahead"
+run_hook '{}'
+expect "an installed project → exit 0" 0 "$RC"
+expect_absent "and says nothing about the install" "$OUT" "project rules not installed"
 lines="$(printf '%s\n' "$OUT" | grep -c .)"
 if [ "$lines" -le 10 ]; then
-  _pass "worst case (upstream + dirty + 5 commits) fits the budget ($lines lines)"
+  _pass "the steady state is still within ten lines ($lines)"
 else
-  _fail "worst case (upstream + dirty + 5 commits) fits the budget" "got $lines lines"
+  _fail "the steady state is still within ten lines" "got $lines lines"
 fi
 
 verify_summary
