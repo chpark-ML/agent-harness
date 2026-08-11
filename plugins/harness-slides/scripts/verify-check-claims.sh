@@ -18,6 +18,10 @@ BASH_BIN="${BASH:-bash}"
 WORK="$(mktemp -d)" || exit 1
 trap 'rm -rf "$WORK"' EXIT
 
+# These helpers are a deliberate copy of scripts/_check-lib.sh's. This file
+# ships inside harness-slides, plugin caches are separate, and ../ references
+# between plugins are forbidden — so it cannot source either lib. The
+# duplication is the platform's tax, not debt; do not "fix" it.
 PASS=0; FAIL=0; FAILED=""
 ok()  { PASS=$((PASS+1)); printf '  PASS  %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); FAILED="$FAILED$1
