@@ -1,0 +1,16 @@
+# gh-account — the GitHub account this repository expects to act as.
+#
+# One login, on its own line. Blank lines and #-comments are ignored, and only
+# the first real line is read. While this file has no such line the guard is
+# off, which is the default.
+#
+# When it is set, gh-account-guard blocks `git push`, `gh pr create` and
+# `gh pr merge` if `gh` is currently active as a different account, and tells
+# you which one it saw.
+#
+#   chpark-ML
+#
+# A one-off push as another account, without editing this file:
+#   HARNESS_GH_ACCOUNT=<login> git push
+#
+# See docs/hooks/gh-account-guard.md
