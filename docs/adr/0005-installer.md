@@ -19,6 +19,8 @@ Four things.
 
 > *After ADR-0008*: this property did not disappear, it **moved**. Hooks, skills, commands and verifiers became plugin components, and the platform discovers them at convention paths, so there is still no list. The declarative payload that remains is seven files, so `harnessctl` plans explicitly instead of walking a tree — only module rules are globbed, from `rules/<module>/*.md`. The conclusion, that no list has to be maintained, is the same; only the means differ.
 
+> *After 2026-08-11*: the payload counts eight files (`templates/gh-account.txt` arrived with a later guard). [`agent-layer.md`](../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
+
 **2. Two tiers.** *managed* is overwritten with the latest on reinstall. *template* is copied once and belongs to the consumer thereafter (`CLAUDE.md`, the path-guard config files). Each overlay's `templates.txt` declares which is which.
 
 > *After ADR-0008*: still true. Only the tier declaration moved, from `templates.txt` into harnessctl's planning code (`add` / `addt`).

@@ -27,6 +27,8 @@ So what stays in `agent-layer.md` is **what a machine cannot confirm**: why this
 ## Consequences
 
 - The §3 inventory figures in `agent-layer.md` (6 hooks, 4 skills, and so on) are still hand-maintained and can still drift. But when they are wrong, what is lost is the accuracy of a summary, not the behaviour of an install.
+
+  > *After 2026-08-11*: the parenthetical above went stale exactly as it predicted — and `scripts/verify-inventory.sh` now compares the stated figures against the artifacts. [`agent-layer.md`](../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
 - A consumer wanting to know "what did this harness install" reads `.claude/harness-manifest.json` or the harness repository. The manifest is machine-generated, so it is always right.
 - New contributors are pointed at `agent-layer.md`, not the README.
 

@@ -29,6 +29,8 @@ The harness ships in two pieces, and **which piece something goes in is decided 
 
 **1. The plugin** — `harness-core` and the profiles. Six guard hooks, the skills, the `/verify` command, the hook verifiers, and `bin/harnessctl`. Claude Code loads, updates and scopes it directly.
 
+> *After 2026-08-11*: the hook count has moved since (a seventh guard shipped). [`agent-layer.md`](../agent-layer.md) §3 is the source of truth for current numbers — the figures here are a record of that moment.
+
 **2. `harnessctl init`** — the three permission tiers, `includeCoAuthoredBy`, `CLAUDE.md`, `.claude/rules/harness/**`, and two path-guard config templates. The plugin ships it in `bin/`, so it needs no separate install.
 
 `harnessctl` keeps every property of ADR-0005 that still earns its place — two tiers (managed / template), all preflight checks before any write, timestamped backups with a counter, parse-and-re-serialise on `settings.json`, and **symmetric removal driven by the manifest receipt**. The one thing gone is hook merging, and with it the marker, the strip-then-append, and the jq programs that served them.

@@ -20,6 +20,8 @@ The reason for not tagging was not laziness but one unanswered question: **six p
 | `harness-research` | 1.0.2 |
 | `harness-python`, `harness-typescript` | 1.0.0 |
 
+> *After 2026-08-11*: several of these have moved (`harness-core` most of all). The table shows the state **at the time of the decision**; the manifests under `plugins/*/.claude-plugin/plugin.json` are the source of truth — the figures here are a record of that moment.
+
 When `harness-core` reaches 2.0 and `harness-python` is still at 1.0.0, what should the repository tag's major be? Tag anything without answering that and **the question freezes unanswered** — so it was deferred, and recorded in the ledger as occurrence 1.
 
 ## Decision

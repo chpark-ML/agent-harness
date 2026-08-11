@@ -27,6 +27,7 @@ There are two delivery paths, and the fork is **whether a plugin can carry it** 
 | `CLAUDE.md`, rules, consumer config templates | `plugins/harness-core/declarative/` |
 | A dependency on an external plugin | That profile's `dependencies` |
 | Something only this repository uses | `scripts/` and `.claude/` (not shipped) |
+| A dated Superpowers design record (spec or plan) | `docs/superpowers/{specs,plans}/` (not shipped; frozen once its work merges) |
 
 **Exactly three things a plugin cannot carry, and all three are confirmed facts**: a plugin's `settings.json` supports only `agent` and `subagentStatusLine`, a plugin-root `CLAUDE.md` is not read as context, and `rules` is not on the component list. Only those three go in `declarative/`, and `harnessctl` writes them.
 

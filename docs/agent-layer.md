@@ -396,5 +396,5 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 ├── Makefile · CLAUDE.md · .claude/     # developing this repository itself
 ├── AGENTS.md                           # the same conventions, summarised for other agents
 ├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin manifests
-└── docs/ (agent-layer.md · harness-log.md · adr/0001..0013 · hooks/*.md)
+└── docs/ (agent-layer.md · engineering-axes.md · harness-log.md · adr/0001..0013 · hooks/*.md · superpowers/{specs,plans}/ — dated design records)
 ```
