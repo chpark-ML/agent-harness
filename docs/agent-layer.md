@@ -124,7 +124,7 @@ The detail behind §3's last three rows (external plugins, external instruments,
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 248 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 104 assertions, frontmatter 11, plugin manifests 7, benchmark health 12, document references 60 files + 19 own cases, context-budget ceiling 1 — a total of 542. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 248 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 104 assertions, frontmatter 11, plugin manifests 7, benchmark health 12, document references 61 files + 19 own cases, context-budget ceiling 1 — a total of 543. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -394,6 +394,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 ├── install.sh                          # thin bootstrap
 ├── scripts/verify-{install,frontmatter}.sh
 ├── Makefile · CLAUDE.md · .claude/     # developing this repository itself
+├── AGENTS.md                           # the same conventions, summarised for other agents
 ├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin manifests
 └── docs/ (agent-layer.md · harness-log.md · adr/0001..0013 · hooks/*.md)
 ```
