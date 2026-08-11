@@ -6,7 +6,7 @@ This repository *is* a Claude Code harness: guard hooks, skills, and a declarati
 
 ## The nine things a review should actually check
 
-1. **bash 3.2 and `jq` only.** Shipped hooks and `bin/` executables run on stock macOS `/bin/bash` — no `mapfile`, no associative arrays, no `${x^^}`, no python or node. Under `set -u`, expand a possibly-empty array as `"${a[@]+"${a[@]}"}"`. ([ADR-0002](docs/adr/0002-hook-contract.md))
+1. **bash 3.2 and `jq` only — in what ships.** Shipped hooks and `bin/` executables run on stock macOS `/bin/bash` — no `mapfile`, no associative arrays, no `${x^^}`, no python or node. Under `set -u`, expand a possibly-empty array as `"${a[@]+"${a[@]}"}"`. ([ADR-0002](docs/adr/0002-hook-contract.md)) Repo-only scripts under `scripts/` are outside that rule and four of them use python3 — flagging one as a contract violation is a false positive.
 
 2. **Only a blocking hook exits 2.** Everything else exits 0 no matter what. An informational hook that stops a turn is a bug. A hook that reads stdin self-disables with one stderr line and `exit 0` when `jq` is absent — a missing dependency must never block work.
 

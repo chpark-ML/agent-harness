@@ -67,7 +67,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, with Superpowers 14 on top |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
-| **3** | Slash commands | `.claude/commands/*.md` | ✅ 1 (`/verify`) |
+| **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
 | **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
 | **4** | MCP servers | `.mcp.json` | ⏳ none |
 | **—** | External plugins | A profile's `dependencies` | ✅ Superpowers, 2 LSPs ([ADR-0009](adr/0009-external-dependencies.md)) |
@@ -233,7 +233,7 @@ Only `results-deck` started at 4/6, and both misses were *development-side repor
 
 ### Do the Korean triggers earn their cost? (pilot, 2026-08-08)
 
-The Korean triggers in a skill description take **20%** of our ~240 tok per skill (565 characters across the five), and their value had never been measured. A pilot ran on `results-deck` — **the single variable is the 133-character `한국어 트리거: '...'` clause**, with the English description, the negative-routing clause and the body byte-identical. `harness-slides` was disabled and both arms were project skills (§4b trap 3 — an installed skill cannot be measured through a stand-in).
+The Korean triggers in a skill description take a fifth of a typical skill description, and their value had never been measured. **Counted from the `한국어 트리거:` label through the period closing the last quoted phrase, the five clauses are 410 characters** (52 · 52 · 82 · 92 · 132) — an earlier figure of 565 is not reproducible under that rule or any obvious neighbour of it, so it is replaced here by the number and the boundary that produced it. Each description also ends with a Korean negative-routing sentence outside this count; those add 198 characters and have never been measured at all. A pilot ran on `results-deck` — **the single variable is the 133-character `한국어 트리거: '...'` clause**, with the English description, the negative-routing clause and the body byte-identical. `harness-slides` was disabled and both arms were project skills (§4b trap 3 — an installed skill cannot be measured through a stand-in).
 
 | | With triggers | Without | Difference |
 |---|---|---|---|
@@ -341,6 +341,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 **Held, waiting for the second occurrence** (there is a corresponding row in §2, and it has happened once or not at all):
 
 - ✅ ~~Worktree helper~~ — decided against building one. Superpowers' `using-git-worktrees` solves it upstream. The most direct gain from adopting an external dependency, and code we did not write is the gain itself.
+- ⏳ Measuring the Korean *negative-routing* sentences. ADR-0011's pilot varied the `한국어 트리거` clause only; the 198 characters of `… 이 스킬 말고 X 로.` that every description also carries were never an arm. Same instrument, one more arm — but it is a paid bench, so it waits for a reason to spend.
 - ⏳ Release / changelog skill — a `dev` module candidate. Release conventions differ too much per project for a common core to be visible yet.
 - ⏳ A post-hoc output scrubber — blocking a command with PreToolUse and catching sensitive strings in *output* with PostToolUse are different accidents. The mirror-pair pattern itself is proven (the reference harness's PHI pair), but a general-purpose harness has no payload to use. If site-specific patterns are needed, it goes in a consumer-owned config file like `protected-paths`.
 - ⏳ **Model and effort orchestration.** The harness currently ships no sub-agents to consumers, so this lever does not exist. Plugin agent frontmatter supports `model` and `effort` (`hooks`, `mcpServers` and `permissionMode` are refused for security), so keeping the main loop on Opus high while pushing mechanical delegation down to a cheaper tier is possible. This session is the evidence — 12 subagents were launched and all inherited the session model, and half of them (path substitution, counting, updating documents) did not need Opus. But *which work goes to which tier* takes judgement, and getting it wrong costs more when the expensive model redoes what the cheap one missed. Candidate axis: exploration, counting and mechanical edits low; design, adversarial review and root cause high.

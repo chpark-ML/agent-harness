@@ -1,6 +1,12 @@
 #!/bin/bash
 # secret-scrubber — block Bash commands that carry a literal secret.
 #
+# catches  a Bash command carrying a literal secret — API keys, tokens, AWS keys,
+#          private-key headers
+# scope    PreToolUse, Bash
+# bypass   none by design; rewrite the command to read the value from the
+#          environment or a file instead
+#
 # Catches the "pasted the API key straight into the command" failure mode. Once
 # a key reaches the shell it is in history, in the process table, and often in
 # a log; the only real fix afterwards is rotation, so the cheap move is to

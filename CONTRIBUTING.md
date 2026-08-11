@@ -87,7 +87,7 @@ A negative case asks *"did the work go where we said it would"*, not *"did our s
 
 ## The hook contract
 
-- **bash 3.2 and jq only.** No Python or Node ([ADR-0002](docs/adr/0002-hook-contract.md)). macOS `/bin/bash` is the floor — no `mapfile`, no associative arrays, no `${x^^}`. Under `set -u`, expand empty arrays as `"${a[@]+"${a[@]}"}"`.
+- **bash 3.2 and jq only.** No Python or Node ([ADR-0002](docs/adr/0002-hook-contract.md)). macOS `/bin/bash` is the floor — no `mapfile`, no associative arrays, no `${x^^}`. Under `set -u`, expand empty arrays as `"${a[@]+"${a[@]}"}"`. That rule is about what ships: repo-only scripts under `scripts/` may use python3, and four do.
 - **A hook that parses stdin disables itself when jq is absent** — one line to stderr and `exit 0`. A missing hook must never block work. Hooks that only call `git` and never read stdin have no such guard, and their docs say so.
 - **Only blocking hooks exit non-zero.** Everything else exits 0 no matter what. An informational hook that halts a turn is a bug.
 - **A block message says what was caught and how to resolve it**, and points at `docs/hooks/<name>.md`. Consumers cannot open the hook file — it is in the plugin cache — so the message is the only interface.

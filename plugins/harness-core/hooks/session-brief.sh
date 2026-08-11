@@ -1,6 +1,10 @@
 #!/bin/bash
 # session-brief — inject a compact repo-state brief at session start.
 #
+# catches  nothing — informational. Prints a repo-state brief at session start
+# scope    SessionStart (startup, resume, clear, compact)
+# bypass   n/a — it never blocks
+#
 # stdout becomes session context. This runs on every start, resume, clear and
 # compact, so verbosity here is a recurring tax paid on every session of the
 # project's life; the output is deliberately capped at roughly ten lines and

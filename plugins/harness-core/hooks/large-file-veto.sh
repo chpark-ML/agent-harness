@@ -1,6 +1,11 @@
 #!/bin/bash
 # large-file-veto — block a `git add` that would stage an oversized file.
 #
+# catches  a `git add` that would stage a file over the size ceiling
+#          (HARNESS_LARGE_FILE_BYTES, default 10 MiB)
+# scope    PreToolUse, Bash
+# bypass   HARNESS_LARGE_FILE_BYTES=<n> <command>, or track the file with LFS
+#
 # Catches the "git add -A swept in a 200 MB artifact" failure mode. Once a
 # large blob is committed it is in the history forever unless someone rewrites
 # it, so the cheap move is to stop it at staging time.

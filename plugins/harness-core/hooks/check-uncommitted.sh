@@ -2,6 +2,11 @@
 # check-uncommitted — at end of turn, notice work piling up on the default
 # branch.
 #
+# catches  nothing — informational. Reports work piling up on the default
+#          branch at end of turn
+# scope    Stop. Only fires on the default branch
+# bypass   n/a — it never blocks
+#
 # The workflow rule says a change destined for review lives on a
 # {feat,fix,chore}-<slug> branch, and the longer work sits on main the more
 # expensive the move becomes: the diff grows past one reviewable unit and has
