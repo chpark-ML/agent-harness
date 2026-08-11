@@ -110,7 +110,13 @@ def links_resolve_here(path):
     doing that means reproducing harnessctl's file plan, and no link in this
     payload has broken yet, so that stays unbuilt (docs/agent-layer.md §7).
     """
-    return '/declarative/' not in path
+    # Compared on a slash-normalised copy. `glob` hands back the platform
+    # separator, so on Windows this asked whether '/declarative/' appeared in
+    # a path spelled with backslashes — never, so the payload below was checked
+    # against the source tree after all and reported 4 correct links as broken.
+    # An exemption that silently stops exempting is worse than none: it turns
+    # the checker into the wolf-crier it was written to avoid.
+    return '/declarative/' not in path.replace(os.sep, '/')
 
 
 def check_doc(path, read):
@@ -244,8 +250,13 @@ def expand(patterns):
     out = set()
     for pat in patterns:
         out.update(glob.glob(os.path.join(repo, pat), recursive=True))
-    skip = {os.path.join(repo, e) for e in EXCLUDE}
-    return sorted(p for p in out if os.path.isfile(p) and p not in skip)
+    # normpath both sides before comparing. os.path.join(repo, 'evals/x.md')
+    # keeps the forward slash the pattern was written with while glob returns
+    # the platform separator, so on Windows the two spellings of the same file
+    # never matched and EXCLUDE excluded nothing — 6 failures from the one file
+    # this list exists to keep out.
+    skip = {os.path.normpath(os.path.join(repo, e)) for e in EXCLUDE}
+    return sorted(p for p in out if os.path.isfile(p) and os.path.normpath(p) not in skip)
 
 
 cache = {}
