@@ -44,16 +44,24 @@ That is **user scope**: the guard hooks, skills and commands apply in every repo
 
 **Path-scoped rules do not come with it, and cannot.** There is no documented `~/.claude/rules`, so installing them machine-wide would place inert files where they look active. Rules load from a project only. To put them — and `CLAUDE.md` — into a repository your team clones, add a second command:
 
+Go to the repository first. This is the only line you edit:
+
+```bash
+cd your-repo
+```
+
+Then paste the rest unchanged:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
-cd your-repo && harnessctl init --scope project --with dev,research
+harnessctl init --scope project --with dev,research
 ```
 
 **`--with` is not optional here, and its absence is silent.** `harnessctl` takes the module list from `--with` or from the target's own manifest, and a repository being set up for the first time has neither — so plain `harnessctl init --scope project` installs the catch-all workflow rule and nothing else. Name the same role profiles you installed: the default above is `dev,research`, and `--profile dev,python` would be `--with dev` (`python` is a language profile and carries no rules).
 
 The split follows what each asset is *for*. Guards and skills are yours: they belong machine-wide, or the one repository you forgot to install in becomes the hole. Rules and project settings are the team's: they belong in the commit, so they arrive with a clone.
 
-Run the second command on its own in any repository later — the first is not repeated.
+Run `harnessctl init` on its own in any repository later — `install.sh` is not repeated.
 
 The first command puts `harnessctl` in `~/.local/bin`. If that directory is not already on your `PATH`, the installer says so and names the file to add it to, but it cannot change the shell you are sitting in — apply that line and reopen the shell, or call the shim by its full path: `~/.local/bin/harnessctl init --scope project --with dev,research`.
 
