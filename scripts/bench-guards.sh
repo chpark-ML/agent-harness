@@ -43,12 +43,22 @@ git -C "$PROJ" config user.name bench
 printf 'print("hi")\n' > "$PROJ/src/main.py"
 dd if=/dev/zero of="$PROJ/checkpoints/model.ckpt" bs=1048576 count=64 >/dev/null 2>&1
 printf '/data\n/mnt/shared\n' > "$PROJ/.claude/protected-paths.txt"
+# The main fixture declares the account the stub gh reports as active, so a
+# push from here is a push as the RIGHT account — the allow cases pass because
+# the identity matches, not because the guard is switched off.
+printf 'bench-active\n' > "$PROJ/.claude/gh-account.txt"
 
 # A second repo with nothing large, for the "git add -A is fine here" case.
 CLEAN="$WORK/clean"
 mkdir -p "$CLEAN/.claude"
 git -C "$CLEAN" init -q
 printf 'x\n' > "$CLEAN/a.txt"
+
+# A repository that expects someone else. Same tree, one line different — the
+# whole scenario the guard exists for.
+WRONGACCT="$WORK/wrongacct"; mkdir -p "$WRONGACCT/.claude"
+git -C "$WRONGACCT" init -q
+printf 'someone-else\n' > "$WRONGACCT/.claude/gh-account.txt"
 
 USERCFG="$WORK/usercfg"; mkdir -p "$USERCFG"
 
@@ -123,6 +133,9 @@ record() {
 inc() {
   local expect="$1" cat="$2" cmd="$3" proj="$PROJ"
   case "$cmd" in "git add -A") [ "$expect" = allow ] && proj="$CLEAN" ;; esac
+  # An identity incident needs a repository that expects a different account;
+  # the allow cases stay in $PROJ, which expects the one that is active.
+  [ "$cat" = ghaccount ] && [ "$expect" = block ] && proj="$WRONGACCT"
   record "$expect" "$cat" "$cmd" \
     "$(jq -nc --arg c "$cmd" '{tool_name:"Bash", tool_input:{command:$c}}')" "$proj"
 }

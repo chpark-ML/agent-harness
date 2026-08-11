@@ -15,13 +15,14 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
 	@echo "make syntax           parse every shipped script"
 	@echo "make frontmatter      YAML frontmatter of every skill, agent, rule, command"
 	@echo "make doc-refs         links, anchors and paths that documents point at"
+	@echo "make doc-commands     the harness commands documents tell you to run exist"
 	@echo "make context-budget   always-on token cost against the ceiling (partial without the CLI)"
 	@echo "make context-budget-strict  the same, but a partial measurement fails"
 	@echo "make verify-context-budget  the budget gate's own failure paths"
@@ -40,7 +41,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs doc-commands context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -82,6 +83,13 @@ frontmatter:
 doc-refs:
 	@$(BASH) scripts/verify-doc-refs.sh --selftest
 	@$(BASH) scripts/verify-doc-refs.sh
+
+# A referenced file existing is not the same as a referenced command working.
+# The narrow half: every subcommand and long flag a fenced block tells you to
+# run, checked against the parser that accepts it.
+doc-commands:
+	@$(BASH) scripts/verify-doc-commands.sh --selftest
+	@$(BASH) scripts/verify-doc-commands.sh
 
 # Every skill and rule is a per-session tax on the consumer, forever. The old
 # cost table counted skills only and was wrong by 3.6x, which is how "62 more

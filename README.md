@@ -7,8 +7,8 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-626-blue">
-  <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
+  <img alt="checks" src="https://img.shields.io/badge/checks-692-blue">
+  <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -44,16 +44,24 @@ That is **user scope**: the guard hooks, skills and commands apply in every repo
 
 **Path-scoped rules do not come with it, and cannot.** There is no documented `~/.claude/rules`, so installing them machine-wide would place inert files where they look active. Rules load from a project only. To put them — and `CLAUDE.md` — into a repository your team clones, add a second command:
 
+Go to the repository first. This is the only line you edit:
+
+```bash
+cd your-repo
+```
+
+Then paste the rest unchanged:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
-cd your-repo && harnessctl init --scope project --with dev,research
+harnessctl init --scope project --with dev,research
 ```
 
 **`--with` is not optional here, and its absence is silent.** `harnessctl` takes the module list from `--with` or from the target's own manifest, and a repository being set up for the first time has neither — so plain `harnessctl init --scope project` installs the catch-all workflow rule and nothing else. Name the same role profiles you installed: the default above is `dev,research`, and `--profile dev,python` would be `--with dev` (`python` is a language profile and carries no rules).
 
 The split follows what each asset is *for*. Guards and skills are yours: they belong machine-wide, or the one repository you forgot to install in becomes the hole. Rules and project settings are the team's: they belong in the commit, so they arrive with a clone.
 
-Run the second command on its own in any repository later — the first is not repeated.
+Run `harnessctl init` on its own in any repository later — `install.sh` is not repeated.
 
 The first command puts `harnessctl` in `~/.local/bin`. If that directory is not already on your `PATH`, the installer says so and names the file to add it to, but it cannot change the shell you are sitting in — apply that line and reopen the shell, or call the shim by its full path: `~/.local/bin/harnessctl init --scope project --with dev,research`.
 
@@ -134,7 +142,7 @@ harnessctl uninstall --scope user    # settings, rules, CLAUDE.md
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 125 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 132 assertions hold that line.
 
 ### Requirements
 
@@ -186,11 +194,11 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 
 | Layer | Question | Result |
 |---|---|---|
-| **Guards** | does it stop incidents? | **27 / 29** stopped — at the cost of **2 / 24** false positives on ordinary work |
+| **Guards** | does it stop incidents? | **33 / 35** stopped — at the cost of **2 / 30** false positives on ordinary work |
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 125 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 132 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 8% is the price of the 93%.
 
@@ -247,16 +255,17 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **248** |
 | session-log renderer | **44** |
-| installer round trip | **125** assertions |
+| installer round trip | **132** assertions |
 | context-budget gate | **14** |
 | inventory figures | **39** + selftest **7** |
 | slide claim checker | **36** |
 | document references | **61** files + **19** own cases |
+| documented commands exist | **45** + selftest **12** |
 | frontmatter | **11** |
 | plugin and marketplace manifests | **7** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **626** |
+| **Total** | **692** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

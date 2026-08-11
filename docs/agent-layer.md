@@ -124,7 +124,7 @@ The detail behind §3's last three rows (external plugins, external instruments,
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 248 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 125 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 11, plugin manifests 7, benchmark health 14, document references 61 files + 19 own cases, context-budget ceiling 1 — a total of 626. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 250 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 132 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 11, plugin manifests 7, benchmark health 14, document references 61 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 692. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -183,12 +183,12 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 
 | Layer | The question | Result | Confidence |
 |---|---|---|---|
-| **Guards** (hooks) | Do they stop incidents? | raw 0/29 → harness **27/29**, false positives on ordinary work **2/24** | Deterministic. A count, so no error bars |
+| **Guards** (hooks) | Do they stop incidents? | raw 0/35 → harness **33/35**, false positives on ordinary work **2/30** | Deterministic. A count, so no error bars |
 | **Conventions** (CLAUDE.md, rules) | Does written prose change behaviour? | branch naming raw 0/12 → harness **10/12** | **Significant** (*p* ≈ 0.00007) |
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
-| **Installer** | Does uninstall restore the original? | 125 assertions | An invariant, not an A/B subject |
+| **Installer** | Does uninstall restore the original? | 132 assertions | An invariant, not an A/B subject |
 
 **Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
@@ -198,7 +198,7 @@ Below is the basis for each row. **If you take one line: guards and conventions 
 
 ### Guards (`make bench`)
 
-`evals/incidents.sh` is a 53-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
+`evals/incidents.sh` is a 65-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, ghaccount 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
 
 The raw arm being 0/0 is self-evident (no hooks, so nothing blocked and nothing blocking). The meaning is not in that contrast but in **the 8% price tag** — a guard that blocks 100% is switched off within a day, and its block rate is zero from then on.
 
@@ -314,7 +314,7 @@ This may have been worth more than the measurements. All nine **looked identical
 
 - **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
 - **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
-- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 125 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 132 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
 
 ## 5. Guide vs Guard
 
