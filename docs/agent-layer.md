@@ -45,6 +45,7 @@ Problems no project should have to solve from scratch. Each row is owned by **on
 | A large artifact is swept up by `git add -A` and enters history permanently | Common | `large-file-veto` |
 | A shared mount or another team's directory is touched by absolute path, by mistake | Site-dependent | `protected-paths` |
 | AI attribution lands in a commit or PR | It is the default | `ai-attribution-guard` + `includeCoAuthoredBy: false` |
+| A push or PR goes out as the wrong GitHub account, because two are authenticated and `gh auth switch` moved the active one | Site-dependent | `gh-account-guard` |
 | Irreversible commands (`rm -rf`, force push, `reset --hard`) | Rare but fatal | Permissions `deny` |
 | PR and commit conventions drift per project | Every time | `rules/harness/workflow.md` |
 | Work piles up on the default branch and the review unit tangles | Common | `check-uncommitted` |
@@ -63,7 +64,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 |---|---|---|---|
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
-| **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 6 (4 blocking, 2 informational) |
+| **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, with Superpowers 14 on top |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `.claude/commands/*.md` | ✅ 1 (`/verify`) |
@@ -123,7 +124,7 @@ The detail behind §3's last three rows (external plugins, external instruments,
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 6 hook verifiers / 203 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 99 assertions, frontmatter 11, plugin manifests 7, benchmark health 12, document references 57 files + 19 own cases, context-budget ceiling 1 — a total of 489. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 229 cases, session-log renderer 44, claim checker 36, harnessctl round trip + install.sh 104 assertions, frontmatter 11, plugin manifests 7, benchmark health 12, document references 60 files + 19 own cases, context-budget ceiling 1 — a total of 523. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -185,7 +186,7 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
-| **Installer** | Does uninstall restore the original? | 92 assertions | An invariant, not an A/B subject |
+| **Installer** | Does uninstall restore the original? | 104 assertions | An invariant, not an A/B subject |
 
 **Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
@@ -311,7 +312,7 @@ This may have been worth more than the measurements. All nine **looked identical
 
 - **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
 - **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
-- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 92 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 104 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
 
 ## 5. Guide vs Guard
 
@@ -374,7 +375,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   ├── harness-core/
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── hooks/hooks.json            # event and matcher registration
-│   │   ├── hooks/*.sh                  # 4 blocking + 2 informational
+│   │   ├── hooks/*.sh                  # 5 blocking + 2 informational
 │   │   ├── skills/pr-create/SKILL.md
 │   │   ├── commands/verify.md
 │   │   ├── scripts/{_verify-lib,verify-*}.sh
@@ -383,7 +384,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   │   └── declarative/                # what a plugin cannot carry
 │   │       ├── settings-fragment.json  # permissions + scalars (no hooks)
 │   │       ├── CLAUDE.md               # template
-│   │       ├── templates/{protected,allowed}-paths.txt
+│   │       ├── templates/{protected,allowed}-paths.txt, gh-account.txt
 │   │       └── rules/{core,dev,research}/*.md
 │   ├── harness-dev/            # skills/pr-review + deps: core, superpowers
 │   ├── harness-research/       # skills/{research-notes,repro-checklist} + deps: core

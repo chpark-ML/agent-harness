@@ -80,9 +80,9 @@ gh auth status --active --hostname github.com --json hosts \
 ```
 
 Report that line to the user before pushing. If a repository has declared an
-expected account in `.claude/gh-account.txt`, [`gh-account-guard`](../../../../docs/hooks/gh-account-guard.md)
-blocks a mismatch on its own; this step is what the repositories that declared
-nothing get.
+expected account in `.claude/gh-account.txt`, the `gh-account-guard` hook blocks a
+mismatch on its own and its message names `docs/hooks/gh-account-guard.md`; this
+step is what the repositories that declared nothing get.
 
 ```bash
 git push -u origin <branch>
