@@ -38,6 +38,18 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+# jq on Windows writes CRLF. `$(...)` strips the trailing newline and leaves the
+# CR, so every captured value ends in a stray byte: exact comparisons fail while
+# substring matches keep working, which means the guard goes quiet instead of
+# going wrong. `verify-gh-account-guard` caught it as eight failures in a hook
+# that was correct; in the field it is a push that should have been blocked.
+#
+# Normalised once here rather than at each call site, and unconditionally --
+# `tr -d '\r'` is a no-op on LF, whereas a Windows-only branch would be a line
+# that only ever runs in one environment (CLAUDE.md section 4). PIPESTATUS keeps
+# jq's own exit status, which `jq -e` and `jq empty` callers depend on.
+jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
+
 input="$(cat)"
 tool="$(printf '%s' "$input" | jq -r '.tool_name // ""')"
 [ "$tool" != "Bash" ] && exit 0
