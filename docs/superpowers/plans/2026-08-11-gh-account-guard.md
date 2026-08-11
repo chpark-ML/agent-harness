@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> Dated design record. Counts and case totals quoted below describe the tree at the time of writing; [`agent-layer.md`](../../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
+
 **Goal:** Ship a PreToolUse hook that blocks `git push`, `gh pr create` and `gh pr merge` when the active GitHub account is not the one the repository declared.
 
 **Architecture:** One bash hook gated in four stages — jq present, command caught, expectation declared, account compared — so the expensive step (`gh auth status`, measured at ~0.5 s) runs only after the command has already been identified as a push or a PR. Configuration follows `protected-paths` (a consumer-owned file, absent by default, so the guard ships off), except that its three sources resolve first-match-wins instead of unioning. A frozen `gh` stub keeps the verifier hermetic.

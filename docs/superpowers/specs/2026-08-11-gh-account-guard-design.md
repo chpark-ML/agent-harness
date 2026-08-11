@@ -2,6 +2,8 @@
 
 Status: approved, not yet implemented. Date: 2026-08-11.
 
+> Dated design record. Counts and case totals quoted below describe the tree at the time of writing; [`agent-layer.md`](../../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
+
 A blocking hook that refuses `git push`, `gh pr create` and `gh pr merge` when the
 active GitHub account is not the one this repository expects.
 
