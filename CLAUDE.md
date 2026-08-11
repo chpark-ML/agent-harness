@@ -75,7 +75,7 @@ Different from a hook in two places, which is why it needs its own list.
 ## 3. The hook contract
 
 - **bash 3.2 and jq only.** No Python or Node extensions ([ADR-0002](docs/adr/0002-hook-contract.md)). The exception is the repo-only `scripts/verify-frontmatter.sh`, which is not shipped and so uses python3. macOS's `/bin/bash` is the floor — no `mapfile`, no associative arrays, no `${x^^}`. Under `set -u`, expand an empty array as `"${a[@]+"${a[@]}"}"`.
-- **A hook that parses stdin** disables itself with one stderr line and `exit 0` when `jq` is absent. A missing hook must not block work. Hooks that only call `git` and never read stdin (`session-brief`, `check-uncommitted`) correctly have no such guard — each hook's document says so, so nobody goes hunting for a guard that was never there.
+- **A hook that parses stdin** disables itself with one stderr line and `exit 0` when `jq` is absent. A missing hook must not block work. Hooks that never read stdin have nothing to parse, so they need no jq and correctly have no such guard (today the two informational ones, `session-brief` and `check-uncommitted` — which tools a hook shells out to is beside the point) — each hook's document says so, so nobody goes hunting for a guard that was never there.
 - **Only a blocking hook exits 2.** Everything else exits 0 no matter what. An informational hook that stops a turn is a bug.
 - A block message carries *what was caught* and *how to get past it*, and points at `docs/hooks/<name>.md`. A consumer cannot open the hook file in their own tree — it lives in the plugin cache — so the message is the only interface.
 - Put catches / scope / bypass in the header comment.
