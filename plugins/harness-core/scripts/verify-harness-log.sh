@@ -261,7 +261,11 @@ if [ "$PHYS" = "$PROJ" ]; then
 fi
 
 if [ "$PHYS" = "$LOGICAL" ]; then
-  _fail "a symlinked project still finds its transcripts" "could not build a symlinked fixture"
+  # Not a failure of the tool under test — the fixture needs a real symlink and
+  # this platform did not produce one (Git Bash without winsymlinks copies).
+  # Reported as skipped so the total stops claiming the case ran.
+  skip_case "a symlinked project still finds its transcripts" \
+    "could not build a symlinked fixture on this platform"
 else
   session s14
   add "$(ev_user 'reached through a symlink')"; add "$(ev_asst 'found anyway')"

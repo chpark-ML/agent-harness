@@ -26,6 +26,8 @@
 
 PASS=0
 FAIL=0
+SKIP=0
+SKIPPED_NAMES=""
 FAILED_NAMES=""
 RC=0
 OUT=""
@@ -83,6 +85,39 @@ _fail() {
   return 0
 }
 
+# skip_case <name> <why> — for a case whose *premise* the platform cannot build,
+# never for one that is merely inconvenient. Counted and named in the summary
+# rather than dropped: a case that quietly stops running is a case that stopped
+# guarding, and the total would go on claiming it ran.
+skip_case() {
+  SKIP=$((SKIP + 1))
+  SKIPPED_NAMES="$SKIPPED_NAMES$1 ($2)
+"
+  printf '  SKIP  %s -- %s\n' "$1" "$2"
+  return 0
+}
+
+# symlinks_supported — does `ln -s` on this platform actually make a symlink?
+#
+# Git Bash without winsymlinks exits 0 and leaves a *copy*, so the usual
+# `ln -s ... || skip` idiom cannot see the problem: the command succeeded, and
+# the case then quietly tests a regular file. Ask the filesystem what it got
+# rather than asking ln whether it worked. Cached, because cases call it.
+symlinks_supported() {
+  if [ -z "${_SYMLINKS_OK:-}" ]; then
+    _sym_probe="$WORK/.symprobe"
+    rm -rf "$_sym_probe"; mkdir -p "$_sym_probe"
+    : > "$_sym_probe/target"
+    if ln -s "$_sym_probe/target" "$_sym_probe/link" 2>/dev/null && [ -L "$_sym_probe/link" ]; then
+      _SYMLINKS_OK=yes
+    else
+      _SYMLINKS_OK=no
+    fi
+    rm -rf "$_sym_probe"
+  fi
+  [ "$_SYMLINKS_OK" = yes ]
+}
+
 # expect <name> <expected> <actual>
 expect() {
   if [ "$2" = "$3" ]; then _pass "$1"; else _fail "$1" "expected '$2', got '$3'"; fi
@@ -132,6 +167,12 @@ _summary_print() {
   echo
   echo "=== Summary ==="
   echo "  $PASS / $total passed"
+  if [ "$SKIP" -gt 0 ]; then
+    echo "  $SKIP skipped (this platform cannot build the premise):"
+    printf '%s' "$SKIPPED_NAMES" | while IFS= read -r n; do
+      [ -n "$n" ] && echo "    - $n"
+    done
+  fi
   if [ "$FAIL" -gt 0 ]; then
     echo "  $FAIL failed:"
     printf '%s' "$FAILED_NAMES" | while IFS= read -r n; do
