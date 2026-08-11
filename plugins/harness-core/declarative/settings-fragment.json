@@ -50,7 +50,7 @@
       "Bash(gh pr:*)",
       "Bash(gh issue:*)",
       "Bash(gh repo view:*)",
-      "Bash(gh auth status)"
+      "Bash(gh auth status:*)"
     ],
     "ask": [
       "Bash(git push:*)",
