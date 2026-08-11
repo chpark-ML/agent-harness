@@ -15,7 +15,7 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -36,7 +36,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs context-budget verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs context-budget verify-context-budget verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -88,6 +88,12 @@ context-budget:
 # different values across four documents without anything noticing.
 context-budget-strict:
 	@$(BASH) scripts/context-budget.sh --ceiling $(CONTEXT_CEILING) --require-plugins
+
+# CI only ever runs the strict path where it succeeds. These cases cover the
+# exits that make it a gate — partial, stale, and the deliberately non-fatal
+# published-number mismatch — none of which any CI job reaches.
+verify-context-budget:
+	@$(BASH) scripts/verify-context-budget.sh
 
 # The published total is a claim about this suite, and for four releases it was
 # maintained by editing three documents by hand. It cannot live inside `verify`
