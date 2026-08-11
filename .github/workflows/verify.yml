@@ -55,10 +55,17 @@ jobs:
       # plugin cost counts as 0, and the gate passes on the declarative half
       # alone. That was the state for a long time: the two jobs that ran the
       # ceiling had no CLI, and this job, the only one with a CLI, never ran it.
-      - name: install the marketplace and plugins from this checkout
+      # superpowers is an external dependency declared in harness-dev's manifest
+      # and it carries real always-on cost, so the ceiling is meaningless without
+      # it. Leaving it out is what the first run of this step did, and the gate
+      # caught it — the list below is safe to hardcode precisely because an
+      # omission fails loudly as "plugin cost unreadable" rather than passing.
+      - name: install the marketplaces and plugins from this checkout
         run: |
           claude plugin marketplace add "$GITHUB_WORKSPACE"
+          claude plugin marketplace add anthropics/claude-plugins-official
           for p in core dev research slides; do
             claude plugin install "harness-$p@agent-harness" --scope user
           done
+          claude plugin install superpowers@claude-plugins-official --scope user
       - run: make context-budget-strict
