@@ -12,6 +12,7 @@
 #
 # Run:  make frontmatter          # declares TRIGGER_LANGS for you
 #       bash scripts/verify-frontmatter.sh   # skips the trigger-language check
+#       bash scripts/verify-frontmatter.sh --selftest   # the reporting path
 
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,8 +20,77 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 command -v python3 >/dev/null 2>&1 || {
   echo "verify-frontmatter: python3 is required" >&2; exit 1; }
 
+# ---- selftest ---------------------------------------------------------------
+# Not about frontmatter: about this script's ability to *report*. Every line it
+# prints carries an em-dash, and Python's stdout defaults to the locale encoding
+# with errors='strict'. On a console that cannot hold one — cp949 on Korean
+# Windows, or any locale reached through PYTHONIOENCODING — printing raised
+# UnicodeEncodeError, so the checker died at the exact moment it had something
+# to say. Observed as: 11 / 11 checks pass, then exit 1 with a traceback.
+#
+# PYTHONIOENCODING reproduces it on every platform, so this runs in CI too and
+# is not a Windows-only case. The glob half is the other arm of CLAUDE.md §4:
+# a third python-embedding verifier must not be able to reappear without this.
+if [ "${1:-}" = "--selftest" ]; then
+  pass=0; fail=0
+  echo "=== frontmatter selftest ==="
+
+  # "$BASH" re-runs under the same interpreter, so `make frontmatter
+  # BASH=/bin/bash` measures the 3.2 floor here too rather than silently
+  # falling back to whatever /usr/bin/env picks.
+  out="$(PYTHONIOENCODING=ascii HARNESS_TRIGGER_LANGS='' "$BASH" "$0" 2>&1)"; rc=$?
+  if [ "$rc" -eq 0 ] && ! printf '%s' "$out" | grep -q 'UnicodeEncodeError'; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    echo "  FAIL  a clean run must stay clean when stdout cannot encode its output (rc=$rc)"
+  fi
+
+  for f in "$REPO"/scripts/verify-*.sh; do
+    grep -q "python3 -" "$f" || continue
+
+    # Anchored: the call sits at column 0 inside the heredoc. An unanchored
+    # pattern matches this very line, which exempted this file from its own
+    # check — the first thing this loop caught was itself lying.
+    if grep -q '^sys\.stdout\.reconfigure' "$f"; then
+      pass=$((pass + 1))
+    else
+      fail=$((fail + 1))
+      echo "  FAIL  $(basename "$f") embeds python3 with a strict stdout"
+    fi
+
+    # The other direction, found the same afternoon: a bare read call without an
+    # encoding takes the locale codec, so verify-benches could not decode the
+    # Korean eval sets it exists to validate. Output and input are the same
+    # assumption made twice.
+    #
+    # `[A-Za-z_]` after the paren, and comment lines dropped: the first draft
+    # matched its own grep argument and the prose in this very comment, and a
+    # checker that cries wolf gets switched off (ADR-0003). Real calls pass an
+    # identifier; a quoted pattern and a prose `()` do not.
+    if grep "open([A-Za-z_]" "$f" | grep -v '^[[:space:]]*#' | grep -qv 'encoding='; then
+      fail=$((fail + 1))
+      echo "  FAIL  $(basename "$f") opens a file without declaring its encoding"
+    else
+      pass=$((pass + 1))
+    fi
+  done
+
+  echo "  $pass / $((pass + fail)) passed"
+  [ "$fail" -eq 0 ] || exit 1
+  exit 0
+fi
+
 python3 - "$REPO" <<'PY'
 import glob, os, re, sys
+
+# Report first, encode second. Every line below carries an em-dash and stdout
+# defaults to the locale encoding with errors='strict', so on a console that
+# cannot hold one this used to raise UnicodeEncodeError *while printing the
+# result* — a fully passing run exited 1 with a traceback. 'replace' degrades
+# the character; 'strict' degrades the whole verifier. See --selftest.
+sys.stdout.reconfigure(errors='replace')
+sys.stderr.reconfigure(errors='replace')
 
 repo = sys.argv[1]
 LANGS = [x.strip() for x in os.environ.get('HARNESS_TRIGGER_LANGS', '').split(',') if x.strip()]

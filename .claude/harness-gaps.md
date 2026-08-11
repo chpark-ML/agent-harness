@@ -816,4 +816,73 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   아니라 새로 잰 것이다 (`CLAUDE.md` §8).
 - **후보 규약** (1회차): §2 에 7번째 산출물 — 차단 훅은 `evals/incidents.sh` 에
   케이스를 낸다. 승격하지 않는다; 1회차다.
+
+## 2026-08-12 — 검증기가 자기 출력을 인코딩하다 죽었다 (3회차)
+
+- **어디**: `scripts/verify-frontmatter.sh:124,126` · `scripts/verify-doc-refs.sh:273`
+  · `scripts/verify-benches.sh:88`
+- **무슨 일**: 한국어 Windows(cp949 콘솔)에서 `make verify` 가 `frontmatter` 에서
+  멈춘다. 증상이 고약하다 — **11 / 11 전부 통과하고 나서** 요약 줄을 찍다가
+  `UnicodeEncodeError: 'cp949' codec can't encode character '—'` 로 죽고
+  rc=1 을 낸다. **초록불 실행이 실패로 보고된다.** 파이썬의 stdout 은 로케일
+  인코딩에 `errors='strict'` 인데, 이 저장소의 산문은 em-dash 를 쓴다.
+- **왜 아무 검사도 못 잡았나**: `CLAUDE.md` §4 의 *"검증기가 도는 환경 중
+  하나에서만 실행되는 줄은 검증되지 않은 줄"* 의 **3회차**다. 앞의 둘
+  (`verify-check-total` 의 CLI-없음 분기, `verify-all` 의 `pipefail`) 은 전부
+  **CI-대-로컬** 축이었다. 이번은 **로케일** 축이고, 그래서 아무도 안 봤다 —
+  그 줄은 개발 환경에서 매번 실행됐다. 실행되지 않은 게 아니라, **실행되는
+  인코딩이 하나뿐이었다.**
+- **고친 것**: 세 스크립트에 `sys.stdout/stderr.reconfigure(errors='replace')`.
+  문자를 망가뜨릴지언정 검증기는 살린다 — `strict` 는 검증기를 망가뜨린다.
+  `verify-frontmatter.sh --selftest` 신설 (4 케이스), `make frontmatter` 가
+  `doc-refs` 와 같은 모양으로 selftest 를 먼저 돌린다.
+- **케이스가 플랫폼 독립인 이유**: `PYTHONIOENCODING=ascii` 가 어느 OS 에서든
+  같은 크래시를 낸다. Windows 전용 케이스였다면 CI 에서 안 돌아 또 같은 부류가
+  됐을 것이다.
+- **케이스를 쓰다 나온 것**: glob 검사의 grep 이 앵커가 없어 **자기 인자 문자열에
+  매치됐고**, `verify-frontmatter.sh` 가 자기 검사만 면제받았다. 이 루프가 처음
+  잡은 것이 자기 자신의 거짓말이다. 그리고 열거 대신 glob 으로 쓴 덕에
+  `verify-benches.sh` 가 딸려 나왔다 — 손으로 골랐으면 둘만 고쳤다.
+- **회차**: 3 (해결됨)
+
+## 2026-08-12 — `make verify` 가 Windows 에서 한 번도 완주한 적이 없다
+
+- **어디**: `Makefile:63` (`TRIGGER_LANGS`) · `scripts/verify-doc-refs.sh:240`
+  (`EXCLUDE` 대조) · `plugins/harness-core/scripts/verify-gh-account-guard.sh` ·
+  `plugins/harness-core/scripts/verify-large-file-veto.sh`
+- **무슨 일**: 위 인코딩 건을 고치고 나니 그 뒤가 보였다. 셋 다 오탐이다.
+  1. `TRIGGER_LANGS ?= 한국어|Korean` 이 Windows 네이티브 `make.exe` 를 지나며
+     `?쒓뎅?` 로 깨져, 한국어 트리거를 멀쩡히 가진 스킬 5개가 "없음" 으로
+     실패한다. bash 에서 같은 값을 직접 넣으면 11 / 11 통과다.
+  2. `os.path.join(repo, 'evals/prose-corpus.md')` 는 `\` 와 `/` 를 섞어 만드는데
+     `glob` 은 `\` 로만 준다. 문자열 비교라 `EXCLUDE` 가 안 맞고, **일부러 제외한
+     `prose-corpus.md`** 가 6건 실패로 올라온다. 상대 링크 해석도 같은 이유로 4건.
+  3. 훅 검증기 둘이 POSIX 를 가정한다 — `ln -s` 가 Windows 에서 복사본이 되고
+     (`large-file-veto` 의 심링크 케이스), `gh` 계정 케이스가 8건 실패한다.
+  4. **`verify-benches` 는 통과한다. 다만 수십 분이 걸린다.** 오래 도는 것을
+     정지로 두 번 오진했고, 그 오진 과정이 이 항목에서 제일 쓸모 있는 부분이다.
+     - 45초 캡에서 `bench-guards.sh` 가 rc=124 → *"반환하지 않는다"* 고 적었다.
+       300초를 주니 **rc=0, 2분 31초** (user 39s / sys 63s).
+     - 그다음 `bench-claims.sh` 가 300초 캡에서 rc=124 이고 CPU 를 거의 안 써서
+       (user 0.24s) *"느린 게 아니라 멈춰 있다"* 고 적었다. 끝까지 두니
+       **`PASS bench-claims produces a flag count` · `claim corpus yields 143
+       tokens`** 로 통과했다. CPU 사용량이 0 에 가까운 것은 Git Bash 에서
+       손자 프로세스의 rusage 가 안 잡히기 때문이지, 멈춘 증거가 아니었다.
+     - 최종: `make verify-benches` **14 / 14 통과**. Windows 에서 `make verify` 를
+       막는 것은 위 1·2·3 의 오탐뿐이고, 여기엔 정지가 없다.
+     - **교훈**: `timeout` 이 준 rc=124 는 *"이 캡 안에 안 끝났다"* 는 뜻이지
+       *"안 끝난다"* 가 아니다. 캡을 근거로 쓸 거면 캡 값을 문장에 같이 적어야
+       하고, 그러면 이 오진은 쓰는 순간 눈에 보인다.
+- **왜 안 적고 지나갈 수 없나**: 오탐은 `ADR-0003` 이 말한 **꺼지는 검사**다.
+  지금 이 저장소를 Windows 에서 여는 사람에게 `make verify` 는 이미 꺼져 있다 —
+  빨간불이 기본값이면 아무도 안 본다. 여기에 벤치가 수십 분을 먹는 것이 겹치면
+  기다릴 이유까지 없어진다.
+- **왜 이번에 안 고쳤나**: 인코딩 건과 원인이 다르고 (경로 처리·make 의 env 전달·
+  POSIX 가정), 각각 고치는 방법도 다르다. 하나의 PR 로 묶으면 어느 것이 무엇을
+  고쳤는지 못 읽는다. 그리고 `CLAUDE.md` §7 대로 **두 번째 발생을 기다릴 이유가
+  있는지** 부터 봐야 한다 — 이 저장소가 Windows 를 지원 대상으로 삼는지가 아직
+  어디에도 적혀 있지 않다. 그 결정이 먼저다.
+- **결정이 필요한 것**: 지원 플랫폼을 `docs/agent-layer.md` 에 명시한다. 대상이
+  macOS·Linux 뿐이라면 위 셋은 버그가 아니라 범위 밖이고, `make verify` 가
+  Windows 에서 그렇게 말해야 한다. 대상이면 셋 다 고칠 일이다.
 - **회차**: 1

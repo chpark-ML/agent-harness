@@ -84,7 +84,17 @@ for f in evals/trigger/*.json; do
   n_sets=$((n_sets + 1))
   python3 - "$f" <<'PY' || bad_sets="$bad_sets $(basename "$f")"
 import json, sys
-d = json.load(open(sys.argv[1]))
+
+# The assert message below carries an em-dash and reaches the user through the
+# interpreter's traceback on stderr, so a strict stream turns a readable
+# assertion into a UnicodeEncodeError about the assertion.
+sys.stdout.reconfigure(errors='replace')
+sys.stderr.reconfigure(errors='replace')
+
+# encoding='utf-8', not the locale's: five of these eval sets carry Korean
+# trigger phrases, and a bare open() reads them through cp949 on Korean Windows
+# and fails to decode the file it is supposed to be validating.
+d = json.load(open(sys.argv[1], encoding='utf-8'))
 assert isinstance(d, dict), "not an object — eval sets must declare their skill"
 assert d.get("skill"), "no skill id"
 c = d["cases"]
