@@ -171,10 +171,30 @@ done
 # One shim per executable in the plugin's bin/, discovered rather than listed.
 # A hardcoded name means the next executable ships with a documented terminal
 # command that does not exist, and nothing fails to say so.
+# The cache lives under the Claude config directory, which is $CLAUDE_CONFIG_DIR
+# when set — the same resolution step 3 uses to locate harnessctl. Hardcoding
+# $HOME/.claude here (as this did) meant a non-default config directory got a
+# successful install and no shim: the glob matched nothing, the loop ran zero
+# times, and a single warning was the only sign. The shim body resolves it at
+# run time rather than baking today's value in, so moving the config directory
+# later does not strand an already-written shim.
+# The newest non-orphaned harness-core bin/ under a config directory, or empty.
+# Same filter step 3 applies when locating harnessctl, for the same reason.
+newest_bindir() {
+  local c out=""
+  for c in "$1"/plugins/cache/*/harness-core/*/; do
+    [ -d "$c/bin" ] || continue
+    [ -f "$c/.orphaned_at" ] && continue
+    out="$out$c/bin
+"
+  done
+  printf '%s' "$out" | grep -v '^$' | sort -V | tail -1
+}
+
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 say "shell shim"
 if mkdir -p "$BIN_DIR" 2>/dev/null; then
-  bindir="$(ls -d "$HOME"/.claude/plugins/cache/*/harness-core/*/bin 2>/dev/null | sort -V | tail -1)"
+  bindir="$(newest_bindir "$CFG")"
   shimmed=0
   for exe in "$bindir"/*; do
     [ -f "$exe" ] && [ -x "$exe" ] || continue
@@ -183,8 +203,21 @@ if mkdir -p "$BIN_DIR" 2>/dev/null; then
 #!/bin/sh
 # @NAME@ shim — resolves the installed plugin at run time.
 # Installed by agent-harness/install.sh. Safe to delete; re-created on install.
-d=$(ls -d "$HOME"/.claude/plugins/cache/*/harness-core/*/bin 2>/dev/null | sort -V | tail -1)
-[ -n "$d" ] || { echo "@NAME@: harness-core plugin not found. Install it first:" >&2
+cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+# Skip superseded copies. `claude plugin update` leaves the old version behind
+# with an .orphaned_at marker and its bin/ emptied, and it can sort ABOVE the
+# live one — so taking the highest version blindly picks a directory with
+# nothing in it. Step 3 of install.sh has always filtered on these markers; the
+# shim did not, and that asymmetry is the bug.
+d=""
+for c in "$cfg"/plugins/cache/*/harness-core/*/; do
+  [ -f "$c/.orphaned_at" ] && continue
+  [ -x "$c/bin/@NAME@" ] || continue
+  d="$d$c/bin
+"
+done
+d=$(printf '%s' "$d" | grep -v '^$' | sort -V | tail -1)
+[ -n "$d" ] || { echo "@NAME@: harness-core plugin not found under $cfg. Install it first:" >&2
                  echo "  claude plugin install harness-core@agent-harness --scope user" >&2; exit 1; }
 exec "$d/@NAME@" "$@"
 SHIM
