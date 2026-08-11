@@ -2,6 +2,12 @@
 # protected-paths — block tool calls that touch a protected absolute path
 # without an explicit carve-out.
 #
+# catches  a tool call touching an absolute path under a declared protected
+#          prefix, with no carve-out. Silent until a prefix is declared
+# scope    PreToolUse, Read/Write/Edit/NotebookEdit/Glob/Grep/Bash
+# bypass   HARNESS_ALLOWED_PATHS=/p1:/p2 <command>, or add the path to
+#          .claude/allowed-paths.txt
+#
 # Fills the gap settings.json permission globs cannot: those are relative to
 # the project, so anything reached by absolute path — a shared mount, another
 # team's export, a production data directory — is outside their reach.

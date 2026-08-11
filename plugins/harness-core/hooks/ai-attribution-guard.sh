@@ -1,6 +1,11 @@
 #!/bin/bash
 # ai-attribution-guard — keep AI-authorship marks out of git history and GitHub.
 #
+# catches  commit / PR / issue commands carrying a Co-Authored-By: Claude
+#          trailer, a generated-with footer, or the robot emoji
+# scope    PreToolUse, Bash
+# bypass   none by design; write the message without the attribution
+#
 # Blocks commit / PR / issue commands carrying:
 #   - a `Co-Authored-By: Claude ...` (or `...@anthropic.com`) trailer
 #   - a `🤖 Generated with [Claude Code]` footer

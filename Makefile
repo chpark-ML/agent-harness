@@ -115,11 +115,11 @@ verify-inventory:
 # pipe and died in CI in three seconds while passing on macOS, where /bin/sh is
 # bash. Capture, print, then check.
 verify-all:
-	@log=`mktemp`; $(MAKE) verify BASH=$(BASH) > $$log 2>&1; st=$$?; \
-	  cat $$log; \
+	@log=$$(mktemp); st=$$(mktemp); \
+	  trap 'rm -f "$$log" "$$st"' EXIT INT TERM; \
+	  { $(MAKE) verify BASH=$(BASH) 2>&1; echo $$? > $$st; } | tee $$log; \
 	  $(BASH) scripts/verify-check-total.sh $$log; tot=$$?; \
-	  rm -f $$log; \
-	  [ $$st -eq 0 ] && [ $$tot -eq 0 ]
+	  [ "$$(cat $$st)" -eq 0 ] && [ $$tot -eq 0 ]
 
 verify-benches:
 	@$(BASH) scripts/verify-benches.sh
