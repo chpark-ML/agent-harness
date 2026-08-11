@@ -28,7 +28,11 @@ echo
 # --- free benchmarks: run them ------------------------------------------------
 echo "--- these cost nothing, so they actually run"
 
-out="$(BASH=/bin/bash bash scripts/bench-guards.sh 2>&1)" || true
+# Inherit the interpreter instead of pinning /bin/bash: the pin is wrong in
+# both directions — on Linux /bin/bash IS bash 5, so it only pretended to test
+# the floor, and under `make verify BASH=/bin/bash` it overrode the very
+# variable the floor job sets.
+out="$("${BASH:-bash}" scripts/bench-guards.sh 2>&1)" || true
 printf '%s' "$out" | grep -qE 'harness +[0-9]+ / [0-9]+' \
   && ok "bench (guards) produces an arm table" \
   || bad "bench (guards) produces an arm table" "$(printf '%s' "$out" | tail -2)"
@@ -40,7 +44,7 @@ n_inc="$(grep -cE '^inc(_tool)? ' evals/incidents.sh 2>/dev/null)"
 [ "${n_inc:-0}" -ge 40 ] && ok "incident corpus still has $n_inc cases" \
   || bad "incident corpus size" "found ${n_inc:-0}, expected >= 40"
 
-out="$(bash scripts/bench-claims.sh 2>&1)" || true
+out="$("${BASH:-bash}" scripts/bench-claims.sh 2>&1)" || true
 printf '%s' "$out" | grep -qE 'flagged: [0-9]+ of [0-9]+ tokens' \
   && ok "bench-claims produces a flag count" \
   || bad "bench-claims produces a flag count" "$(printf '%s' "$out" | tail -2)"
@@ -79,7 +83,7 @@ done
   || bad "malformed eval sets" "$bad_sets"
 
 W="$(mktemp -d)"
-bash evals/fixture-python.sh "$W/fx" >/dev/null 2>&1 \
+"${BASH:-bash}" evals/fixture-python.sh "$W/fx" >/dev/null 2>&1 \
   && [ -f "$W/fx/app/config.py" ] && ok "bench-lsp fixture builds" || bad "bench-lsp fixture builds"
 rm -rf "$W"
 

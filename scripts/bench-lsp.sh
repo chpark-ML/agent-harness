@@ -58,7 +58,7 @@ arm() {
   while [ "$n" -lt "$RUNS" ]; do
     n=$((n + 1))
     local fx="$WORK/$label-$n"
-    bash "$REPO/evals/fixture-python.sh" "$fx"
+    "${BASH:-bash}" "$REPO/evals/fixture-python.sh" "$fx"
     out="$(cd "$fx" && printf '%s' "$PROMPT" \
       | claude -p $BENCH_CLAUDE_ARGS --output-format json --permission-mode acceptEdits 2>/dev/null)"
     printf '%s' "$out" | jq -e '.usage' >/dev/null 2>&1 || { echo "    run $n: no usage — skipped"; continue; }

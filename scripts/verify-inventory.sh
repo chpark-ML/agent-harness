@@ -154,7 +154,10 @@ scan "deny"  "$DENY"  'deny [0-9]+'
 # Run the real thing rather than trusting a number typed beside it. This is the
 # figure that drifted in six places on the day it was written.
 echo
-INSTALL_OUT="$(bash "$REPO/scripts/verify-install.sh" 2>&1 | grep -oE '^  [0-9]+ / [0-9]+ passed' | tail -1)"
+# ${BASH:-bash}, not a literal: under `make verify BASH=/bin/bash` — the macOS
+# 3.2 floor job, the whole reason the variable exists — a hardcoded bash here
+# produced the assertion count with bash 5 while everything around it ran 3.2.
+INSTALL_OUT="$("${BASH:-bash}" "$REPO/scripts/verify-install.sh" 2>&1 | grep -oE '^  [0-9]+ / [0-9]+ passed' | tail -1)"
 INSTALL_N="$(printf '%s' "$INSTALL_OUT" | grep -oE '/ [0-9]+' | grep -oE '[0-9]+')"
 if [ -z "$INSTALL_N" ]; then
   bad "verify-install.sh reports a total" "got: $INSTALL_OUT"
