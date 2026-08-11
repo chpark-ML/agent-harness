@@ -39,7 +39,7 @@ Making things the agent **cannot** do, and fixing the things it has **agreed** t
 | TrueFoundry's governance | Ours |
 |---|---|
 | access policy — per-tool restriction | `permissions`, 3 tiers (allow 47 / ask 3 / deny 8) |
-| guardrails — pre/post tool-invoke hooks | 4 blocking PreToolUse hooks + 2 informational Stop hooks |
+| guardrails — pre/post tool-invoke hooks | 5 blocking PreToolUse hooks + 2 informational Stop hooks |
 | budgets | `make context-budget` — an always-on context ceiling of 9,000 |
 | identity — a per-node identity | **Missing.** We are a single-session harness, so there are no nodes yet |
 
@@ -56,7 +56,7 @@ Guards and guides cannot substitute for each other — a guide can be ignored, a
 | Do the guards stop incidents | **27 / 29**, false positives on ordinary work **2 / 24** |
 | Does written prose change behaviour (branch names) | 0/12 → **10/12**, *p* ≈ 0.00007 |
 | Commit subject ≤ 70 characters | 6/6 against 6/6 — **zero. Removed from the rules** |
-| Does uninstall restore the original | 92 assertions, canonically identical |
+| Does uninstall restore the original | 104 assertions, canonically identical |
 
 **This is the only layer properly measured.** And one of the things measured came back zero, so it was deleted.
 

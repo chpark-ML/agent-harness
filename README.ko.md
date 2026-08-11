@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-489-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-523-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -43,7 +43,7 @@
 
 | | `core`<br><sub>항상</sub> | `+dev`<br><sub>역할</sub> | `+research`<br><sub>역할</sub> | `+slides`<br><sub>산출물</sub> | `+python`·`+typescript`<br><sub>언어</sub> |
 |---|---|---|---|---|---|
-| **가드 훅** | **6** — 차단 4 · 정보 2 | | | | |
+| **가드 훅** | **7** — 차단 5 · 정보 2 | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | |
 | **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 99 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 104 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -81,7 +81,8 @@
 ├── settings.json                 # 없던 권한 문자열만 더함 (통째 교체 아님)
 ├── harness-manifest.json         # 무엇을 더했는지 적은 영수증
 ├── protected-paths.txt           # 비어 있음 — 채우면 그 가드가 켜진다
-└── allowed-paths.txt
+├── allowed-paths.txt
+└── gh-account.txt                # 비어 있음 — 기대 계정을 적으면 켜진다
                                   # rules/ 는 설치하지 않는다 (아래 참조)
 ```
 
@@ -94,7 +95,8 @@
     ├── harness-manifest.json     # 영수증
     ├── rules/harness/…           # 관리 파일 — 재설치 때 덮어쓴다
     ├── protected-paths.txt
-    └── allowed-paths.txt
+    ├── allowed-paths.txt
+    └── gh-account.txt
 ```
 
 **path-scoped rules 는 프로젝트 스코프에만 설치된다** — `~/.claude/rules` 는 읽히는 자리가 아니라서, 거기 두면 동작하는 얼굴로 죽어 있는 파일이 된다. `settings.json` 은 파싱 후 재직렬화되고 우리가 더한 문자열만 manifest 에 남으므로, 제거하면 원래 값은 같은 문자열이어도 지워지지 않는다.
@@ -256,7 +258,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 | | 플러그인 | `harnessctl` |
 |---|---|---|
-| **무엇** | 가드 훅 6 · 스킬 · 커맨드 · 검증기 | permissions 3티어 · `CLAUDE.md` · `.claude/rules` |
+| **무엇** | 가드 훅 7 · 스킬 · 커맨드 · 검증기 | permissions 3티어 · `CLAUDE.md` · `.claude/rules` |
 | **왜 이쪽** | Claude Code 가 직접 로드·업데이트·스코프 관리 | 플러그인 `settings.json` 은 `agent`·`subagentStatusLine` 만 지원하고, 플러그인 루트 `CLAUDE.md` 는 컨텍스트로 안 읽히며, `rules` 는 플러그인 컴포넌트가 아니다 |
 | **설치** | `claude plugin install` | `harnessctl init` |
 | **위치** | 플러그인 캐시 | 프로젝트 또는 `~/.claude` |
@@ -277,7 +279,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 ## 구조 상세
 
-### 가드 훅 6개
+### 가드 훅 7개
 
 | 훅 | 무엇을 막나 | 차단 |
 |---|---|---|
@@ -285,6 +287,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 | `large-file-veto` | 10 MiB 초과 `git add` | ✅ |
 | `protected-paths` | 선언된 절대경로 prefix (기본 비활성) | ✅ |
 | `ai-attribution-guard` | 커밋·PR 의 AI 귀속 | ✅ |
+| `gh-account-guard` | 잘못된 GitHub 계정으로 나가는 push·PR (기본 비활성) | ✅ |
 | `session-brief` | 세션 시작 시 10줄 repo 상태 | ❌ 정보 |
 | `check-uncommitted` | default branch 에 작업이 쌓일 때 | ❌ 정보 |
 
@@ -309,7 +312,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 | # | 무엇 | 규칙 |
 |---|---|---|
 | 1 | `.claude/rules/harness/**` | **관리 파일** — 덮어쓴다. 고칠 것은 하네스 저장소에서 고친다. `--scope user` 에서는 설치 안 함 |
-| 2 | `CLAUDE.md`, `*-paths.txt` | **템플릿** — 없을 때만 복사. 이후 프로젝트 소유 |
+| 2 | `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` | **템플릿** — 없을 때만 복사. 이후 프로젝트 소유 |
 | 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 `includeCoAuthoredBy: false` 만 |
 | 4 | `settings.json.bak-<ts>` | 설정이 실제로 바뀔 때만 남기는 직전 스냅샷 |
 | 5 | `.gitignore` | 두 줄 (프로젝트 스코프에서만) |
@@ -340,7 +343,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 | 자산 | 왜 우리가 만들어야 했나 |
 |---|---|
-| 가드 훅 6 | 스킬은 가이드고 훅은 가드다. 사고 방어선은 모델 밖에 있어야 한다 |
+| 가드 훅 7 | 스킬은 가이드고 훅은 가드다. 사고 방어선은 모델 밖에 있어야 한다 |
 | `harnessctl` | 플러그인이 못 나르는 셋(permissions·CLAUDE.md·rules)을 **되돌릴 수 있게** 설치하는 것은 아무도 안 한다 |
 | `pr-create` · `pr-review` | Superpowers 의 대응 스킬은 *저장소 규약* 을 모른다. 생애주기 단계로 축을 갈라 공존시켰다 |
 | `research-notes` · `repro-checklist` | Superpowers 의 **연구 전용 스킬은 0개** 다 |
@@ -363,16 +366,16 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 
 | 대상 | 케이스 |
 |---|---|
-| 훅 6종 동작 | **203** |
+| 훅 7종 동작 | **229** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **44** |
-| 설치기 왕복 | **99** assertion |
+| 설치기 왕복 | **104** assertion |
 | 발표 수치 검사기 | **36** |
 | frontmatter 파싱 | **11** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **12** |
-| 문서 내부 참조 (`verify-doc-refs`) | **57** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **60** 파일 + 자체 **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **489** |
+| **합계** | **523** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
