@@ -46,14 +46,18 @@ That is **user scope**: the guard hooks, skills and commands apply in every repo
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
-cd your-repo && harnessctl init --scope project
+cd your-repo && harnessctl init --scope project --with dev,research
 ```
+
+**`--with` is not optional here, and its absence is silent.** `harnessctl` takes the module list from `--with` or from the target's own manifest, and a repository being set up for the first time has neither — so plain `harnessctl init --scope project` installs the catch-all workflow rule and nothing else. Name the same role profiles you installed: the default above is `dev,research`, and `--profile dev,python` would be `--with dev` (`python` is a language profile and carries no rules).
 
 The split follows what each asset is *for*. Guards and skills are yours: they belong machine-wide, or the one repository you forgot to install in becomes the hole. Rules and project settings are the team's: they belong in the commit, so they arrive with a clone.
 
-Run the second command on its own in any repository later — the first is not repeated. `harnessctl` is on your `PATH` once the first command has run.
+Run the second command on its own in any repository later — the first is not repeated.
 
-An existing project loses nothing. A `CLAUDE.md` you already have is kept as it is, your own rules outside `.claude/rules/harness/` are untouched, and `settings.json` is parsed and re-serialised rather than replaced, so existing keys and permissions survive and duplicates are not created. If a file the harness does not own already sits at one of its managed paths, the install **stops before writing anything** and names it. Add `--dry-run` to either command to see the plan first.
+The first command puts `harnessctl` in `~/.local/bin`. If that directory is not already on your `PATH`, the installer says so and names the file to add it to, but it cannot change the shell you are sitting in — apply that line and reopen the shell, or call the shim by its full path: `~/.local/bin/harnessctl init --scope project --with dev,research`.
+
+An existing project loses nothing. A `CLAUDE.md` you already have is kept as it is, your own rules outside `.claude/rules/harness/` are untouched, and `settings.json` is parsed and re-serialised rather than replaced, so existing keys and permissions survive and duplicates are not created. If a file the harness does not own already sits at one of its managed paths, the install **stops before writing anything** and names it. Add `--dry-run` to the `harnessctl` command to see its plan first; `install.sh` has no such flag.
 
 <details>
 <summary><b>If piping a remote script into a shell makes you uneasy</b></summary>
@@ -89,7 +93,7 @@ you want it back.
 
 | You want | Flags | Difference from the default |
 |---|---|---|
-| **Everything** | *(none)* | 6 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, and the rules for both roles |
+| **Everything** | *(none)* | 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, and the rules for both roles |
 | Development only | `--profile dev` | Drops the five-document note discipline and `results-deck`. Saves ~2,100 tok per session |
 | Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
 | A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
