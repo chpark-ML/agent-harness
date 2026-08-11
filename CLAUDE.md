@@ -96,9 +96,11 @@ make verify BASH=/bin/bash   # the macOS bash 3.2 floor — required before merg
 |---|---|---|
 | **False positive** — calls a correct thing wrong | **Cases.** A check that cries wolf gets switched off, and a switched-off check is zero | `verify-doc-refs` (19 cases) |
 | **Omission** — does not look at what it should | **Prevent it by design first.** Glob instead of hardcoding a list. Cases only when design cannot | `context-budget` (the file list is a glob) |
-| True or false is self-evident | Neither | `verify-frontmatter` |
+| True or false is self-evident | Neither | `verify-frontmatter`'s checks (its *reporting* path is a separate question and earned 4 — see below) |
 
 **And either way, a line that runs in only *one* of the environments the verifier runs in is an unverified line.** `verify-check-total` was written on a machine with the Claude CLI, and the branch that runs only when the CLI is absent executed for the first time in CI, where it broke.
+
+**"Environment" is not only CI-versus-local — the third occurrence was the locale.** `verify-frontmatter` printed its summary with an em-dash and Python's stdout defaults to `errors='strict'`, so on a cp949 console it passed 11 / 11 and then died reporting it: a green run exiting 1. Every python-embedding verifier now sets `errors='replace'` — degrade the character, never the verifier — and `verify-frontmatter.sh --selftest` holds the line, half of it a glob so a fourth script cannot arrive without it. **Write the reproduction so it runs everywhere**: `PYTHONIOENCODING=ascii` reproduces this on any platform, which is why the case is worth having; a Windows-only case would have been invisible to CI and become the same bug again.
 
 - Hook verifiers use `run_case` / `expect` / `expect_match` from `plugins/harness-core/scripts/_verify-lib.sh`; repo-only verifiers use `scripts/_check-lib.sh`, which sources it and adds `check_rc` / `check_eq` / `summary` on top (the hook runner needs a hook file, which repo-only scripts do not have). Do not write a third.
 - Cases come in three kinds: **no-op** (input the hook must not touch), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is the one that earns its keep.

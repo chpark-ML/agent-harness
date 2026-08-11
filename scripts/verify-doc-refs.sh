@@ -31,6 +31,13 @@ command -v python3 >/dev/null 2>&1 || {
 python3 - "$REPO" "${1:-}" <<'PY'
 import glob, os, re, sys
 
+# A FAIL line here carries an em-dash, so on a console whose encoding cannot
+# hold one this raised UnicodeEncodeError at the moment it had a problem to
+# report — clean runs looked fine and only failing ones died. Asserted by
+# verify-frontmatter.sh --selftest, which globs every verifier for this line.
+sys.stdout.reconfigure(errors='replace')
+sys.stderr.reconfigure(errors='replace')
+
 repo, mode = sys.argv[1], sys.argv[2]
 
 FENCE = re.compile(r'^\s*(```|~~~)', re.M)

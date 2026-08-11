@@ -69,7 +69,11 @@ TRIGGER_LANGS ?= 한국어|Korean
 # The value is quoted: unquoted, a two-word list word-splits and the second
 # word runs as a command, which fails the whole verify chain with a `command
 # not found` that names a language.
+# Selftest first, as doc-refs does: this checker once passed 11 / 11 and then
+# exited 1 while printing the result, because stdout could not encode an
+# em-dash. A verifier that dies on its own output reports nothing.
 frontmatter:
+	@$(BASH) scripts/verify-frontmatter.sh --selftest
 	@HARNESS_TRIGGER_LANGS='$(TRIGGER_LANGS)' $(BASH) scripts/verify-frontmatter.sh
 
 # A dead link or a mistyped path in an instruction file is not an error — the

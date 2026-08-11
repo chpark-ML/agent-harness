@@ -79,7 +79,7 @@ A negative case asks *"did the work go where we said it would"*, not *"did our s
 |---|---|---|
 | **false positive** — calls a correct thing wrong | **cases.** A checker that cries wolf gets switched off, and a switched-off checker is worth zero | `verify-doc-refs` (19 cases) |
 | **omission** — fails to look at something | **design first.** Glob the file list instead of hardcoding it, so the omission cannot happen. Cases only where design cannot reach | `context-budget` |
-| self-evident | neither | `verify-frontmatter` |
+| self-evident | neither | `verify-frontmatter`'s checks (its reporting path earned 4 of its own) |
 
 **A line that runs in only one of the environments a verifier meets is unverified.** `verify-check-total` carried a branch that only runs without the Claude CLI, was written on a machine that has one, and broke the first time CI ran it.
 
