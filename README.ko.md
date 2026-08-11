@@ -115,16 +115,24 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 
 **경로 스코프 rule 은 이걸로 안 온다. 올 수가 없다.** `~/.claude/rules` 라는 문서화된 경로가 없어서, 기계 전체에 넣으면 활성처럼 보이는 죽은 파일이 된다. rule 은 프로젝트에서만 읽힌다. rule 과 `CLAUDE.md` 를 팀이 clone 하는 저장소에 넣으려면 명령을 하나 더한다.
 
+먼저 저장소로 간다. 손대야 하는 줄은 이것 하나뿐이다.
+
+```bash
+cd your-repo
+```
+
+그다음은 그대로 붙여넣으면 된다.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
-cd your-repo && harnessctl init --scope project --with dev
+harnessctl init --scope project --with dev
 ```
 
 **`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예의 `--profile dev,python` 은 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다). 프로파일을 안 골랐다면 기본값이 `dev,research` 이므로 `--with dev,research`.
 
 나뉘는 기준은 그 자산이 **누구 것인가**다. 가드와 스킬은 내 것이라 기계 전체에 있어야 한다 — 설치를 잊은 저장소 하나가 곧 구멍이다. rule 과 프로젝트 설정은 팀 것이라 커밋에 있어야 한다. clone 과 함께 도착해야 하니까.
 
-두 번째 명령은 나중에 아무 저장소에서나 단독으로 돌리면 된다. 첫 명령을 다시 돌릴 필요는 없다.
+`harnessctl init` 은 나중에 아무 저장소에서나 단독으로 돌리면 된다. `install.sh` 를 다시 돌릴 필요는 없다.
 
 첫 명령은 `harnessctl` 을 `~/.local/bin` 에 놓는다. 그 디렉터리가 아직 `PATH` 에 없으면 설치기가 그 사실과 고쳐야 할 파일 이름을 알려주지만, **지금 앉아 있는 셸의 PATH 를 바꿔주지는 못한다** — 알려준 줄을 적용하고 셸을 새로 열거나, 전체 경로로 부른다: `~/.local/bin/harnessctl init --scope project --with dev`.
 
