@@ -176,34 +176,50 @@ being told beats discovering it.
 ## 7. Verification
 
 `scripts/verify-gh-account-guard.sh`, using `run_case` / `expect` / `expect_match`
-from `_verify-lib.sh`. Twelve cases across the three required kinds.
+from `_verify-lib.sh`. Seventeen cases across the three required kinds.
 
 **no-op** — input the hook must not touch:
 
-1. `git status` with an account declared → pass, gate does not match
-2. `gh pr view 12` → pass, read-only subcommand
-3. `git push` with **nothing declared** → pass, default-off
+1. no `tool_name` → pass
+2. a non-Bash tool whose payload contains the words → pass
+3. empty command → pass
+4. `git status` with an account declared → pass, gate does not match
+5. `gh pr view 12` → pass, read-only subcommand
+6. `git push` with **nothing declared** → pass, default-off
 
 **block** — exit 2 with the account named:
 
-4. `git push` under a mismatched declaration
-5. `gh pr create --title x` under a mismatch
-6. `gh pr merge 3` under a mismatch
+7. `git push` under a mismatched declaration
+8. `gh pr create --title x` under a mismatch
+9. `gh pr merge 3` under a mismatch
+10. `git -C /elsewhere push` under a mismatch — a global option must not smuggle
+    a push past the gate, which is the shape that slipped past
+    `ai-attribution-guard` once already
 
 **boundary** — resembles what is blocked, and must pass:
 
-7. `echo "git push"` — segment begins with `echo`
-8. `git commit -m "remember to git push"` — subcommand is `commit`
-9. `git pushx` — word boundary
-10. `git push` with the declaration **matching** the active account — the happy
-    path, and the one an author forgets to assert
-11. `gh` absent from PATH, **with an account declared** — passes with one stderr
+11. `echo "git push"` — segment begins with `echo`
+12. `git commit -m "remember to git push"` — subcommand is `commit`
+13. `git pushx` — word boundary
+14. `git push` with the declaration **matching** the active account — the happy
+    path, and the one an author forgets to assert. Without it the hook could be
+    blocking everything and the suite would still be green
+15. `HARNESS_GH_ACCOUNT` set to the active account, overriding a mismatched file
+16. `gh` absent from PATH, **with an account declared** — passes with one stderr
     line, does not block. The declaration is what makes this case reach step 4 at
     all; without it step 3 exits first and nothing is printed
-12. `HARNESS_GH_ACCOUNT` set to the active account, overriding a mismatched file
+17. `jq` absent → passes with one stderr line
 
-Case 7 and 8 are the ones that earn their keep. They are the false positives that
-would get this hook switched off.
+Cases 11 and 12 are the ones that earn their keep. They are the false positives
+that would get this hook switched off.
+
+**The suite must not call the real `gh`.** `gh auth status` makes a network call
+and its answer depends on whoever is logged in on the machine running the suite —
+either one makes the verifier report on something other than the hook. A stub `gh`
+prints JSON frozen from gh 2.89.0's actual output, with the login and
+`tokenSource` driven by environment variables. Case 16 needs `jq` present and `gh`
+absent at once, so `PATH=/nonexistent` cannot serve it; it gets a directory
+holding explicit links to only the tools the hook uses.
 
 The suite must pass under the bash 3.2 floor: `make verify BASH=/bin/bash`.
 
