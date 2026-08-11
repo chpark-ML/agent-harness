@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="checks" src="https://img.shields.io/badge/checks-690-blue">
-  <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
+  <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -63,7 +63,7 @@
 
 | 층 | 물은 것 | 결과 |
 |---|---|---|
-| **가드** (훅) | 사고를 막나 | **27 / 29** 차단 — 대가는 정상 작업 오탐 **2 / 24** |
+| **가드** (훅) | 사고를 막나 | **33 / 35** 차단 — 대가는 정상 작업 오탐 **2 / 30** |
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
@@ -421,7 +421,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 | 층 | 물은 것 | stock | harness | 판정 |
 |---|---|---|---|---|
-| **가드** `make bench` (공짜) | 사고를 막나 | 0 / 29 | **27 / 29** | 결정론적 · 정상 작업 오탐 **2/24** |
+| **가드** `make bench` (공짜) | 사고를 막나 | 0 / 35 | **33 / 35** | 결정론적 · 정상 작업 오탐 **2/30** |
 | **규약** `make bench-convention` | 브랜치 이름 규칙이 행동을 바꾸나 | 0 / 12 | **10 / 12** | **유의** *p* ≈ 0.00007 |
 | " | commit 제목 70자 제한은? | 6 / 6 | 6 / 6 | **변별력 없음** |
 | " | commit 본문 존재는? | 5 / 6 | 6 / 6 | 유의하지 않음 |
@@ -431,7 +431,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 #### 읽는 법 네 가지
 
-**하나. 두 숫자를 함께 본다.** 가드가 27/29 를 막는 대가는 정상 작업 2/24 를 막는 것이다. 전부 차단하는 가드는 차단율 100% 를 찍고 하루 만에 꺼지며, 그때부터 0 이 된다. **8% 가 가격표다.**
+**하나. 두 숫자를 함께 본다.** 가드가 33/35 를 막는 대가는 정상 작업 2/30 를 막는 것이다. 전부 차단하는 가드는 차단율 100% 를 찍고 하루 만에 꺼지며, 그때부터 0 이 된다. **7% 가 가격표다.**
 
 **둘. 규약 중에도 아무것도 벌지 않는 것이 있다.** commit 제목 70자 제한은 하네스가 있으나 없으나 6/6 이다 — 모델이 원래 짧게 쓴다. 규칙으로 적혀 있으면 지켜지는 것처럼 보이지만 **그 규칙이 만든 차이는 0** 이다. **그래서 지웠다.** 재봐서 0이 나온 것은 후보가 아니라 결론이다. 규칙 파일에 왜 뺐는지와 다시 넣으려면 먼저 재라는 조건을 주석으로 남겼다.
 
