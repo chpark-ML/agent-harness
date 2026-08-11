@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify-check-total.sh — the published check count has to be the real one.
+# verify-check-total.sh — the published check count has to be the real one, in all five places it is written.
 #
 # The total lives in three places: the README badge, the README table, and the
 # §4 sentence in docs/agent-layer.md. Every time a check was added, all three
@@ -37,24 +37,33 @@ if [ -z "$LOG" ] || [ ! -r "$LOG" ]; then
 fi
 
 # ---- 1. what the documents claim -------------------------------------------
+# Five places, not three: the Korean README is a mirror pair with the English
+# one, and its badge and 합계 row drifted silently for exactly as long as this
+# script read only the English file — the ledger's "훅 개수가 또 낡아 있었다"
+# incident, in this script's own back yard.
 badge="$(grep -oE 'badge/checks-[0-9]+' "$REPO/README.md" | head -1 | grep -oE '[0-9]+')"
 table="$(grep -E '^\| \*\*(Total|합계)\*\* \|' "$REPO/README.md" | grep -oE '[0-9]+' | tail -1)"
+kobadge="$(grep -oE 'badge/checks-[0-9]+' "$REPO/README.ko.md" | head -1 | grep -oE '[0-9]+')"
+kotable="$(grep -E '^\| \*\*(Total|합계)\*\* \|' "$REPO/README.ko.md" | grep -oE '[0-9]+' | tail -1)"
 sot="$(grep -oE '(합계|total of) [0-9]+' "$REPO/docs/agent-layer.md" | head -1 | grep -oE '[0-9]+')"
 
 echo "=== published check total ==="
 printf '  %-34s %s\n' "README badge" "${badge:-<none>}"
 printf '  %-34s %s\n' "README 검증 표 합계" "${table:-<none>}"
+printf '  %-34s %s\n' "README.ko badge" "${kobadge:-<none>}"
+printf '  %-34s %s\n' "README.ko 합계" "${kotable:-<none>}"
 printf '  %-34s %s\n' "agent-layer §4" "${sot:-<none>}"
 
 fail=0
-if [ -z "$badge" ] || [ -z "$table" ] || [ -z "$sot" ]; then
+if [ -z "$badge" ] || [ -z "$table" ] || [ -z "$kobadge" ] || [ -z "$kotable" ] || [ -z "$sot" ]; then
   echo "  FAIL  a published total could not be read — did a document change shape?"
   fail=1
-elif [ "$badge" != "$table" ] || [ "$badge" != "$sot" ]; then
-  echo "  FAIL  the three do not agree. One was edited and the others were not."
+elif [ "$badge" != "$table" ] || [ "$badge" != "$sot" ] \
+     || [ "$badge" != "$kobadge" ] || [ "$badge" != "$kotable" ]; then
+  echo "  FAIL  the five do not agree. One was edited and the others were not."
   fail=1
 else
-  echo "  ok    all three agree"
+  echo "  ok    all five agree"
 fi
 
 # ---- 2. what the suite actually produced ------------------------------------
