@@ -57,13 +57,34 @@ MISSES=""; FALSEPOS=""
 declare_cat() { :; }
 CATS=""
 
-# Run the four blocking guards the way Claude Code does: any exit 2 stops the
-# call, and later guards never see it.
+# Run the blocking guards the way Claude Code does: any exit 2 stops the call,
+# and later guards never see it.
+#
+# The list is DERIVED from hooks.json's PreToolUse registrations, not written
+# out — a hardcoded four is how gh-account-guard shipped and silently never
+# joined the arm, so the published catch rate described four guards out of
+# five. The omission class is prevented by design (§4), not by remembering.
+GUARDS="$(jq -r '[.hooks.PreToolUse[]?.hooks[].command] | .[]' "$HOOKS/hooks.json" \
+          | grep -oE 'hooks/[a-z-]+\.sh' | sed 's|hooks/||; s|\.sh$||')"
+[ -n "$GUARDS" ] || { echo "bench-guards: could not derive the guard list from hooks.json" >&2; exit 1; }
+
+# gh-account-guard consults gh for the active account. The real gh reaches the
+# network and answers for whoever is logged in on this machine — either one
+# makes the arm nondeterministic — so the sandbox gets the same frozen-JSON
+# stub its verifier uses, pinned to an account the corpus can declare against.
+GH_STUB="$WORK/ghstub"
+mkdir -p "$GH_STUB"
+cat > "$GH_STUB/gh" <<'SH'
+#!/bin/sh
+printf '{"hosts":{"github.com":[{"state":"success","active":true,"host":"github.com","login":"bench-active","tokenSource":"keyring","scopes":"repo","gitProtocol":"https"}]}}\n'
+SH
+chmod +x "$GH_STUB/gh"
+
 run_guards() {
   local json="$1" proj="$2" g rc
-  for g in protected-paths secret-scrubber large-file-veto ai-attribution-guard; do
+  for g in $GUARDS; do
     printf '%s' "$json" \
-      | env -i PATH="$PATH" HOME="$WORK" LC_ALL=C \
+      | env -i PATH="$GH_STUB:$PATH" HOME="$WORK" LC_ALL=C \
           CLAUDE_PROJECT_DIR="$proj" CLAUDE_CONFIG_DIR="$USERCFG" \
           "$BASH_BIN" "$HOOKS/$g.sh" >/dev/null 2>"$WORK/err"
     rc=$?
