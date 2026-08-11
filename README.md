@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-604-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-613-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -116,12 +116,25 @@ Restart Claude Code when the installer finishes. Plugins load at session start.
 ### Verify and undo
 
 ```bash
-harnessctl doctor                                          # what is installed, what is missing
-harnessctl uninstall --scope user                          # settings, rules, CLAUDE.md
-claude plugin uninstall harness-dev@agent-harness --prune   # the plugins
+harnessctl doctor                    # what is installed, what is missing
+harnessctl uninstall --scope user    # settings, rules, CLAUDE.md
 ```
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 112 assertions hold that line.
+**Removal has three parts, and `harnessctl` owns only the first.** It writes no plugins and no shims, so it removes neither. Both commands above now end by listing what is actually installed and the exact command for each, so there is nothing to remember:
+
+```
+  to remove the plugin half:
+    claude plugin uninstall harness-core@agent-harness --prune
+    claude plugin uninstall harness-dev@agent-harness --prune
+    ...
+
+  shell shims (written by install.sh):
+    remove with:  rm ~/.local/bin/harnessctl ~/.local/bin/harness-log
+```
+
+Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
+
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 121 assertions hold that line.
 
 ### Requirements
 
@@ -177,7 +190,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 112 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 121 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 8% is the price of the 93%.
 
@@ -234,7 +247,7 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **248** |
 | session-log renderer | **44** |
-| installer round trip | **112** assertions |
+| installer round trip | **121** assertions |
 | context-budget gate | **14** |
 | inventory figures | **39** |
 | slide claim checker | **36** |
@@ -243,7 +256,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **7** |
 | benchmark health | **12** |
 | context-budget ceiling | **1** |
-| **Total** | **604** |
+| **Total** | **613** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

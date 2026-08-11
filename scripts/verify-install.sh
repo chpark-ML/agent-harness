@@ -602,6 +602,69 @@ check "...and names the command that would fix it" \
   "$(printf '%s' "$shim_out" | grep -q 'claude plugin install harness-core' && echo 0 || echo 1)" \
   "got: $shim_out"
 
+# --- 13. doctor reports the plugin half -------------------------------------
+# harnessctl installs no plugins and removes none, so both commands used to say
+# nothing about them — except one hardcoded line naming harness-core, while a
+# default install places four. A consumer following it left three behind.
+section "doctor: plugins and shims"
+
+pcache="$WORK/pcache/plugins/cache"
+mkdir -p "$pcache/agent-harness/harness-core/1.9.0" \
+         "$pcache/agent-harness/harness-core/1.10.0" \
+         "$pcache/agent-harness/harness-dev/2.0.0" \
+         "$pcache/agent-harness/harness-python/1.0.0" \
+         "$pcache/claude-plugins-official/superpowers/6.2.0" \
+         "$pcache/claude-plugins-official/unrelated-plugin/1.0.0"
+# harness-python's only version is superseded — it is gone, and must not be
+# listed. Marking 1.9.0 too pins that the newest survivor wins.
+: > "$pcache/agent-harness/harness-python/1.0.0/.orphaned_at"
+: > "$pcache/agent-harness/harness-core/1.9.0/.orphaned_at"
+# No .in_use anywhere on purpose: requiring that marker reported the current
+# version as missing, because it was observed absent right after an update.
+
+dshim="$WORK/dshim"; mkdir -p "$dshim"
+printf '#!/bin/sh\n# harnessctl shim — resolves the installed plugin at run time.\n' > "$dshim/harnessctl"
+printf '#!/bin/sh\necho not-a-shim\n' > "$dshim/something-else"
+chmod +x "$dshim/harnessctl" "$dshim/something-else"
+
+dout="$( cd "$C" && env PATH="$PATH" HOME="$WORK/pcache" \
+         CLAUDE_CONFIG_DIR="$WORK/pcache" BIN_DIR="$dshim" \
+         "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"
+
+check "doctor lists an installed plugin with its version" \
+  "$(printf '%s' "$dout" | grep -q 'harness-core@agent-harness  1.10.0' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$dout" | grep -i 'harness-core@' | head -1)"
+check "...choosing the newest surviving version" \
+  "$(printf '%s' "$dout" | grep -q '1.9.0' && echo 1 || echo 0)"
+# Scoped to the plugin section: `harness-python` legitimately appears earlier,
+# in the language-server line, and matching the whole output would fail on that.
+dplugins="$(printf '%s' "$dout" | sed -n '/^plugins (installed by Claude Code/,/^no problems\|^!/p')"
+check "...and omitting a plugin whose only version is orphaned" \
+  "$(printf '%s' "$dplugins" | grep -q 'harness-python' && echo 1 || echo 0)"
+check "...and a dependency from another marketplace" \
+  "$(printf '%s' "$dout" | grep -q 'superpowers@claude-plugins-official' && echo 0 || echo 1)"
+check "...but nothing unrelated" \
+  "$(printf '%s' "$dout" | grep -q 'unrelated-plugin' && echo 1 || echo 0)"
+check "doctor prints an uninstall command per plugin" \
+  "$(printf '%s' "$dout" | grep -c 'claude plugin uninstall' | grep -q '^3$' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$dout" | grep -c 'claude plugin uninstall') lines"
+check "doctor names the shims it can see" \
+  "$(printf '%s' "$dout" | grep -q "$dshim/harnessctl" && echo 0 || echo 1)"
+check "...and not unrelated files in the same directory" \
+  "$(printf '%s' "$dout" | grep -q 'something-else' && echo 1 || echo 0)"
+
+# The same discovery has to drive uninstall's closing hint, or the two drift.
+# uninstall refuses without a manifest, so this needs its own installed project.
+uproj="$WORK/uproj"
+new_consumer "$uproj" bare
+run_install "$uproj" >/dev/null 2>&1
+uout="$( cd "$uproj" && env PATH="$PATH" HOME="$WORK/pcache" \
+         CLAUDE_CONFIG_DIR="$WORK/pcache" BIN_DIR="$dshim" \
+         "$BASH_BIN" "$HCTL" uninstall --scope project 2>&1 )"
+check "uninstall names every installed plugin, not just harness-core" \
+  "$(printf '%s' "$uout" | grep -c 'claude plugin uninstall' | grep -q '^3$' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$uout" | grep 'claude plugin uninstall' | tr '\n' ' ')"
+
 # --- summary -----------------------------------------------------------------
 total=$((PASS + FAIL))
 echo

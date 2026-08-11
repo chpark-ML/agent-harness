@@ -114,6 +114,38 @@ else
   GITIGNORE="$TARGET/.gitignore"
 fi
 
+# The plugin half lives under the Claude config directory regardless of which
+# scope harnessctl was asked about, and the shims live wherever install.sh put
+# them. Neither is owned by the manifest; doctor only reports on them.
+CLAUDE_CACHE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache"
+SHIM_DIR="${BIN_DIR:-$HOME/.local/bin}"
+
+# Installed harness plugins, one `name@marketplace:version` per line.
+#
+# Live means "not superseded", judged by the absence of `.orphaned_at`.
+# `.in_use` is NOT a reliable signal — it was observed missing from the current
+# version immediately after an update, so requiring it reports a plugin that is
+# installed and working as absent. sort -V is what makes 1.10.0 outrank 1.9.0.
+installed_plugins() {
+  local mkt pdir v mname pname ver
+  for mkt in "$CLAUDE_CACHE"/*/; do
+    [ -d "$mkt" ] || continue
+    mname="$(basename "$mkt")"
+    for pdir in "$mkt"*/; do
+      [ -d "$pdir" ] || continue
+      pname="$(basename "$pdir")"
+      case "$pname" in harness-*|superpowers) ;; *) continue ;; esac
+      ver="$(for v in "$pdir"*/; do
+               [ -d "$v" ] || continue
+               [ -f "$v/.orphaned_at" ] && continue
+               basename "$v"
+             done | sort -V | tail -1)"
+      [ -n "$ver" ] || continue
+      printf '%s@%s:%s\n' "$pname" "$mname" "$ver"
+    done
+  done
+}
+
 GITIGNORE_WANT='.claude/settings.local.json
 .claude/settings.json.bak-*'
 
@@ -197,6 +229,45 @@ if [ "$CMD" = doctor ]; then
   if [ -f "$CONFIG_DIR/gh-account.txt" ] \
      && ! grep -q '^[[:space:]]*[^[:space:]#]' "$CONFIG_DIR/gh-account.txt" 2>/dev/null; then
     say "  --    gh-account-guard inactive — put the expected account login in $CONFIG_DIR/gh-account.txt to turn it on"
+  fi
+
+  # The plugin half, which this tool installs nothing of and therefore removes
+  # nothing of. Uninstall used to name harness-core alone while a default
+  # install places four, so following the printed instruction left the rest
+  # behind. Reading the cache is the only way to say what is actually there:
+  # asking `claude` would be a second dependency for a report, and hardcoding
+  # the list would go stale the moment a profile is added.
+  say ""
+  say "plugins (installed by Claude Code — harnessctl neither installs nor removes these):"
+  plugin_specs=""
+  for line in $(installed_plugins); do
+    say "  ok    ${line%%:*}  ${line##*:}"
+    plugin_specs="$plugin_specs ${line%%:*}"
+  done
+  if [ -z "$plugin_specs" ]; then
+    say "  --    none found under $CLAUDE_CACHE — the guards and skills come from these, so an empty list means only the declarative half is installed"
+  else
+    say ""
+    say "  to remove the plugin half:"
+    for spec in $plugin_specs; do
+      say "    claude plugin uninstall $spec --prune"
+    done
+  fi
+
+  # The shims are written by install.sh, not by harnessctl, so uninstall does
+  # not take them back either. They are harmless once the plugin is gone (each
+  # prints an install hint and exits 1), but a complete removal includes them.
+  shim_list=""
+  for s in "$SHIM_DIR"/*; do
+    [ -f "$s" ] || continue
+    grep -q 'shim — resolves the installed plugin at run time' "$s" 2>/dev/null || continue
+    shim_list="$shim_list $s"
+  done
+  if [ -n "$shim_list" ]; then
+    say ""
+    say "  shell shims (written by install.sh):"
+    for s in $shim_list; do say "    $s"; done
+    say "    remove with:  rm$shim_list"
   fi
 
   say ""
@@ -434,7 +505,14 @@ EOF
     say "dry-run finished — nothing changed."
   else
     say "removed. The plugins are untouched — to remove those too:"
-    say "  claude plugin uninstall harness-core@agent-harness --prune"
+    # Naming harness-core alone was wrong: a default install places four, so
+    # following that line left the rest behind. List what is actually there.
+    uninst_any=0
+    for line in $(installed_plugins); do
+      say "  claude plugin uninstall ${line%%:*} --prune"
+      uninst_any=1
+    done
+    [ "$uninst_any" -eq 0 ] && say "  (none found — the plugin half is already gone)"
     [ -n "$SETTINGS_BACKUP" ] && say "  snapshot taken just before removal: $SETTINGS_BACKUP"
   fi
   exit 0
