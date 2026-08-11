@@ -181,7 +181,7 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 
 | Layer | The question | Result | Confidence |
 |---|---|---|---|
-| **Guards** (hooks) | Do they stop incidents? | raw 0/29 → harness **27/29**, false positives on ordinary work **2/24** | Deterministic. A count, so no error bars |
+| **Guards** (hooks) | Do they stop incidents? | raw 0/35 → harness **33/35**, false positives on ordinary work **2/30** | Deterministic. A count, so no error bars |
 | **Conventions** (CLAUDE.md, rules) | Does written prose change behaviour? | branch naming raw 0/12 → harness **10/12** | **Significant** (*p* ≈ 0.00007) |
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
@@ -196,7 +196,7 @@ Below is the basis for each row. **If you take one line: guards and conventions 
 
 ### Guards (`make bench`)
 
-`evals/incidents.sh` is a 53-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
+`evals/incidents.sh` is a 65-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, ghaccount 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
 
 The raw arm being 0/0 is self-evident (no hooks, so nothing blocked and nothing blocking). The meaning is not in that contrast but in **the 8% price tag** — a guard that blocks 100% is switched off within a day, and its block rate is zero from then on.
 

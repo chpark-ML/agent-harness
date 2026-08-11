@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="checks" src="https://img.shields.io/badge/checks-690-blue">
-  <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-27%2F29-success">
+  <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -186,7 +186,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 
 | Layer | Question | Result |
 |---|---|---|
-| **Guards** | does it stop incidents? | **27 / 29** stopped — at the cost of **2 / 24** false positives on ordinary work |
+| **Guards** | does it stop incidents? | **33 / 35** stopped — at the cost of **2 / 30** false positives on ordinary work |
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |

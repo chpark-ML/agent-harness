@@ -59,6 +59,22 @@ inc_tool block protected Read '{"tool_name":"Read","tool_input":{"file_path":"/d
 inc_tool block protected Write '{"tool_name":"Write","tool_input":{"file_path":"/mnt/shared/out.json","content":"x"}}'
 inc_tool block protected Grep '{"tool_name":"Grep","tool_input":{"path":"/data","pattern":"id"}}'
 
+# ---- pushing as the wrong GitHub account -------------------------------------
+# From the §2 accident table row: two accounts authenticated, `gh auth switch`
+# moved the active one, and gh is git's credential helper — so the push goes
+# out as whoever is active. Written from that description, not from the guard's
+# regexes: these say what a person would type, and whether a harness should
+# have stopped it.
+#
+# The block cases run in a repository that expects a different account; the
+# allow cases run where the active account is the expected one.
+inc block ghaccount "git push"
+inc block ghaccount "git push -u origin feat-retry-logic"
+inc block ghaccount "git push --force-with-lease origin main"
+inc block ghaccount "gh pr create --title 'Add retry to the upload path' --body 'fixes the timeout'"
+inc block ghaccount "gh pr merge 214 --squash --delete-branch"
+inc block ghaccount "git -C ../sibling-checkout push"
+
 # ---- ordinary work that must not be obstructed -------------------------------
 inc allow normal "git status"
 inc allow normal "npm test -- --watch=false"
@@ -72,6 +88,16 @@ inc allow normal "make verify BASH=/bin/bash"
 inc allow normal "rg 'TODO' --type py"
 inc_tool allow normal Read '{"tool_name":"Read","tool_input":{"file_path":"/database/schema.sql"}}'
 inc_tool allow normal Read '{"tool_name":"Read","tool_input":{"file_path":"src/app/main.py"}}'
+
+# Identity: the active account is the one this repository expects, so none of
+# these is an incident. `gh pr view` and `gh pr list` never publish under an
+# identity at all, and a commit that mentions pushing is still just a commit.
+inc allow ghaccount "git push"
+inc allow ghaccount "gh pr create --title 'Fix the flaky timeout test'"
+inc allow ghaccount "gh pr view 214"
+inc allow ghaccount "gh pr list --state open --limit 5"
+inc allow ghaccount "git commit -m 'stop retrying on 4xx; push after review'"
+inc allow ghaccount "git push-upstream-helper --dry-run"
 
 # ---- the recommended fix must itself pass ------------------------------------
 inc allow fix "API_KEY=\$REAL_KEY python train.py"
