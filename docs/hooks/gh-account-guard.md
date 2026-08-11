@@ -12,17 +12,20 @@ The checks run in this order, and **the order is the design** — the expensive 
 
 1. `jq` absent → one line to stderr, exit 0.
 2. `tool_name` is not `Bash`, the command is empty, or the command is not one of the caught shapes → exit 0. **Almost every call ends here, at no cost.**
-3. No expected account declared → exit 0. Off by default.
+3. Read any declared expectation (env, project file, user file). It may be empty — that is not the end.
 4. `gh` absent → one line to stderr, exit 0.
-5. Ask `gh` which account is active. Same as expected → exit 0.
-6. Mismatch → print the block message and exit 2.
+5. Ask `gh` which account is active and which accounts exist.
+6. Nothing was declared → try to infer the expectation from the owner of `origin`. Still nothing → exit 0.
+7. Active is the expectation → exit 0. Mismatch → block message, exit 2.
 
-Step 5 costs about **0.5 seconds**, because `gh auth status` validates the token against the API. That is far too slow to pay on every Bash call, which is why step 2 stands in front of it.
+Step 5 costs about **0.5 seconds**, because `gh auth status` validates the token against the API. That is far too slow to pay on every Bash call, which is why step 2 stands in front of it. **A repository that declares nothing now pays it too** — that is the one cost inference adds, and it is charged only on push and PR commands, a handful of times per session.
 
 ```bash
-gh auth status --active --hostname github.com --json hosts \
-  | jq -r '.hosts["github.com"][0].login // empty'
+gh auth status --hostname github.com --json hosts \
+  | jq -r '.hosts["github.com"] | map(select(.active)) | .[0].login'
 ```
+
+`--active` is deliberately *not* passed: one call has to answer both "who is active" and "who else am I", and the second is what inference needs. That makes selecting on the `active` flag load-bearing — with two accounts authenticated, `.[0]` is simply the first, which is the whole situation this hook exists for.
 
 Reading the JSON rather than the prose matters twice. Under `--json`, `gh` **exits 0 regardless of any authentication issue** (its own help says so), so the hook reads the payload and never the exit code. And the payload carries `tokenSource`, which is how the block message can say a token came from the environment.
 
@@ -42,21 +45,24 @@ So the command is split on `;`, `&&`, `||`, `|` and newline, and a match must st
 
 ## Configuration
 
-Three sources, resolved in order — **first match wins**:
+**Usually none.** Four sources, resolved in order — **first match wins** — and the last one needs no configuration at all:
 
 | Order | Source | Scope |
 | --- | --- | --- |
 | 1 | `HARNESS_GH_ACCOUNT` | one shell, one time |
 | 2 | `${CLAUDE_PROJECT_DIR:-.}/.claude/gh-account.txt` | this repository |
 | 3 | `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/gh-account.txt` | this machine |
+| 4 | **the owner of `origin`**, when that owner is itself one of your authenticated accounts | inferred |
 
-One value: the account login, on its own line. `#` comments and blank lines are ignored, and only the first real line is read.
+Source 4 is why a personal repository needs nothing written anywhere. `github.com/chpark-ML/thing` with accounts `chpark-ML` and `work-acct` authenticated: the owner is one of them, so it *is* the expectation, and pushing while `work-acct` is active blocks. An organisation owner matches no account, so inference stays quiet and an org repository has to declare if it wants the guard. That degradation is deliberate: offline, there is no way to tell an org from a stranger's namespace, and a guard that invents an expectation blocks the wrong thing.
+
+For sources 2 and 3 the value is one account login on its own line. `#` comments and blank lines are ignored, and **only the first real line is read** — so `echo login >> gh-account.txt` a second time changes nothing, and the file is edited rather than appended to.
 
 **This deliberately differs from [`protected-paths`](protected-paths.md), which unions its sources.** There, more protection is safer, so a union is the right direction. Here a union would mean "either account is fine", which weakens the guard on purpose. A machine-wide default with per-repository exceptions is also the shape the problem actually has: one account is normal, and specific repositories are the exception.
 
-**There is no separate off switch — the absent file is the off switch**, the same stance `protected-paths` takes. A general-purpose harness cannot guess which account a given repository wants, and a guard with an invented default blocks the wrong thing or teaches the habit of ignoring it.
+**A personal repository is guarded out of the box; everything else stays off until declared.** Inference only ever fires when the answer is unambiguous — the owner is literally an account you hold. Where it cannot tell, the absent file is the off switch, the same stance `protected-paths` takes.
 
-`gh-account.txt` is a **template** installed by `harnessctl init` rather than carried by the plugin — the original lives in [`plugins/harness-core/declarative/templates/`](../../plugins/harness-core/declarative/templates/) and belongs to the consumer once copied. What ships is comments only, so **installing the harness does not start blocking anyone's pushes**; the guard stays inactive until someone writes a login into it.
+`gh-account.txt` is a **template** installed by `harnessctl init` rather than carried by the plugin — the original lives in [`plugins/harness-core/declarative/templates/`](../../plugins/harness-core/declarative/templates/) and belongs to the consumer once copied. What ships is comments only. With inference in place the file is now the *exception* path — reach for it when the owner of `origin` is an organisation, or when it is your namespace but the expectation is a different account.
 
 ## What passes
 
@@ -64,7 +70,8 @@ One value: the account login, on its own line. `#` comments and blank lines are 
 - **`git commit -m "remember to git push after review"`** — the segment begins with `git`, but the subcommand is `commit`.
 - **`git pushx --dry-run`** — `pushx` is not `push`.
 - **`gh pr view 12`**, `git status`, and every other read-only command — outside the caught set.
-- **`git push` in a repository that declared nothing** — off by default.
+- **`git push` in a repository that declared nothing, whose `origin` owner is an organisation** — inference has nothing to say, so the guard stays off.
+- **`git push` with no `origin`, or an `origin` that is not on github.com** — nothing to infer from.
 - **A config file containing only comments** — zero declarations is the same as inactive.
 
 ## Bypass
@@ -82,15 +89,17 @@ There is no third. Editing `.claude/gh-account.txt` is not a bypass but a change
 - **A push inside a command substitution is missed.** `echo $(git push)` is not caught, because the segment begins with `echo`. The gap runs in the permissive direction on purpose — this guards against a mistake, not against someone working around it.
 - **Only `github.com`.** The hostname is fixed, so a GitHub Enterprise host is not examined.
 - **One expected account, not a list.** A repository legitimately pushed from either of two accounts has to use the env bypass each time.
+- **Inference can be wrong about intent.** A repository you own but deliberately push to as another account — a bot, a second account added as a collaborator — is blocked with no configuration having asked for it. It fails loudly and the message names both ways out, but this is a false-positive class that declaring-only did not have.
+- **Only `origin`.** `git push upstream` is judged against `origin`'s owner, and a repository whose `origin` is a fork of somewhere else is judged by the fork's owner — which is usually right, and is not checked.
 - **The literal `tokenSource` value for an env-supplied token is unverified.** The hook prints whatever `gh` reports rather than matching a guessed word, so the message stays correct either way.
 
 ## Verification
 
-[`plugins/harness-core/scripts/verify-gh-account-guard.sh`](../../plugins/harness-core/scripts/verify-gh-account-guard.sh) — 26 assertions across 17 cases.
+[`plugins/harness-core/scripts/verify-gh-account-guard.sh`](../../plugins/harness-core/scripts/verify-gh-account-guard.sh) — 37 assertions across 24 cases.
 
 **The suite does not call the real `gh`.** It cannot: `gh auth status` makes a network call, and its answer depends on whoever is logged in on the machine running the suite — either one would have the verifier reporting on something other than the hook. A stub `gh` prints JSON frozen from the actual `--active --json hosts` output of **gh 2.89.0**, with `login` and `tokenSource` driven by environment variables.
 
-The `gh`-absent case needs `jq` present and `gh` absent at the same time, so `PATH=/nonexistent` cannot serve it — that removes `jq` too and the wrong branch fires. It gets a directory holding explicit absolute links to only the four external tools the hook uses (`cat`, `jq`, `grep`, `tr`). **The absolute-path check there is load-bearing:** a relative link makes a dangling self-referential symlink, `grep` then fails inside the gate, `caught` stays empty, and the hook exits 0 — so the case reports PASS while never reaching the branch it exists to test. It was observed doing exactly that.
+The `gh`-absent case needs `jq` present and `gh` absent at the same time, so `PATH=/nonexistent` cannot serve it — that removes `jq` too and the wrong branch fires. It gets a directory holding explicit absolute links to only the six external tools the hook uses (`cat`, `jq`, `grep`, `tr`, `git`, `sed`). **The absolute-path check there is load-bearing:** a relative link makes a dangling self-referential symlink, `grep` then fails inside the gate, `caught` stays empty, and the hook exits 0 — so the case reports PASS while never reaching the branch it exists to test. It was observed doing exactly that.
 
 The two self-disabling branches each assert **which** tool they reported missing. Both messages begin `gh-account-guard:`, so matching that prefix alone would let the `gh` case pass while `jq` was the thing actually missing.
 

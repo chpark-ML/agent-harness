@@ -13,15 +13,26 @@ verify_begin gh-account-guard hooks/gh-account-guard.sh
 # the suite. Either one would have the verifier reporting on something other
 # than the hook.
 #
-# The JSON is frozen from the actual `gh auth status --active --json hosts`
-# output of gh 2.89.0. Only login and tokenSource vary, driven by two env vars
-# that each case passes through run_hook.
+# The JSON is frozen from the actual `gh auth status --json hosts` output of
+# gh 2.89.0. Three env vars drive it, each passed through run_hook per case:
+# STUB_GH_LOGIN is the active account, STUB_GH_ROSTER is every authenticated
+# account (defaults to just the active one), STUB_GH_SOURCE is the token source.
+#
+# The roster matters because inference needs it: the hook asks whether the
+# remote's owner is itself one of the accounts you are logged in as.
 STUB="$WORK/stub"
 mkdir -p "$STUB"
 cat > "$STUB/gh" <<'SH'
 #!/bin/bash
-printf '{"hosts":{"github.com":[{"state":"success","active":true,"host":"github.com","login":"%s","tokenSource":"%s","scopes":"repo","gitProtocol":"https"}]}}\n' \
-  "${STUB_GH_LOGIN:-chpark-ML}" "${STUB_GH_SOURCE:-keyring}"
+active="${STUB_GH_LOGIN:-chpark-ML}"
+roster="${STUB_GH_ROSTER:-$active}"
+src="${STUB_GH_SOURCE:-keyring}"
+out=""
+for l in $roster; do
+  if [ "$l" = "$active" ]; then a=true; else a=false; fi
+  out="$out{\"state\":\"success\",\"active\":$a,\"host\":\"github.com\",\"login\":\"$l\",\"tokenSource\":\"$src\",\"scopes\":\"repo\",\"gitProtocol\":\"https\"},"
+done
+printf '{"hosts":{"github.com":[%s]}}\n' "${out%,}"
 SH
 chmod +x "$STUB/gh"
 GH_PATH="$STUB:$PATH_SAVE"
@@ -41,7 +52,7 @@ GH_PATH="$STUB:$PATH_SAVE"
 # reaching the branch it exists to test. It was observed doing exactly that.
 JQONLY="$WORK/jqonly"
 mkdir -p "$JQONLY"
-for t in cat jq grep tr; do
+for t in cat jq grep tr git sed; do
   tp="$(command -v "$t")"
   case "$tp" in
     /*) ln -s "$tp" "$JQONLY/$t" ;;
@@ -49,12 +60,27 @@ for t in cat jq grep tr; do
   esac
 done
 
-# A project that declares an expectation, and one that declares nothing.
-DECLARED="$WORK/declared"
-mkdir -p "$DECLARED/.claude"
-printf '# the account this repository expects\nchpark-ML\n' > "$DECLARED/.claude/gh-account.txt"
-SILENT="$WORK/silent"
-mkdir -p "$SILENT/.claude"
+# Fixture projects. The remote is part of the fixture now, because the owner of
+# `origin` is what inference reads.
+mkfixture() {  # <dir> <origin-url-or-none> [declared-login]
+  local d="$WORK/$1" url="$2" declared="${3:-}"
+  mkdir -p "$d/.claude"
+  git -C "$d" init -q 2>/dev/null
+  [ "$url" = "none" ] || git -C "$d" remote add origin "$url" 2>/dev/null
+  [ -z "$declared" ] || printf '# the account this repository expects\n%s\n' "$declared" > "$d/.claude/gh-account.txt"
+  printf '%s' "$d"
+}
+
+DECLARED="$(mkfixture declared     https://github.com/chpark-ML/thing.git chpark-ML)"
+CONFLICT="$(mkfixture conflict     https://github.com/chpark-ML/thing.git other-acct)"
+MINE="$(    mkfixture mine         https://github.com/chpark-ML/thing.git)"
+ORG="$(     mkfixture org          https://github.com/some-org/thing.git)"
+NOREMOTE="$(mkfixture noremote     none)"
+ELSEWHERE="$(mkfixture elsewhere   https://gitlab.com/chpark-ML/thing.git)"
+
+# Two accounts authenticated. That is the whole scenario this hook exists for —
+# with one account there is no wrong one to be active as.
+BOTH="chpark-ML work-acct"
 
 # --- no-op: input the hook must not touch -----------------------------------
 
@@ -74,11 +100,12 @@ run_case "gh pr view is read-only → allow" 0 \
   '{"tool_name":"Bash","tool_input":{"command":"gh pr view 12"}}' \
   CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
 
-# Default-off. The absent file is the off switch, so a mismatched account in a
-# repository that declared nothing is not this hook's business.
-run_case "git push with nothing declared → allow" 0 \
+# Nothing declared and the owner is an organisation, so inference has nothing to
+# say. This is the case that stays silent, and it is why an org repository still
+# has to declare if it wants the guard.
+run_case "org remote, nothing declared → allow" 0 \
   '{"tool_name":"Bash","tool_input":{"command":"git push -u origin feat-x"}}' \
-  CLAUDE_PROJECT_DIR="$SILENT" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+  CLAUDE_PROJECT_DIR="$ORG" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
 
 # --- boundary: resembles what is blocked, and must pass ----------------------
 # These three are the ones that earn their keep. They are the false positives
@@ -167,5 +194,50 @@ run_hook '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
   CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" \
   STUB_GH_LOGIN=work-acct STUB_GH_SOURCE=GITHUB_TOKEN
 expect_match "says the token came from the environment" "$ERR" "GITHUB_TOKEN"
+
+# --- inference from the remote owner ----------------------------------------
+#
+# The point of this half: a personal repository needs no configuration at all.
+# If the owner of `origin` is itself one of the accounts you are logged in as,
+# that owner is the expectation.
+
+run_case "owner is one of my accounts, a different one is active → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$MINE" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+expect_match "block names the inferred owner" "$ERR" "chpark-ML"
+expect_match "block says the expectation was inferred, not declared" "$ERR" "origin"
+
+run_case "owner is the active account → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$MINE" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML STUB_GH_ROSTER="$BOTH"
+
+# Explicit beats inferred, in both directions. The file naming an account that
+# is NOT the owner must win, or declaring something would be pointless.
+run_case "a declared account overrides the owner → block on the declared one" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$CONFLICT" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML STUB_GH_ROSTER="$BOTH"
+expect_match "block names the declared account, not the owner" "$ERR" "other-acct"
+expect_match "block cites the file, not the remote" "$ERR" "gh-account.txt"
+
+run_case "HARNESS_GH_ACCOUNT overrides the owner → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$MINE" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH" \
+  HARNESS_GH_ACCOUNT=work-acct
+
+# Three shapes with nothing to infer from. Each must stay silent rather than
+# guess — a guard that invents an expectation blocks the wrong thing.
+run_case "no origin remote → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$NOREMOTE" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+
+run_case "a non-github remote → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$ELSEWHERE" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+
+# One account authenticated: the owner still matches nothing to be wrong about,
+# so inference is a no-op rather than a new way to block.
+run_case "only one account authenticated → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$MINE" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML
 
 verify_summary

@@ -1,12 +1,19 @@
 # gh-account — the GitHub account this repository expects to act as.
 #
-# One login, on its own line. Blank lines and #-comments are ignored, and only
-# the first real line is read. While this file has no such line the guard is
-# off, which is the default.
+# You probably do not need this file.
 #
-# When it is set, gh-account-guard blocks `git push`, `gh pr create` and
-# `gh pr merge` if `gh` is currently active as a different account, and tells
-# you which one it saw.
+# When the owner of `origin` is itself one of the accounts you are logged in to
+# `gh` with, gh-account-guard already knows what to expect and this file stays
+# empty. github.com/<you>/thing is guarded with nothing written here.
+#
+# Fill it in for the two cases inference cannot decide:
+#
+#   - `origin` is owned by an organisation, so the owner matches no account
+#   - `origin` is your namespace, but the expectation is a different account
+#
+# One login, on its own line. Blank lines and #-comments are ignored, and ONLY
+# THE FIRST real line is read — so edit this file rather than appending to it.
+# A second `echo login >> gh-account.txt` changes nothing and is confusing.
 #
 #   chpark-ML
 #

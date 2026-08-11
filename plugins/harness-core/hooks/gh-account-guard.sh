@@ -112,15 +112,20 @@ elif expected="$(read_account "$PROJECT_CONFIG/gh-account.txt")"; then
 elif expected="$(read_account "$USER_CONFIG/gh-account.txt")"; then
   expected_from="$USER_CONFIG/gh-account.txt"
 fi
-[ -n "$expected" ] || exit 0
 
-# --- who is active? ---------------------------------------------------------
+# Nothing declared is NOT the end any more — the owner of `origin` may say it
+# for us. That is why gh is now asked even here, which is the one cost this
+# inference adds: a repository that declares nothing used to leave at no charge.
+# It is paid only on push and PR commands, a handful of times per session.
+
+# --- who is active, and who else am I? --------------------------------------
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh-account-guard: gh not found — hook disabled for this call." >&2
   exit 0
 fi
 
-# --active --json hosts, rather than reading the prose. Under --json gh exits 0
+# `--json hosts` without `--active`, so one call answers both questions: which
+# account is active, and which accounts exist at all. Under --json gh exits 0
 # regardless of any authentication issue (its own help says so), so the payload
 # is read and the exit code never is.
 #
@@ -128,16 +133,43 @@ fi
 # GH_TOKEN or GITHUB_TOKEN is set, gh uses that token and `gh auth switch` has
 # no effect, yet hosts.yml still names the old account. A guard about mistaken
 # identity must not be confidently wrong exactly when identity is confused.
-status="$(gh auth status --active --hostname github.com --json hosts 2>/dev/null || true)"
-active="$(printf '%s' "$status" | jq -r '.hosts["github.com"][0].login // empty' 2>/dev/null || true)"
+status="$(gh auth status --hostname github.com --json hosts 2>/dev/null || true)"
+hosts='.hosts["github.com"] // []'
+# Select on the `active` flag rather than taking [0]. With two accounts
+# authenticated the first entry is simply the first, which is the whole
+# situation this hook exists for.
+active="$(printf '%s' "$status" | jq -r "$hosts | map(select(.active)) | .[0].login // empty" 2>/dev/null || true)"
 
 # gh answered but named nobody. Not an identity mismatch — let git report the
 # real problem. `state` is not consulted either: a broken token fails loudly on
 # its own, and this hook only ever answers *which account*.
 [ -n "$active" ] || exit 0
+
+# --- nothing declared? then ask the remote -----------------------------------
+#
+# If the owner of `origin` is itself one of the accounts you are logged in as,
+# it is one of your own namespaces and the expectation needs no configuration.
+# An organisation owner matches no account, so inference stays quiet and the
+# repository has to declare if it wants the guard — that is the deliberate
+# degradation, not an oversight.
+if [ -z "$expected" ]; then
+  url="$(git -C "${CLAUDE_PROJECT_DIR:-.}" remote get-url origin 2>/dev/null || true)"
+  case "$url" in
+    *github.com*)
+      owner="$(printf '%s' "$url" | sed -E 's#^[^:]+://[^/]+/##; s#^[^:]+:##; s#/.*$##')"
+      if [ -n "$owner" ] \
+         && printf '%s' "$status" | jq -r "$hosts | .[].login" 2>/dev/null | grep -qx "$owner"; then
+        expected="$owner"
+        expected_from="the owner of remote origin"
+      fi
+      ;;
+  esac
+fi
+
+[ -n "$expected" ] || exit 0
 [ "$active" = "$expected" ] && exit 0
 
-token_src="$(printf '%s' "$status" | jq -r '.hosts["github.com"][0].tokenSource // empty' 2>/dev/null || true)"
+token_src="$(printf '%s' "$status" | jq -r "$hosts | map(select(.active)) | .[0].tokenSource // empty" 2>/dev/null || true)"
 from=""
 case "$token_src" in
   ""|keyring|oauth_token) ;;
