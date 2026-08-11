@@ -18,9 +18,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO" || exit 1
 
-PASS=0; FAIL=0
-ok()  { PASS=$((PASS+1)); printf '  PASS  %s\n' "$1"; }
-bad() { FAIL=$((FAIL+1)); printf '  FAIL  %s\n' "$1"; [ -n "${2:-}" ] && printf '        %s\n' "$2"; return 0; }
+. "$(cd "$(dirname "$0")" && pwd)/_check-lib.sh"
 
 echo "=== benchmark health ==="
 echo
@@ -121,7 +119,4 @@ else
   ok "no bench depends on a git commit staying reachable"
 fi
 
-echo
-echo "=== Summary ==="
-printf '  %d / %d passed\n' "$PASS" "$((PASS + FAIL))"
-[ "$FAIL" -eq 0 ]
+summary

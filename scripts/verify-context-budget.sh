@@ -21,11 +21,7 @@ BASH_BIN="${BASH:-bash}"
 WORK="$(mktemp -d)" || exit 1
 trap 'rm -rf "$WORK"' EXIT
 
-PASS=0; FAIL=0; FAILED=""
-ok()  { PASS=$((PASS + 1)); printf '  PASS  %s\n' "$1"; }
-bad() { FAIL=$((FAIL + 1)); FAILED="$FAILED$1
-"; printf '  FAIL  %s\n' "$1"; [ -n "${2:-}" ] && printf '        %s\n' "$2"; return 0; }
-check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1" "expected $2, got $3"; fi; }
+. "$(cd "$(dirname "$0")" && pwd)/_check-lib.sh"
 
 echo "=== context-budget verification ==="
 echo
@@ -98,24 +94,24 @@ STUB_SKIP="" run_budget --ceiling 99999
 W="$(worst_of)"
 publish "$W"
 run_budget --ceiling 99999 --require-plugins
-check "a complete strict run passes" 0 "$RC"
+check_eq "a complete strict run passes" 0 "$RC"
 case "$OUT" in *"PARTIAL"*) bad "...and does not call itself partial" ;; *) ok "...and does not call itself partial" ;; esac
 
 # ---- 2. no CLI --------------------------------------------------------------
 echo
 echo "incomplete measurement"
 run_nocli --ceiling 99999 --require-plugins
-check "no claude CLI under --require-plugins fails" 1 "$RC"
+check_eq "no claude CLI under --require-plugins fails" 1 "$RC"
 case "$OUT" in *"PARTIAL"*) ok "...and says the ceiling was not enforced" ;; *) bad "...and says the ceiling was not enforced" "$OUT" ;; esac
 
 # Without the flag a partial run is allowed — that is the local-development
 # affordance, and it is why the flag had to exist at all.
 run_nocli --ceiling 99999
-check "no claude CLI without the flag still exits 0" 0 "$RC"
+check_eq "no claude CLI without the flag still exits 0" 0 "$RC"
 
 # ---- 3. CLI present, plugin not installed -----------------------------------
 STUB_SKIP="harness-research" run_budget --ceiling 99999 --require-plugins
-check "an unreadable plugin cost under --require-plugins fails" 1 "$RC"
+check_eq "an unreadable plugin cost under --require-plugins fails" 1 "$RC"
 case "$OUT" in *"harness-research"*) ok "...and names the plugin it could not read" ;; *) bad "...and names the plugin it could not read" ;; esac
 
 # ---- 4. stale install -------------------------------------------------------
@@ -123,7 +119,7 @@ echo
 echo "stale install"
 mk_cache 1.0.0     # older than the fixture's 9.9.9
 run_budget --ceiling 99999 --require-plugins
-check "measuring an install older than the tree fails" 1 "$RC"
+check_eq "measuring an install older than the tree fails" 1 "$RC"
 case "$OUT" in *STALE*) ok "...and says which side is old" ;; *) bad "...and says which side is old" ;; esac
 mk_cache 9.9.9
 
@@ -135,7 +131,7 @@ echo
 echo "published figure"
 publish 1
 run_budget --ceiling 99999 --require-plugins
-check "a wrong published number warns rather than fails" 0 "$RC"
+check_eq "a wrong published number warns rather than fails" 0 "$RC"
 case "$OUT" in *warn*) ok "...and says so on the warn line" ;; *) bad "...and says so on the warn line" ;; esac
 case "$OUT" in *FAIL*) bad "...and does not print FAIL" ;; *) ok "...and does not print FAIL" ;; esac
 
@@ -145,15 +141,8 @@ echo "ceiling"
 run_budget --ceiling 99999
 publish "$(worst_of)"
 run_budget --ceiling 1 --require-plugins
-check "over the ceiling fails" 1 "$RC"
+check_eq "over the ceiling fails" 1 "$RC"
 case "$OUT" in *"over the ceiling"*) ok "...and says what to do about it" ;; *) bad "...and says what to do about it" ;; esac
 
-echo
-echo "=== Summary ==="
-echo "  $PASS / $((PASS + FAIL)) passed"
-if [ "$FAIL" -gt 0 ]; then
-  echo "  $FAIL failed:"
-  printf '%s' "$FAILED" | while IFS= read -r n; do [ -n "$n" ] && echo "    - $n"; done
-  exit 1
-fi
-exit 0
+summary
+exit $?

@@ -39,10 +39,7 @@ FRAGMENT="$REPO/plugins/harness-core/declarative/settings-fragment.json"
 
 command -v jq >/dev/null 2>&1 || { echo "verify-inventory: jq is required" >&2; exit 1; }
 
-PASS=0; FAIL=0; FAILED=""
-ok()  { PASS=$((PASS + 1)); printf '  PASS  %s\n' "$1"; }
-bad() { FAIL=$((FAIL + 1)); FAILED="$FAILED$1
-"; printf '  FAIL  %s\n' "$1"; [ -n "${2:-}" ] && printf '        %s\n' "$2"; return 0; }
+. "$(cd "$(dirname "$0")" && pwd)/_check-lib.sh"
 
 # scan <label> <expected> <extended regex> — check EVERY occurrence, in every
 # document, and fail if a document states this figure nowhere at all.
@@ -166,14 +163,5 @@ else
   scan "assertions" "$INSTALL_N" '[0-9]+ assertions?'
 fi
 
-echo
-echo "=== Summary ==="
-echo "  $PASS / $((PASS + FAIL)) passed"
-if [ "$FAIL" -gt 0 ]; then
-  echo "  $FAIL failed:"
-  printf '%s' "$FAILED" | while IFS= read -r n; do [ -n "$n" ] && echo "    - $n"; done
-  echo
-  echo "  Fix the document, or — if the artifact really changed — fix it everywhere."
-  exit 1
-fi
-exit 0
+summary "  Fix the document, or — if the artifact really changed — fix it everywhere."
+exit $?
