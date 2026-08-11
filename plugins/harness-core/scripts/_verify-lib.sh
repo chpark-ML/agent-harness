@@ -33,6 +33,12 @@ RC=0
 OUT=""
 ERR=""
 PATH_SAVE="$PATH"
+
+# The verifier's own jq calls need the same normalisation the hooks do: jq on
+# Windows writes CRLF and `$(...)` keeps the CR, so `verify-install` read every
+# manifest path back with a trailing byte and reported the files it had just
+# installed as missing. Repo-only verifiers get this too, via _check-lib.sh.
+jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
 # Run hooks under the same interpreter as the verifier, so invoking the
 # dispatcher with /bin/bash actually exercises the bash 3.2 floor end to end.
 BASH_SAVE="${BASH:-bash}"
@@ -61,6 +67,21 @@ verify_begin() {
   echo "=== $VERIFY_NAME verification ==="
   echo "Hook: $HOOK"
   echo
+
+  # Every hook that parses stdin with jq must normalise its line endings, and
+  # this is asserted here rather than in one verifier so that a new hook cannot
+  # arrive without it. The defect it guards is the quiet kind: on Windows a
+  # captured value keeps a trailing CR, substring matches go on working, exact
+  # comparisons stop, and the guard permits what it exists to block.
+  if grep -q 'jq -r' "$HOOK"; then
+    if grep -q '^jq() { local rc; command jq' "$HOOK"; then
+      _pass "normalises jq's line endings before comparing"
+    else
+      _fail "normalises jq's line endings before comparing" \
+            "no jq wrapper: a captured value keeps its CR on Windows"
+    fi
+  fi
+
 }
 
 # run_hook <json> [VAR=value ...] — sets RC, OUT, ERR.

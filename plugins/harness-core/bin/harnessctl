@@ -24,6 +24,16 @@
 # Requires bash 3.2 (stock macOS) and jq.
 set -uo pipefail
 
+# jq on Windows writes CRLF, and `$(...)` strips the trailing newline but not
+# the CR. Every path read back out of the manifest then carried a stray byte,
+# so `[ -f "$p" ]` said the file it had just installed was missing and
+# uninstall removed nothing -- `verify-install` caught it as 7 failures about
+# files left behind. Normalised once here rather than at 37 call sites.
+#
+# PIPESTATUS keeps jq's own exit status, which matters here more than in the
+# hooks: `jq -e` and `jq empty` are used for validity checks throughout.
+jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
+
 CMD=""
 SCOPE=project
 WITH=""

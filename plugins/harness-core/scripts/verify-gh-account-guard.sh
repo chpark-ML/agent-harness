@@ -61,7 +61,10 @@ GH_PATH="$STUB:$PATH_SAVE"
 JQONLY="$WORK/jqonly"
 mkdir -p "$JQONLY"
 for t in cat jq grep tr git; do
-  tp="$(command -v "$t")"
+  # `type -P`, not `command -v`: _verify-lib.sh defines a `jq` shell function to
+  # strip CRs, and `command -v` answers with the function name. `type -P` does
+  # the PATH lookup only, which is what has to be linked into this directory.
+  tp="$(type -P "$t")"
   case "$tp" in
     /*) printf '#!/bin/bash\nexec "%s" "$@"\n' "$tp" > "$JQONLY/$t"
         chmod +x "$JQONLY/$t" ;;
