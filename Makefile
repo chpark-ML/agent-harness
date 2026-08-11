@@ -15,7 +15,7 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget verify-inventory check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -24,6 +24,7 @@ help:
 	@echo "make doc-refs         links, anchors and paths that documents point at"
 	@echo "make context-budget   always-on token cost against the ceiling (partial without the CLI)"
 	@echo "make context-budget-strict  the same, but a partial measurement fails"
+	@echo "make verify-inventory  hook, permission and assertion counts against the artifacts"
 	@echo "make verify-all       verify, then confirm the published check total matches"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
@@ -36,7 +37,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs context-budget verify-context-budget verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -94,6 +95,13 @@ context-budget-strict:
 # published-number mismatch — none of which any CI job reaches.
 verify-context-budget:
 	@$(BASH) scripts/verify-context-budget.sh
+
+# The inventory figures — hooks, permission tiers, installer assertions — have
+# to be the ones the artifacts actually carry. verify-check-total already does
+# this for the published check count; everything else was swept by hand, and a
+# hand sweep is wrong exactly where the hand missed.
+verify-inventory:
+	@$(BASH) scripts/verify-inventory.sh
 
 # The published total is a claim about this suite, and for four releases it was
 # maintained by editing three documents by hand. It cannot live inside `verify`
