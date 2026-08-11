@@ -70,6 +70,20 @@ TITLE="[<slug>] <description>"
 
 Over the limit, shorten the description. The slug is the branch name and does not change.
 
+**Say who you are about to be.** `gh` is git's credential helper, so the push and
+the PR both go out as whatever account is *active* — and with two accounts on one
+machine that is not always the one this repository wants.
+
+```bash
+gh auth status --active --hostname github.com --json hosts \
+  | jq -r '.hosts["github.com"][0] | "pushing as \(.login) (token from \(.tokenSource))"'
+```
+
+Report that line to the user before pushing. If a repository has declared an
+expected account in `.claude/gh-account.txt`, [`gh-account-guard`](../../../../docs/hooks/gh-account-guard.md)
+blocks a mismatch on its own; this step is what the repositories that declared
+nothing get.
+
 ```bash
 git push -u origin <branch>
 gh pr create --title "$TITLE" --body "$(cat <<'EOF'
