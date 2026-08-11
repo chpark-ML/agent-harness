@@ -111,6 +111,21 @@
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
 ```
 
+이것이 **user 스코프**다. 가드 훅·스킬·커맨드가 이 기계에서 여는 모든 저장소에 걸리고, 어느 프로젝트에도 파일을 쓰지 않는다.
+
+**경로 스코프 rule 은 이걸로 안 온다. 올 수가 없다.** `~/.claude/rules` 라는 문서화된 경로가 없어서, 기계 전체에 넣으면 활성처럼 보이는 죽은 파일이 된다. rule 은 프로젝트에서만 읽힌다. rule 과 `CLAUDE.md` 를 팀이 clone 하는 저장소에 넣으려면 명령을 하나 더한다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
+cd your-repo && harnessctl init --scope project
+```
+
+나뉘는 기준은 그 자산이 **누구 것인가**다. 가드와 스킬은 내 것이라 기계 전체에 있어야 한다 — 설치를 잊은 저장소 하나가 곧 구멍이다. rule 과 프로젝트 설정은 팀 것이라 커밋에 있어야 한다. clone 과 함께 도착해야 하니까.
+
+두 번째 명령은 나중에 아무 저장소에서나 단독으로 돌리면 된다. 첫 명령을 다시 돌릴 필요는 없다. `harnessctl` 은 첫 명령이 끝나면 `PATH` 에 올라와 있다.
+
+**기존 프로젝트는 아무것도 잃지 않는다.** 이미 있는 `CLAUDE.md` 는 그대로 두고, `.claude/rules/harness/` 바깥의 내 rule 은 손대지 않으며, `settings.json` 은 통째 교체가 아니라 파싱 후 재직렬화라 기존 키와 권한이 살아남고 중복도 안 생긴다. 하네스가 소유하지 않은 파일이 관리 경로에 이미 있으면 **아무것도 쓰기 전에 멈추고** 그 경로를 알려준다. 어느 명령이든 `--dry-run` 을 붙이면 계획만 먼저 볼 수 있다.
+
 <details>
 <summary><b>원격 스크립트를 그냥 실행하는 게 꺼려진다면</b></summary>
 

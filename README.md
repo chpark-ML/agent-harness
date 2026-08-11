@@ -40,6 +40,21 @@ One command. It installs everything.
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
 ```
 
+That is **user scope**: the guard hooks, skills and commands apply in every repository you open on this machine, and nothing is written into any project.
+
+**Path-scoped rules do not come with it, and cannot.** There is no documented `~/.claude/rules`, so installing them machine-wide would place inert files where they look active. Rules load from a project only. To put them — and `CLAUDE.md` — into a repository your team clones, add a second command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
+cd your-repo && harnessctl init --scope project
+```
+
+The split follows what each asset is *for*. Guards and skills are yours: they belong machine-wide, or the one repository you forgot to install in becomes the hole. Rules and project settings are the team's: they belong in the commit, so they arrive with a clone.
+
+Run the second command on its own in any repository later — the first is not repeated. `harnessctl` is on your `PATH` once the first command has run.
+
+An existing project loses nothing. A `CLAUDE.md` you already have is kept as it is, your own rules outside `.claude/rules/harness/` are untouched, and `settings.json` is parsed and re-serialised rather than replaced, so existing keys and permissions survive and duplicates are not created. If a file the harness does not own already sits at one of its managed paths, the install **stops before writing anything** and names it. Add `--dry-run` to either command to see the plan first.
+
 <details>
 <summary><b>If piping a remote script into a shell makes you uneasy</b></summary>
 
