@@ -15,7 +15,7 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget verify-inventory check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -24,6 +24,7 @@ help:
 	@echo "make doc-refs         links, anchors and paths that documents point at"
 	@echo "make context-budget   always-on token cost against the ceiling (partial without the CLI)"
 	@echo "make context-budget-strict  the same, but a partial measurement fails"
+	@echo "make verify-context-budget  the budget gate's own failure paths"
 	@echo "make verify-inventory  hook, permission and assertion counts against the artifacts"
 	@echo "make verify-all       verify, then confirm the published check total matches"
 	@echo "make verify-hooks     hook behaviour only"
@@ -34,6 +35,8 @@ help:
 	@echo "make bench-trigger    do the skill descriptions actually fire? (costs money)"
 	@echo "make bench-convention do the written rules change behaviour? (costs money)"
 	@echo "make bench-claims     the claim checker against held-out prose"
+	@echo "make bench-tier       is a cheaper model tier actually cheaper? (costs money)"
+	@echo "make verify-benches   the benchmarks still run, without spending anything"
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
@@ -43,7 +46,7 @@ verify: syntax frontmatter doc-refs context-budget verify-context-budget verify-
 # reach — which is most of harnessctl's error paths.
 syntax:
 	@fail=0; \
-	for f in install.sh scripts/*.sh plugins/*/bin/* \
+	for f in install.sh scripts/*.sh evals/*.sh plugins/*/bin/* \
 	         plugins/*/scripts/*.sh plugins/*/hooks/*.sh; do \
 	  if $(BASH) -n "$$f"; then echo "  ok    $$f"; else echo "  FAIL  $$f"; fail=1; fi; \
 	done; \
@@ -165,3 +168,9 @@ bench-claims:
 
 bench-lsp:
 	@$(BASH) scripts/bench-lsp.sh
+
+# Costs real model sessions, like the other paid benches. It had no target at
+# all — 131 lines reachable only by typing the script path, invisible to help,
+# which is how an instrument rots unnoticed.
+bench-tier:
+	@$(BASH) scripts/bench-tier.sh

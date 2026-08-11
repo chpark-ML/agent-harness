@@ -104,7 +104,7 @@ W="$(mktemp -d)"
   && [ -f "$W/fx/app/config.py" ] && ok "bench-lsp fixture builds" || bad "bench-lsp fixture builds"
 rm -rf "$W"
 
-for s in scripts/bench-convention.sh scripts/bench-lsp.sh; do
+for s in scripts/bench-convention.sh scripts/bench-lsp.sh scripts/bench-tier.sh; do
   grep -q '_bench-lib.sh' "$s" && grep -q 'bench_confirm' "$s" \
     && ok "$(basename "$s") asks before touching anything outside the repo" \
     || bad "$(basename "$s") has no consent gate"
