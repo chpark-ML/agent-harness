@@ -60,6 +60,28 @@ The name part is not anchored, so it matches as a substring — `MYSQL_PASSWORD=
 - Exfiltration through a file write or an MCP tool rather than a command is out of scope — the price of the no-file-scanning decision above.
 - **Fixtures have to be fake in a way that is still *detectable*.** Pushing this repository public was refused by GitHub push protection, which judged our Slack token fixture to be a real secret (`evals/incidents.sh`, `verify-secret-scrubber.sh`). Our regex only looks for `xox[abprs]-` plus twenty characters while GitHub inspects real token structure, so the value has to split the two judgements — `xoxb-EXAMPLE-NOT-A-REAL-TOKEN-000000` trips ours and not the scanner's. A fixture that tests a secret detector looks like a secret by construction, so every new pattern has to be checked against this conflict.
 
+## Cost
+
+This hook runs on every Bash call the agent makes, so its latency is a tax on
+ordinary work rather than a one-off. Measured on an M-series laptop, 20 runs
+against a benign command:
+
+| | before | after |
+| --- | --- | --- |
+| this hook | 77 ms | **28 ms** |
+| all five Bash guards together | 163 ms | **109 ms** |
+
+The 49 ms came from testing each of the eleven patterns in its own `grep`
+process. A clean command — nearly every command — matches none of them, so it
+paid all eleven to learn that. A single pass over the union answers the only
+question the fast path asks, and the per-pattern loop still runs when the
+answer is yes, because the block message names which key it found.
+
+**11 ms of what remains is the floor**: starting `bash` and reading stdin costs
+that before the hook does anything. Five registered guards therefore cost about
+55 ms per Bash call no matter what they contain, which is a property of running
+five processes, not of these five hooks.
+
 ## Verification
 
 [`plugins/harness-core/scripts/verify-secret-scrubber.sh`](../../plugins/harness-core/scripts/verify-secret-scrubber.sh) — 37 cases.

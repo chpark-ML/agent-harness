@@ -59,6 +59,13 @@ run_case "legacy sk- token → block" 2 \
 run_case "sk-svcacct- scoped key with an underscore → block" 2 \
   '{"tool_name":"Bash","tool_input":{"command":"export OPENAI_API_KEY=sk-svcacct-aaaaaaaaaa_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}'
 
+# The third alternative of the scoped-OpenAI pattern had no case. That was
+# survivable while every pattern was tried in turn; it is not once a single
+# combined pass decides whether the loop runs at all, because a fast path that
+# fails to match makes the guard silent rather than loud.
+run_case "OpenAI admin key (sk-admin-) → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"export OPENAI_ADMIN_KEY=sk-admin-aaaaaaaaaa_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}'
+
 run_case "GitHub PAT embedded in a remote URL → block" 2 \
   '{"tool_name":"Bash","tool_input":{"command":"git remote set-url origin https://ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@github.com/x/y.git"}}'
 
@@ -130,5 +137,25 @@ run_hook '{"tool_name":"Bash","tool_input":{"command":"export AWS_ACCESS_KEY_ID=
 expect_match "block message names the detected kind" "$ERR" "AWS access key ID"
 expect_match "block message states the fix" "$ERR" "rotate"
 expect_empty "block writes nothing to stdout" "$OUT"
+
+# The fast path and the loop are both built from PATTERNS, so a disagreement
+# means the union changed meaning — an anchor, or a top-level alternation
+# without parentheses — and the direction of that failure is SILENCE. Pin it
+# structurally: every pattern the loop would try must appear in the source the
+# fast path builds its string from.
+HOOKSRC="$(cd "$(dirname "$0")/.." && pwd)/hooks/secret-scrubber.sh"
+pat_count=0
+while IFS= read -r pat; do
+  [ -n "$pat" ] || continue
+  pat_count=$((pat_count + 1))
+done <<EOF
+$(sed -n '/^PATTERNS=(/,/^)/p' "$HOOKSRC" | grep -c "^  '")
+EOF
+n_entries="$(sed -n '/^PATTERNS=(/,/^)/p' "$HOOKSRC" | grep -c "^  '")"
+if [ "$n_entries" -ge 11 ] && grep -q 'ALL_PATTERNS="${ALL_PATTERNS:+$ALL_PATTERNS|}${entry#\*|}"' "$HOOKSRC"; then
+  _pass "the fast path is built from every PATTERNS entry ($n_entries)"
+else
+  _fail "the fast path is built from every PATTERNS entry" "entries=$n_entries — the union must be assembled in a loop over the same array"
+fi
 
 verify_summary
