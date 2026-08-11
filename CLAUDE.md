@@ -100,7 +100,7 @@ make verify BASH=/bin/bash   # the macOS bash 3.2 floor — required before merg
 
 **And either way, a line that runs in only *one* of the environments the verifier runs in is an unverified line.** `verify-check-total` was written on a machine with the Claude CLI, and the branch that runs only when the CLI is absent executed for the first time in CI, where it broke.
 
-- Verifiers use `run_case` / `expect` / `expect_match` from `plugins/harness-core/scripts/_verify-lib.sh`. Do not write a new one.
+- Hook verifiers use `run_case` / `expect` / `expect_match` from `plugins/harness-core/scripts/_verify-lib.sh`; repo-only verifiers use `scripts/_check-lib.sh`, which sources it and adds `check_rc` / `check_eq` / `summary` on top (the hook runner needs a hook file, which repo-only scripts do not have). Do not write a third.
 - Cases come in three kinds: **no-op** (input the hook must not touch), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is the one that earns its keep.
 - **Frontmatter on a skill, rule or agent fails silently and empty.** An unquoted YAML scalar containing a colon-space fails to parse, and the description loads blank — no triggers, no negative routing. `scripts/verify-frontmatter.sh` stops that. Always quote the description value.
 - If you touched the installer, `scripts/verify-install.sh` is the gate. Especially the property that *settings.json after uninstall is canonically identical to the original* — break that and a consumer loses something.

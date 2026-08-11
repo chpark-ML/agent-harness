@@ -122,7 +122,12 @@ run_case() {
   fi
 }
 
-verify_summary() {
+# The one printer of the summary block. verify_summary exits on top of it;
+# scripts/_check-lib.sh's summary returns on top of it. Keeping a single body
+# is what stops the two front doors from drifting apart — the literal line
+# `  N / M passed` it prints is parsed by scripts/verify-check-total.sh and
+# scripts/verify-inventory.sh, so this function IS the published-total format.
+_summary_print() {
   local total=$((PASS + FAIL))
   echo
   echo "=== Summary ==="
@@ -132,7 +137,11 @@ verify_summary() {
     printf '%s' "$FAILED_NAMES" | while IFS= read -r n; do
       [ -n "$n" ] && echo "    - $n"
     done
-    exit 1
+    return 1
   fi
-  exit 0
+  return 0
+}
+
+verify_summary() {
+  if _summary_print; then exit 0; else exit 1; fi
 }
