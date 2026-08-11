@@ -55,6 +55,23 @@ checked="$(printf '%s' "$out" | grep -oE 'of [0-9]+ tokens' | grep -oE '[0-9]+' 
 
 # --- paid benchmarks: check their inputs --------------------------------------
 echo
+# --- interpreter propagation --------------------------------------------------
+# Five nested invocations once named a literal interpreter, and under
+# `make verify BASH=/bin/bash` the installer suite quietly ran under bash 5 —
+# the floor job untested exactly where it was largest. The rule is one line:
+# a script reaches a sibling through "${BASH:-bash}". This is the omission
+# class, so it is pinned by a pattern over the whole directory rather than by
+# enumerating the five sites already fixed. Comments and lines that merely
+# PRINT an invocation (user-facing hints) are excluded.
+viol="$(grep -nE '(^|[^A-Za-z_"])bash[[:space:]]+("\$REPO|scripts/|evals/)' scripts/*.sh 2>/dev/null \
+        | grep -vE '^[^:]*:[0-9]+:[[:space:]]*#' \
+        | grep -vE '(echo|printf|say) ' || true)"
+if [ -z "$viol" ]; then
+  ok "nested runs inherit \${BASH:-bash}; none name a literal interpreter"
+else
+  bad "nested runs inherit \${BASH:-bash}; none name a literal interpreter" "$viol"
+fi
+
 echo "--- these burn agent sessions, so only their inputs are checked"
 
 [ -s evals/prose-corpus.md ] && ok "frozen prose corpus present" || bad "frozen prose corpus present"
