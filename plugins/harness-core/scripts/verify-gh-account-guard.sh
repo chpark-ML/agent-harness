@@ -43,8 +43,8 @@ GH_PATH="$STUB:$PATH_SAVE"
 # the jq branch fires and the gh branch is never reached.
 #
 # Every external tool the hook uses has to be linked in explicitly. `printf` and
-# `command` are builtins; these four are not. If the hook ever reaches for a
-# fifth, this case fails loudly instead of quietly testing something else.
+# `command` are builtins; these five are not. If the hook ever reaches for a
+# sixth, this case fails loudly instead of quietly testing something else.
 #
 # The absolute-path check is not defensive padding. A relative link makes a
 # self-referential dangling symlink, `grep` then fails inside the gate, `caught`
@@ -52,7 +52,7 @@ GH_PATH="$STUB:$PATH_SAVE"
 # reaching the branch it exists to test. It was observed doing exactly that.
 JQONLY="$WORK/jqonly"
 mkdir -p "$JQONLY"
-for t in cat jq grep tr git sed; do
+for t in cat jq grep tr git; do
   tp="$(command -v "$t")"
   case "$tp" in
     /*) ln -s "$tp" "$JQONLY/$t" ;;
@@ -77,6 +77,20 @@ MINE="$(    mkfixture mine         https://github.com/chpark-ML/thing.git)"
 ORG="$(     mkfixture org          https://github.com/some-org/thing.git)"
 NOREMOTE="$(mkfixture noremote     none)"
 ELSEWHERE="$(mkfixture elsewhere   https://gitlab.com/chpark-ML/thing.git)"
+
+# Three fixtures from a code review of the inference, each pinning a defect
+# that shipped in the first draft. `elsewhere` above passed for the wrong
+# reason — gitlab.com simply does not contain the substring that was being
+# tested for, so it never exercised host parsing at all.
+LOOKALIKE="$(mkfixture lookalike   git@notgithub.com:chpark-ML/thing.git)"
+SUFFIXED="$( mkfixture suffixed    https://github.com.evil.io/chpark-ML/thing.git)"
+SCPFORM="$(  mkfixture scpform     git@github.com:chpark-ML/thing.git)"
+SHOUTING="$( mkfixture shouting    https://github.com/CHPARK-ml/thing.git)"
+
+# A different push URL from the fetch URL. `git push` targets the push URL, so
+# that is the one inference has to read.
+PUSHURL="$(mkfixture pushurl       https://github.com/some-org/thing.git)"
+git -C "$PUSHURL" remote set-url --push origin https://github.com/chpark-ML/thing.git 2>/dev/null
 
 # Two accounts authenticated. That is the whole scenario this hook exists for —
 # with one account there is no wrong one to be active as.
@@ -239,5 +253,48 @@ run_case "a non-github remote → allow" 0 \
 run_case "only one account authenticated → allow" 0 \
   '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
   CLAUDE_PROJECT_DIR="$MINE" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML
+
+# --- regressions from the review of the inference ---------------------------
+#
+# All three shipped in the first draft, and each is asserted here before it was
+# fixed, so none of them can come back quietly.
+
+# The host has to be parsed, not searched for. Both of these contain the string
+# "github.com" while being other hosts entirely, and inferring an owner from
+# them blocks pushes this hook has no business judging — the cries-wolf
+# direction, which is how a guard gets switched off.
+run_case "a host merely containing github.com → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$LOOKALIKE" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+
+run_case "a github.com-prefixed host → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$SUFFIXED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+
+# ...while the scp-like form of a real github.com remote must still be read.
+run_case "scp-form github remote → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$SCPFORM" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+
+# GitHub logins are case-insensitive. Comparing exactly left the expectation
+# empty and let the push through — failing open, and silently.
+run_case "owner spelled in different case → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$SHOUTING" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+expect_match "block names gh's spelling, not the URL's" "$ERR" "chpark-ML"
+
+# ...and the mirror of it: the same difference in case must NOT block when the
+# owner is who is active. Carrying the URL's casing into the expectation would
+# only have moved the defect here.
+run_case "different case, owner is active → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$SHOUTING" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML STUB_GH_ROSTER="$BOTH"
+
+# `git push` targets the push URL when one is set, so reading the fetch URL
+# judges a repository the command is not touching.
+run_case "a separate push URL is what gets read → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$PUSHURL" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct STUB_GH_ROSTER="$BOTH"
+expect_match "judged by the push URL's owner" "$ERR" "chpark-ML"
 
 verify_summary
