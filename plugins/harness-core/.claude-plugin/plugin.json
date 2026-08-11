@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-core",
   "displayName": "Harness Core",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "Guard hooks, PR skill, verifiers, and harnessctl — the declarative installer for permissions, CLAUDE.md and rules",
   "author": {
     "name": "chpark-ML"

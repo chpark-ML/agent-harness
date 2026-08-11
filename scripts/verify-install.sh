@@ -683,6 +683,58 @@ check_rc "without sort -V the plugin list still resolves" \
   "$(printf '%s' "$dout3" | grep -q 'harness-core@agent-harness' && echo 0 || echo 1)" \
   "got: $(printf '%s' "$dout3" | grep -A2 '^plugins' | head -3 | tr '\n' ' ')"
 
+# --- 14. doctor reports config that claims a plugin nothing can load -----------
+# enabledPlugins says a plugin is on; if its marketplace was removed or it was
+# never cached, the entry stays and nothing ever prints an error. That is the
+# state a stale machine drifts into invisibly, and it is what PR #24's script
+# was written to find — kept as a doctor check rather than a separate script so
+# it comes with these cases.
+section "doctor: config integrity"
+
+cfg2="$WORK/cfg2"
+mkdir -p "$cfg2/plugins/cache/agent-harness/harness-core/1.0.0" \
+         "$cfg2/plugins/marketplaces/agent-harness" \
+         "$cfg2/plugins/marketplaces/ghost-forge"
+cat > "$cfg2/settings.json" <<'J'
+{"enabledPlugins":{"harness-core@agent-harness":true,"harness-core@vanished-forge":true}}
+J
+
+iout="$( cd "$C" && env PATH="$PATH" HOME="$cfg2" CLAUDE_CONFIG_DIR="$cfg2" \
+         BIN_DIR="$WORK/nobin2" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"; irc=$?
+
+check_rc "a dangling enabledPlugins entry is reported" \
+  "$(printf '%s' "$iout" | grep -q 'enabled but not installed: harness-core@vanished-forge' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$iout" | grep -i 'enabled but' | head -1)"
+check_rc "...as a failure, not a note" "$([ "$irc" -ne 0 ] && echo 0 || echo 1)"
+check_rc "...while the resolvable one is not reported" \
+  "$(printf '%s' "$iout" | grep -q 'enabled but not installed: harness-core@agent-harness' && echo 1 || echo 0)"
+check_rc "an unused marketplace is a note" \
+  "$(printf '%s' "$iout" | grep -q 'no enabled plugin uses.*ghost-forge' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$iout" | grep 'no enabled plugin uses' | head -1)"
+
+# The note must not be what fails the run — a doctor that raises alarms over
+# harmless state is a doctor people stop reading.
+cat > "$cfg2/settings.json" <<'J'
+{"enabledPlugins":{"harness-core@agent-harness":true}}
+J
+jout="$( cd "$C" && env PATH="$PATH" HOME="$cfg2" CLAUDE_CONFIG_DIR="$cfg2" \
+         BIN_DIR="$WORK/nobin2" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"; jrc=$?
+check_rc "an unused marketplace alone does not fail the run" "$([ "$jrc" -eq 0 ] && echo 0 || echo 1)" \
+  "got exit $jrc"
+check_rc "...and is still mentioned" \
+  "$(printf '%s' "$jout" | grep -q 'ghost-forge' && echo 0 || echo 1)"
+
+# An orphaned-only cache is not an install: the entry has nothing to load.
+mkdir -p "$cfg2/plugins/cache/agent-harness/harness-dev/9.9.9"
+: > "$cfg2/plugins/cache/agent-harness/harness-dev/9.9.9/.orphaned_at"
+cat > "$cfg2/settings.json" <<'J'
+{"enabledPlugins":{"harness-dev@agent-harness":true}}
+J
+kout="$( cd "$C" && env PATH="$PATH" HOME="$cfg2" CLAUDE_CONFIG_DIR="$cfg2" \
+         BIN_DIR="$WORK/nobin2" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"
+check_rc "a superseded-only cache counts as not installed" \
+  "$(printf '%s' "$kout" | grep -q 'enabled but not installed: harness-dev@agent-harness' && echo 0 || echo 1)"
+
 # --- summary -----------------------------------------------------------------
 summary
 exit $?
