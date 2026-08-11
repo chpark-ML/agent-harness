@@ -104,6 +104,7 @@ verify-context-budget:
 # this for the published check count; everything else was swept by hand, and a
 # hand sweep is wrong exactly where the hand missed.
 verify-inventory:
+	@$(BASH) scripts/verify-inventory.sh --selftest
 	@$(BASH) scripts/verify-inventory.sh
 
 # The published total is a claim about this suite, and for four releases it was
