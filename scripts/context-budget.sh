@@ -32,9 +32,17 @@
 # installed the CLI never ran this script. The published worst case drifted to
 # three different values in four documents and nothing noticed.
 #
-# It also compares the worst case against the number the documents publish, the
-# way verify-check-total.sh does for the check count. A measurement nobody
-# compares to the claim is not a gate either.
+# It also compares the worst case against the number the documents publish —
+# but only ever WARNS. The published figure is not a property of this repository
+# alone: the same checkout measured 7,934 on a macOS workstation and 7,085 in CI
+# under the identical Claude Code version, because the estimator treats the
+# Korean trigger clauses in our skill descriptions differently. Our own plugins
+# nearly doubled; superpowers, which is English throughout, moved 18%.
+#
+# So an equality gate on that number would go red on someone else's release or
+# on a different runner rather than on a defect here, which is how a check earns
+# its way to being switched off. The CEILING is the gate: it is a bound, not an
+# equality, and it has to hold under either accounting.
 
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -195,13 +203,13 @@ check_published() { # <file> <extended-regex capturing ~N tok>
   local f="$REPO/$1" re="$2" hit num
   hit="$(grep -oE "$re" "$f" 2>/dev/null | head -1)"
   if [ -z "$hit" ]; then
-    echo "  FAIL  $1 — could not find the published worst case (was the sentence reworded?)"
+    echo "  warn  $1 — could not find the published worst case (was the sentence reworded?)"
     PUB_FAIL=1
     return 0
   fi
   num="$(printf '%s' "$hit" | grep -oE '[0-9][0-9,]*' | tr -d ',')"
   if [ "$num" != "$WORST" ]; then
-    echo "  FAIL  $1 — publishes $num, the run produced $WORST"
+    echo "  warn  $1 — publishes $num, this run produced $WORST"
     PUB_FAIL=1
   else
     printf "  ok    %-24s publishes %s\n" "$1" "$num"
@@ -210,7 +218,7 @@ check_published() { # <file> <extended-regex capturing ~N tok>
 
 if [ "$PARTIAL" -eq 0 ]; then
   echo
-  echo "published worst case"
+  echo "published worst case (informational — the estimator varies by environment)"
   check_published "README.md"          'project scope with everything is \*\*~[0-9,]+ tok'
   check_published "README.ko.md"       '프로젝트 스코프 전 프로파일은 \*\*~[0-9,]+ tok'
   check_published "docs/agent-layer.md" 'worst case[^|]*\|[^|]*~[0-9,]+ tok'
@@ -220,7 +228,9 @@ fi
 if [ "$REQUIRE_PLUGINS" -eq 1 ]; then
   [ "$PARTIAL" -eq 1 ] && { echo; echo "  --require-plugins: a partial measurement is not a gate."; exit 1; }
   [ -n "$STALE" ]      && { echo; echo "  --require-plugins: refusing to gate on a stale install."; exit 1; }
-  [ "$PUB_FAIL" -eq 1 ] && { echo; echo "  --require-plugins: the documents and the run disagree."; exit 1; }
+  # PUB_FAIL is deliberately NOT fatal — see the header. The published figure
+  # depends on the estimator, so a mismatch is news, not a defect.
+  [ "$PUB_FAIL" -eq 1 ] && echo "  (the published figure is environment-dependent — warning only)"
 fi
 
 if [ "$CEILING" -gt 0 ]; then

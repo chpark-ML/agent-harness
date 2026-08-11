@@ -147,7 +147,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | language server (LSP) |
 | **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,934 tok per session**.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,085 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227). The estimator varies by environment: the same checkout measures ~7,934 on a macOS workstation under the identical version, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
