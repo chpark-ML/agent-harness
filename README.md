@@ -65,7 +65,7 @@ An existing project loses nothing. A `CLAUDE.md` you already have is kept as it 
 Reasonable. Any of these work instead.
 
 ```bash
-# 1) Read it first. 223 lines, and it does three things:
+# 1) Read it first. It does three things:
 #    register the marketplace, install the plugins, run harnessctl init.
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh -o install.sh
 less install.sh && bash install.sh --profile dev,python
@@ -147,7 +147,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | language server (LSP) |
 | **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~8,305 tok per session**.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,934 tok per session**.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 

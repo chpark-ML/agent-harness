@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~8,026 tok / 세션** 이다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,934 tok / 세션** 이다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -136,7 +136,7 @@ cd your-repo && harnessctl init --scope project --with dev
 당연한 경계다. 세 가지 중 아무거나 하면 된다.
 
 ```bash
-# 1) 읽고 나서 실행한다 — 223줄이고, 하는 일은 marketplace 등록 → 플러그인 설치 → harnessctl init 이다
+# 1) 읽고 나서 실행한다 — 하는 일은 marketplace 등록 → 플러그인 설치 → harnessctl init 이다
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh -o install.sh
 less install.sh && bash install.sh --profile dev,python
 

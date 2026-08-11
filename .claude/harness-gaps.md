@@ -630,3 +630,29 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   적은 모든 문서와 대조. 파일 목록은 하드코딩이 아니라 glob 이어야 한다
   (`docs/agent-layer.md` §4 가 같은 이유로 그렇게 적어둔 항목이 있다).
 - **회차**: 2 (2026-08-11 "§5 는 인벤토리가…" 의 반복)
+
+## 2026-08-11 — context ceiling 이 CI 에서 한 번도 강제된 적이 없다
+
+- **어디**: `scripts/context-budget.sh:77` · `.github/workflows/verify.yml` ·
+  `README.md` · `README.ko.md` · `docs/agent-layer.md` · `Makefile`
+- **무슨 일**: `context-budget.sh` 는 Claude CLI 가 없으면 플러그인 비용을 전부
+  0 으로 세고 그대로 통과한다. CI 세 잡 중 ceiling 을 돌리는 둘(`verify-all`,
+  `verify`)에는 **CLI 가 없고**, CLI 를 까는 잡은 `verify-plugins` 만 돌렸다.
+  즉 *"전 프로파일 9,000 토큰 이하"* 는 **한 번도 검사된 적이 없다.**
+- **결과**: 공표 숫자가 네 문서에서 **세 값**으로 갈라졌다 — README.md 8,305 /
+  README.ko.md·SOT·Makefile 8,026 / 실측 **7,934**. 어느 것도 맞지 않았다.
+- **하필**: `CONTRIBUTING.md:127` 이 *"Numbers in documents are generated, not
+  typed"* 라고 적어둔 문단이, **바로 그 수치가 3.6배 틀렸던 사고**를 설명하는
+  문단이다. 재발 방지를 적어둔 자리 옆에서 같은 부류가 재발했다.
+- **`CLAUDE.md` §4 의 거울상**: *"검증기가 도는 환경 중 하나에서만 실행되는 줄은
+  검증되지 않은 줄"* — `verify-check-total` 은 CLI 있는 기계에서 써서 CI(없음)
+  에서 깨졌고, 이번엔 정반대 방향이다. **같은 문장이 양쪽을 다 설명한다.**
+- **또 하나**: CLI 만 있고 플러그인이 설치돼 있지 않아도 비용은 0 이다. 그래서
+  "CLI 잡에 `make context-budget` 을 추가" 라는 처방은 **그대로는 안 통한다** —
+  `claude plugin details` 는 설치된 플러그인에만 답한다. 리뷰가 제안한 수정을
+  그대로 냈으면 아무것도 안 고치는 수정이 됐다.
+- **고친 것**: `--require-plugins` (부분 측정·낡은 설치본·문서 불일치면 실패),
+  버전 표시(설치본이 트리보다 낡으면 그렇다고 출력), 공표 숫자 4곳 대조
+  (`verify-check-total` 이 배지에 하는 것과 같은 일), CI 의 CLI 잡에서
+  marketplace 등록 + 플러그인 설치 후 `context-budget-strict`.
+- **회차**: 1
