@@ -270,6 +270,51 @@ if [ "$CMD" = doctor ]; then
     done
   fi
 
+  # Config that claims a plugin is on while nothing can load it. Claude Code
+  # records enabledPlugins as "<name>@<marketplace>"; if the marketplace was
+  # removed or the plugin never cached, the entry stays and no error is ever
+  # printed — behaviourless config, and the reason a machine drifts without
+  # anyone noticing. A dangling entry is a FAIL because something is claimed
+  # and absent.
+  #
+  # A marketplace nobody uses is NOT a failure and is reported as a note. It is
+  # harmless (registering one is how you browse), and a doctor that raises
+  # alarms over harmless state is a doctor people stop reading.
+  USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+  if [ -f "$USER_SETTINGS" ] && jq empty "$USER_SETTINGS" 2>/dev/null; then
+    dangling=""
+    for spec in $(jq -r '(.enabledPlugins // {}) | keys[]' "$USER_SETTINGS" 2>/dev/null); do
+      pname="${spec%%@*}"; mname="${spec##*@}"
+      resolved=""
+      for v in "$CLAUDE_CACHE/$mname/$pname"/*/; do
+        [ -d "$v" ] || continue
+        [ -f "$v/.orphaned_at" ] && continue
+        resolved=1
+      done
+      [ -n "$resolved" ] || dangling="$dangling $spec"
+    done
+    if [ -n "$dangling" ]; then
+      say ""
+      for spec in $dangling; do
+        bad "enabled but not installed: $spec" \
+            "settings.json turns it on and nothing under $CLAUDE_CACHE can load it — remove the entry, or reinstall the plugin"
+      done
+    fi
+
+    unused=""
+    for mkt in "$CLAUDE_CACHE"/../marketplaces/*/; do
+      [ -d "$mkt" ] || continue
+      mname="$(basename "$mkt")"
+      jq -r '(.enabledPlugins // {}) | keys[]' "$USER_SETTINGS" 2>/dev/null \
+        | grep -q "@$mname\$" || unused="$unused $mname"
+    done
+    if [ -n "$unused" ]; then
+      say ""
+      say "  note  registered marketplaces no enabled plugin uses:$unused"
+      say "        harmless — remove with: claude plugin marketplace remove <name>"
+    fi
+  fi
+
   # The shims are written by install.sh, not by harnessctl, so uninstall does
   # not take them back either. They are harmless once the plugin is gone (each
   # prints an install hint and exits 1), but a complete removal includes them.
