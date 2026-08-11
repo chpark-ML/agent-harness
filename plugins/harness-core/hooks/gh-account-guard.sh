@@ -153,17 +153,53 @@ active="$(printf '%s' "$status" | jq -r "$hosts | map(select(.active)) | .[0].lo
 # repository has to declare if it wants the guard — that is the deliberate
 # degradation, not an oversight.
 if [ -z "$expected" ]; then
-  url="$(git -C "${CLAUDE_PROJECT_DIR:-.}" remote get-url origin 2>/dev/null || true)"
+  # `--push`, not the plain form. When a push URL is configured it is what
+  # `git push` actually targets, and when it is not, git falls back to the fetch
+  # URL — so this is strictly more correct with nothing to trade away.
+  url="$(git -C "${CLAUDE_PROJECT_DIR:-.}" remote get-url --push origin 2>/dev/null || true)"
+
+  # Parse the host, rather than asking whether the URL *contains* "github.com".
+  # A substring test infers an owner from `git@notgithub.com:alice/repo` and
+  # from `https://github.com.evil.io/alice/repo`, and if that owner happens to
+  # be one of your accounts it blocks pushes to a host this hook has no business
+  # judging. That is the cries-wolf direction, which is how guards get disabled.
+  host=""; path=""
   case "$url" in
-    *github.com*)
-      owner="$(printf '%s' "$url" | sed -E 's#^[^:]+://[^/]+/##; s#^[^:]+:##; s#/.*$##')"
-      if [ -n "$owner" ] \
-         && printf '%s' "$status" | jq -r "$hosts | .[].login" 2>/dev/null | grep -qx "$owner"; then
-        expected="$owner"
-        expected_from="the owner of remote origin"
-      fi
+    *://*)                                  # scheme://[user@]host/owner/repo
+      rest="${url#*://}"
+      host="${rest%%/*}"; host="${host#*@}"
+      path="${rest#*/}"
+      ;;
+    *:*)                                    # scp-like — [user@]host:owner/repo
+      rest="${url#*@}"
+      host="${rest%%:*}"
+      path="${rest#*:}"
       ;;
   esac
+  owner="${path%%/*}"
+
+  if [ "$host" = "github.com" ] && [ -n "$owner" ]; then
+    # GitHub logins are case-insensitive, so `github.com/ALICE/repo` and the
+    # login `alice` are the same account. An exact comparison leaves the
+    # expectation empty and lets the push through — failing open, silently.
+    #
+    # The expectation becomes gh's OWN spelling, not the URL's. Carrying the
+    # URL's casing forward would only move the bug: `ALICE` against an active
+    # `alice` would then mismatch and block, which is the same defect pointing
+    # the other way.
+    lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+    owner_lc="$(lower "$owner")"
+    while IFS= read -r login; do
+      [ -n "$login" ] || continue
+      if [ "$(lower "$login")" = "$owner_lc" ]; then
+        expected="$login"
+        expected_from="the owner of remote origin"
+        break
+      fi
+    done <<EOF
+$(printf '%s' "$status" | jq -r "$hosts | .[].login" 2>/dev/null || true)
+EOF
+  fi
 fi
 
 [ -n "$expected" ] || exit 0

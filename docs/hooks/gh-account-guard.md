@@ -73,6 +73,7 @@ For sources 2 and 3 the value is one account login on its own line. `#` comments
 - **`git push` in a repository that declared nothing, whose `origin` owner is an organisation** — inference has nothing to say, so the guard stays off.
 - **`git push` with no `origin`, or an `origin` that is not on github.com** — nothing to infer from.
 - **A config file containing only comments** — zero declarations is the same as inactive.
+- **A remote on a host that merely resembles github.com** — `git@notgithub.com:you/repo` and `https://github.com.evil.io/you/repo` are other hosts. The hostname is parsed and compared exactly, not searched for.
 
 ## Bypass
 
@@ -90,16 +91,16 @@ There is no third. Editing `.claude/gh-account.txt` is not a bypass but a change
 - **Only `github.com`.** The hostname is fixed, so a GitHub Enterprise host is not examined.
 - **One expected account, not a list.** A repository legitimately pushed from either of two accounts has to use the env bypass each time.
 - **Inference can be wrong about intent.** A repository you own but deliberately push to as another account — a bot, a second account added as a collaborator — is blocked with no configuration having asked for it. It fails loudly and the message names both ways out, but this is a false-positive class that declaring-only did not have.
-- **Only `origin`.** `git push upstream` is judged against `origin`'s owner, and a repository whose `origin` is a fork of somewhere else is judged by the fork's owner — which is usually right, and is not checked.
+- **Only `origin`.** `git push upstream` is judged against `origin`, and a repository whose `origin` is a fork of somewhere else is judged by the fork's owner — usually right, and not checked. Where `origin` has a separate push URL, that is the one read, since it is what `git push` targets.
 - **The literal `tokenSource` value for an env-supplied token is unverified.** The hook prints whatever `gh` reports rather than matching a guessed word, so the message stays correct either way.
 
 ## Verification
 
-[`plugins/harness-core/scripts/verify-gh-account-guard.sh`](../../plugins/harness-core/scripts/verify-gh-account-guard.sh) — 37 assertions across 24 cases.
+[`plugins/harness-core/scripts/verify-gh-account-guard.sh`](../../plugins/harness-core/scripts/verify-gh-account-guard.sh) — 45 assertions across 30 cases.
 
 **The suite does not call the real `gh`.** It cannot: `gh auth status` makes a network call, and its answer depends on whoever is logged in on the machine running the suite — either one would have the verifier reporting on something other than the hook. A stub `gh` prints JSON frozen from the actual `--active --json hosts` output of **gh 2.89.0**, with `login` and `tokenSource` driven by environment variables.
 
-The `gh`-absent case needs `jq` present and `gh` absent at the same time, so `PATH=/nonexistent` cannot serve it — that removes `jq` too and the wrong branch fires. It gets a directory holding explicit absolute links to only the six external tools the hook uses (`cat`, `jq`, `grep`, `tr`, `git`, `sed`). **The absolute-path check there is load-bearing:** a relative link makes a dangling self-referential symlink, `grep` then fails inside the gate, `caught` stays empty, and the hook exits 0 — so the case reports PASS while never reaching the branch it exists to test. It was observed doing exactly that.
+The `gh`-absent case needs `jq` present and `gh` absent at the same time, so `PATH=/nonexistent` cannot serve it — that removes `jq` too and the wrong branch fires. It gets a directory holding explicit absolute links to only the five external tools the hook uses (`cat`, `jq`, `grep`, `tr`, `git`). **The absolute-path check there is load-bearing:** a relative link makes a dangling self-referential symlink, `grep` then fails inside the gate, `caught` stays empty, and the hook exits 0 — so the case reports PASS while never reaching the branch it exists to test. It was observed doing exactly that.
 
 The two self-disabling branches each assert **which** tool they reported missing. Both messages begin `gh-account-guard:`, so matching that prefix alone would let the `gh` case pass while `jq` was the thing actually missing.
 
