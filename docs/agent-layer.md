@@ -111,9 +111,18 @@ The detail behind §3's last three rows (external plugins, external instruments,
 
 **A guard merged without verification is not a guard, it is decoration** ([ADR-0003](adr/0003-verification-mandate.md)).
 
-**Supported platforms: macOS, Linux, and Windows under Git Bash.** `make verify` is expected to come out green on all three, and a check that fails only on one of them is a bug in the check until shown otherwise. This was written down after a Windows run turned up 24 red results, of which **23 were the harness's own defects and one was a real guard failing open**: `gh-account-guard` let through a push it should have blocked, because `jq` on Windows writes CRLF and `$(...)` strips the newline but leaves the CR — exact comparisons then fail while substring matches keep working, so the guard went quiet rather than wrong. Three things follow, and they are the general lesson rather than Windows trivia.
+**Supported platforms: macOS, Linux, and Windows under Git Bash.** `make verify` is expected to come out green on all three, and a check that fails only on one of them is a bug in the check until shown otherwise. This was written down after the first Windows run: **34 failing cases from four causes**, none of them previously observed.
 
-- **A platform nobody runs is a platform where the guards are decoration.** The count was not 1 bug and 23 environment quirks; it was 23 defects that no environment had ever asked about.
+| Cause | Where it showed | Cases |
+|---|---|---|
+| `jq` writes CRLF; `$(...)` strips the newline and keeps the CR | `gh-account-guard` (8), `harnessctl`'s manifest round trip (7) | 15 |
+| `os.path.join` mixes separators, so string comparison misses | `verify-doc-refs` exemptions | 10 |
+| Windows `make.exe` re-encodes recipe text through the ANSI codepage | `TRIGGER_LANGS` reaching the frontmatter check | 5 |
+| `ln -s` exits 0 and leaves a copy | three hook verifiers | 4 |
+
+**One of those 34 was not a test problem.** `gh-account-guard` let through a push it should have blocked: the login read from `gh` was compared as `chpark-ML<CR>` against `chpark-ML`. Note the shape — a trailing CR leaves *substring* matches working and breaks *exact* ones, so the guard did not misfire, it went silent. Three things follow, and they are the general lesson rather than Windows trivia.
+
+- **A platform nobody runs is a platform where the guards are decoration.** The tempting reading is "1 real bug, 33 environment quirks". The honest one is 34 defects that no environment had ever asked about, and the only reason the guard failure was visible at all is that eight cases were already pinning it.
 - **Prefer one code path to a platform branch.** The CR fix is an unconditional `tr -d` wrapper, because `tr` is a no-op on LF and a `case $(uname -s)` arm would be a line that only ever runs in one environment — the §4 rule two paragraphs down.
 - **Write the reproduction so it runs everywhere.** `PYTHONIOENCODING=ascii` reproduces the encoding crash on Linux too, so that case lives in CI. A Windows-only case would have been invisible to the job that runs on every push, which is how the defect got in.
 
