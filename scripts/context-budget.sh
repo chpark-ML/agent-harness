@@ -21,19 +21,33 @@
 # Files are globbed, never listed. A hardcoded list is how a new rule file gets
 # added and silently costs nothing.
 #
-# Run:  bash scripts/context-budget.sh [--ceiling N]
+# Run:  bash scripts/context-budget.sh [--ceiling N] [--require-plugins]
 #       exit 1 when the worst-case combination exceeds the ceiling
+#
+# --require-plugins turns the partial run into a failure. Without it, a machine
+# with no Claude CLI — or with the plugins simply not installed — reports every
+# plugin cost as 0 and the ceiling passes on the declarative half alone. That is
+# useful locally and worthless as a gate, and for a long time it WAS the gate:
+# CI ran the ceiling in two jobs that had no CLI, while the one job that
+# installed the CLI never ran this script. The published worst case drifted to
+# three different values in four documents and nothing noticed.
+#
+# It also compares the worst case against the number the documents publish, the
+# way verify-check-total.sh does for the check count. A measurement nobody
+# compares to the claim is not a gate either.
 
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PAYLOAD="$REPO/plugins/harness-core/declarative"
 BYTES_PER_TOK=4
 CEILING=0
+REQUIRE_PLUGINS=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --ceiling) shift; CEILING="${1:-0}" ;;
     --ceiling=*) CEILING="${1#--ceiling=}" ;;
+    --require-plugins) REQUIRE_PLUGINS=1 ;;
     *) echo "context-budget: unknown argument '$1'" >&2; exit 2 ;;
   esac
   shift
@@ -76,8 +90,20 @@ done
 CLI=1
 command -v claude >/dev/null 2>&1 || CLI=0
 
+MISSING=""
+STALE=""
+
+# The newest installed version directory for a plugin, or empty.
+installed_version() {
+  local cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}" d
+  for d in "$cfg/plugins/cache"/*/"$1"/*/; do
+    [ -d "$d" ] || continue
+    printf '%s\n' "$(basename "$d")"
+  done | sort -V | tail -1
+}
+
 always_on() {
-  [ "$CLI" -eq 1 ] || { echo 0; return; }
+  [ "$CLI" -eq 1 ] || { echo ""; return; }
   claude plugin details "$1" 2>/dev/null \
     | grep -E "Always-on:" | grep -oE "[0-9]+" | head -1
 }
@@ -99,9 +125,20 @@ do
   v="$(always_on "$name")"
   if [ -z "$v" ]; then
     [ "$CLI" -eq 1 ] && printf "  %-38s %10s\n" "${name%%@*}" "not installed"
+    MISSING="$MISSING ${name%%@*}"
     v=0
   else
-    printf "  %-38s %10s\n" "${name%%@*}" "$v"
+    # Say which version was measured. A stale install reports a real number for
+    # the wrong tree, which reads exactly like a correct one.
+    short="${name%%@*}"
+    tree_v="$(jq -r '.version // empty' "$REPO/plugins/$short/.claude-plugin/plugin.json" 2>/dev/null)"
+    inst_v="$(installed_version "$short")"
+    note=""
+    if [ -n "$tree_v" ] && [ -n "$inst_v" ] && [ "$tree_v" != "$inst_v" ]; then
+      note="  installed $inst_v, tree $tree_v — measuring the OLD one"
+      STALE="$STALE $short"
+    fi
+    printf "  %-38s %10s%s\n" "$short" "$v" "$note"
   fi
   eval "$var=\$(( \$$var + v ))"
 done
@@ -127,6 +164,65 @@ report project "core,dev,research,slides"  "$((P_CORE + DEV_RULE_TOK + DEV_P + R
 
 echo
 echo "  worst case: $WORST tok"
+
+# ---- is this measurement complete? ------------------------------------------
+PARTIAL=0
+[ -n "$MISSING" ] && PARTIAL=1
+if [ "$PARTIAL" -eq 1 ]; then
+  echo
+  echo "  PARTIAL — ceiling NOT enforced."
+  if [ "$CLI" -eq 0 ]; then
+    echo "        no claude CLI, so every plugin cost was counted as 0."
+  else
+    echo "        plugin cost unreadable (not installed?):$MISSING"
+  fi
+  echo "        totals above are the declarative half only."
+fi
+if [ -n "$STALE" ]; then
+  echo
+  echo "  STALE — measured an installed version older than this tree:$STALE"
+  echo "        run 'claude plugin update <name>@agent-harness' and measure again."
+fi
+
+# ---- does the published number still match? ---------------------------------
+# The same job verify-check-total.sh does for the check count. A measurement
+# nobody compares against the claim lets the claim drift, which is exactly what
+# happened: three different worst cases across four documents, none of them
+# right. The phrasing below is load-bearing — reword the sentence and this
+# fails loudly, which is the correct direction.
+PUB_FAIL=0
+check_published() { # <file> <extended-regex capturing ~N tok>
+  local f="$REPO/$1" re="$2" hit num
+  hit="$(grep -oE "$re" "$f" 2>/dev/null | head -1)"
+  if [ -z "$hit" ]; then
+    echo "  FAIL  $1 — could not find the published worst case (was the sentence reworded?)"
+    PUB_FAIL=1
+    return 0
+  fi
+  num="$(printf '%s' "$hit" | grep -oE '[0-9][0-9,]*' | tr -d ',')"
+  if [ "$num" != "$WORST" ]; then
+    echo "  FAIL  $1 — publishes $num, the run produced $WORST"
+    PUB_FAIL=1
+  else
+    printf "  ok    %-24s publishes %s\n" "$1" "$num"
+  fi
+}
+
+if [ "$PARTIAL" -eq 0 ]; then
+  echo
+  echo "published worst case"
+  check_published "README.md"          'project scope with everything is \*\*~[0-9,]+ tok'
+  check_published "README.ko.md"       '프로젝트 스코프 전 프로파일은 \*\*~[0-9,]+ tok'
+  check_published "docs/agent-layer.md" 'worst case[^|]*\|[^|]*~[0-9,]+ tok'
+  check_published "Makefile"           'Measured at [0-9,]+'
+fi
+
+if [ "$REQUIRE_PLUGINS" -eq 1 ]; then
+  [ "$PARTIAL" -eq 1 ] && { echo; echo "  --require-plugins: a partial measurement is not a gate."; exit 1; }
+  [ -n "$STALE" ]      && { echo; echo "  --require-plugins: refusing to gate on a stale install."; exit 1; }
+  [ "$PUB_FAIL" -eq 1 ] && { echo; echo "  --require-plugins: the documents and the run disagree."; exit 1; }
+fi
+
 if [ "$CEILING" -gt 0 ]; then
   if [ "$WORST" -gt "$CEILING" ]; then
     echo "  FAIL  over the ceiling of $CEILING."

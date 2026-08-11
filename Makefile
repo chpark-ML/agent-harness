@@ -10,19 +10,20 @@ TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
 # Always-on context the harness costs a consumer, worst case (project scope,
-# every profile). Measured at 8026; the gap is deliberate headroom, not spare
+# every profile). Measured at 7934; the gap is deliberate headroom, not spare
 # room to fill. Raising this number is a decision to make explicitly and say why
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs context-budget context-budget-strict check-total verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
 	@echo "make syntax           parse every shipped script"
 	@echo "make frontmatter      YAML frontmatter of every skill, agent, rule, command"
 	@echo "make doc-refs         links, anchors and paths that documents point at"
-	@echo "make context-budget   always-on token cost, all of it, against the ceiling"
+	@echo "make context-budget   always-on token cost against the ceiling (partial without the CLI)"
+	@echo "make context-budget-strict  the same, but a partial measurement fails"
 	@echo "make verify-all       verify, then confirm the published check total matches"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
@@ -80,6 +81,13 @@ doc-refs:
 # owns.
 context-budget:
 	@$(BASH) scripts/context-budget.sh --ceiling $(CONTEXT_CEILING)
+
+# The gate. Needs the Claude CLI *and* the plugins installed, so it runs in the
+# one CI job that has both. Without --require-plugins the ceiling passes on the
+# declarative half alone, which is how the published worst case drifted to three
+# different values across four documents without anything noticing.
+context-budget-strict:
+	@$(BASH) scripts/context-budget.sh --ceiling $(CONTEXT_CEILING) --require-plugins
 
 # The published total is a claim about this suite, and for four releases it was
 # maintained by editing three documents by hand. It cannot live inside `verify`

@@ -50,3 +50,15 @@ jobs:
       - name: report the environment
         run: claude --version
       - run: make verify-plugins
+      # The context ceiling can only be enforced where the plugins are actually
+      # installed — `claude plugin details` reports nothing otherwise, every
+      # plugin cost counts as 0, and the gate passes on the declarative half
+      # alone. That was the state for a long time: the two jobs that ran the
+      # ceiling had no CLI, and this job, the only one with a CLI, never ran it.
+      - name: install the marketplace and plugins from this checkout
+        run: |
+          claude plugin marketplace add "$GITHUB_WORKSPACE"
+          for p in core dev research slides; do
+            claude plugin install "harness-$p@agent-harness" --scope user
+          done
+      - run: make context-budget-strict
