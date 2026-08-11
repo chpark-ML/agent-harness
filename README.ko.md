@@ -117,14 +117,18 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
-cd your-repo && harnessctl init --scope project
+cd your-repo && harnessctl init --scope project --with dev
 ```
+
+**`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예의 `--profile dev,python` 은 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다). 프로파일을 안 골랐다면 기본값이 `dev,research` 이므로 `--with dev,research`.
 
 나뉘는 기준은 그 자산이 **누구 것인가**다. 가드와 스킬은 내 것이라 기계 전체에 있어야 한다 — 설치를 잊은 저장소 하나가 곧 구멍이다. rule 과 프로젝트 설정은 팀 것이라 커밋에 있어야 한다. clone 과 함께 도착해야 하니까.
 
-두 번째 명령은 나중에 아무 저장소에서나 단독으로 돌리면 된다. 첫 명령을 다시 돌릴 필요는 없다. `harnessctl` 은 첫 명령이 끝나면 `PATH` 에 올라와 있다.
+두 번째 명령은 나중에 아무 저장소에서나 단독으로 돌리면 된다. 첫 명령을 다시 돌릴 필요는 없다.
 
-**기존 프로젝트는 아무것도 잃지 않는다.** 이미 있는 `CLAUDE.md` 는 그대로 두고, `.claude/rules/harness/` 바깥의 내 rule 은 손대지 않으며, `settings.json` 은 통째 교체가 아니라 파싱 후 재직렬화라 기존 키와 권한이 살아남고 중복도 안 생긴다. 하네스가 소유하지 않은 파일이 관리 경로에 이미 있으면 **아무것도 쓰기 전에 멈추고** 그 경로를 알려준다. 어느 명령이든 `--dry-run` 을 붙이면 계획만 먼저 볼 수 있다.
+첫 명령은 `harnessctl` 을 `~/.local/bin` 에 놓는다. 그 디렉터리가 아직 `PATH` 에 없으면 설치기가 그 사실과 고쳐야 할 파일 이름을 알려주지만, **지금 앉아 있는 셸의 PATH 를 바꿔주지는 못한다** — 알려준 줄을 적용하고 셸을 새로 열거나, 전체 경로로 부른다: `~/.local/bin/harnessctl init --scope project --with dev`.
+
+**기존 프로젝트는 아무것도 잃지 않는다.** 이미 있는 `CLAUDE.md` 는 그대로 두고, `.claude/rules/harness/` 바깥의 내 rule 은 손대지 않으며, `settings.json` 은 통째 교체가 아니라 파싱 후 재직렬화라 기존 키와 권한이 살아남고 중복도 안 생긴다. 하네스가 소유하지 않은 파일이 관리 경로에 이미 있으면 **아무것도 쓰기 전에 멈추고** 그 경로를 알려준다. `harnessctl` 쪽에 `--dry-run` 을 붙이면 계획만 먼저 볼 수 있다. `install.sh` 에는 그런 플래그가 없다.
 
 <details>
 <summary><b>원격 스크립트를 그냥 실행하는 게 꺼려진다면</b></summary>
@@ -155,11 +159,11 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 | 하는 일 | 플래그 | 받는 것 |
 |---|---|---|
-| **개발** (가장 흔함) | `--profile dev,python --with-tools` | 가드 6, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
-| **연구** | `--profile research` | 가드 6, 5문서 노트 규율, `research-notes`·`repro-checklist` |
+| **개발** (가장 흔함) | `--profile dev,python --with-tools` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
+| **연구** | `--profile research` | 가드 7, 5문서 노트 규율, `research-notes`·`repro-checklist` |
 | **연구 + 발표** | `--profile research,slides` | 위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고 **덱의 모든 수치가 근거로 추적되는지 기계로 검사**. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다 |
 | **이 저장소에만** | `--profile dev --scope project` | 머신 전체를 안 건드린다. 현재 저장소의 `.claude/` 와 `settings.json` 만 바뀌고, clone 하는 팀 전체가 같은 규약을 받는다 |
-| **최소** | (없음) | 가드 6, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나 |
+| **최소** | (없음) | 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나 |
 
 **`--scope` 를 한 번은 생각하고 고른다.** 기본은 `user` (머신 전체) 인데, `dev`·`research` 의 **규칙 파일은 프로젝트 스코프에만 설치된다** — `~/.claude/rules` 는 읽히는 자리가 아니라서다. 두 프로파일을 제대로 쓰려면 작업 저장소에서 `--scope project` 로 한 번 더 설치한다.
 
