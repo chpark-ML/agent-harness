@@ -386,7 +386,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 **측정 설정**: 에이전트 세션을 쓰는 벤치는 전부 `model=opus` · `effort=high` 로 **고정** 한다 (`BENCH_MODEL`·`BENCH_EFFORT` 로 변경, 시작할 때 출력). 설정을 바꾸면 숫자도 달라질 수 있고, 특히 effort 를 올리면 raw 팔이 좋아져 하네스의 효과가 작게 나올 수 있다 — `xhigh` 에서는 재보지 않았다.
 
-두 종류가 있다. **`verify` 는 공짜이고 CI 가 돌린다. `bench` 중 셋은 모델 세션을 태우므로 실비가 들고 손으로 돌린다** — 나머지 둘(`bench`·`bench-claims`)은 훅과 검사기를 직접 구동할 뿐이라 공짜다.
+두 종류가 있다. **`verify` 는 공짜이고 CI 가 돌린다. `bench` 중 넷(`bench-lsp`·`bench-trigger`·`bench-convention`·`bench-tier`)은 모델 세션을 태우므로 실비가 들고 손으로 돌린다** — 나머지 둘(`bench`·`bench-claims`)은 훅과 검사기를 직접 구동할 뿐이라 공짜다. `bench-tier` 는 아직 기록된 실행이 없어 아래 결과 표에 행이 없다 — 표는 측정의 기록이고, 돌리면 그때 새 행을 얻는다.
 
 ### 1. `make verify` — 의도대로 도는가 (공짜, CI)
 
@@ -414,7 +414,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 
 CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인 매니페스트.
 
-**벤치마크도 감시 대상이다.** `bench-claims` 가 한 번 조용히 썩었다 — 코퍼스를 git 커밋에서 만들었는데 히스토리를 다시 쓰자 그 커밋이 사라졌고, 벤치는 빈 코퍼스로 결과 없이 끝나는데 README 는 마지막 수치를 현재형으로 인용하고 있었다. `verify-benches` 가 이제 그걸 막는다 — 공짜 벤치 둘은 실제로 돌리고, 유료 셋은 입력(코퍼스·eval 세트·픽스처·동의 게이트·커밋 SHA 고정 여부)을 검사한다.
+**벤치마크도 감시 대상이다.** `bench-claims` 가 한 번 조용히 썩었다 — 코퍼스를 git 커밋에서 만들었는데 히스토리를 다시 쓰자 그 커밋이 사라졌고, 벤치는 빈 코퍼스로 결과 없이 끝나는데 README 는 마지막 수치를 현재형으로 인용하고 있었다. `verify-benches` 가 이제 그걸 막는다 — 공짜 벤치 둘은 실제로 돌리고, 유료 넷은 입력(코퍼스·eval 세트·픽스처·동의 게이트·커밋 SHA 고정 여부)을 검사한다.
 
 ### 2. `make bench*` — 날것 대비 값을 하는가 (유료, 수동)
 
