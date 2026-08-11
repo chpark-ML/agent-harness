@@ -52,23 +52,17 @@ section() { printf '\n--- %s\n' "$1"; }
 
 # Like the shipped verify_summary, but RETURNS instead of exiting — two of the
 # four consumers have work after their summary, and a library that exits is a
-# library that ends scripts by surprise. Optional argument: a hint line
-# printed after the failure list (verify-inventory's "fix the document…").
+# library that ends scripts by surprise. The printing itself is delegated to
+# the shipped _summary_print so there is exactly one copy of the format.
+# Optional argument: a hint line printed after the failure list
+# (verify-inventory's "fix the document…").
 summary() {
-  local total=$((PASS + FAIL))
-  echo
-  echo "=== Summary ==="
-  echo "  $PASS / $total passed"
-  if [ "$FAIL" -gt 0 ]; then
-    echo "  $FAIL failed:"
-    printf '%s' "$FAILED_NAMES" | while IFS= read -r n; do
-      [ -n "$n" ] && echo "    - $n"
-    done
-    if [ -n "${1:-}" ]; then
-      echo
-      echo "$1"
-    fi
-    return 1
+  if _summary_print; then
+    return 0
   fi
-  return 0
+  if [ -n "${1:-}" ]; then
+    echo
+    echo "$1"
+  fi
+  return 1
 }
