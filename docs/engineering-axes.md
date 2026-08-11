@@ -19,7 +19,7 @@ Source: [TrueFoundry, *Graph Engineering: An Enterprise Guide*](https://www.true
 
 | Layer | Where we are | Measured |
 |---|---|---|
-| **harness** (governance) | **The body of the work** — 6 guards, 3 permission tiers, conventions, a budget ceiling | ✅ guards 27/29, branch convention 10/12 |
+| **harness** (governance) | **The body of the work** — 7 guards, 3 permission tiers, conventions, a budget ceiling | ✅ guards 27/29, branch convention 10/12 |
 | **loop** | No rules. Not even the platform's own (`/goal`, `maxTurns`) | ⚠️ one claim measured, and it came back **0** |
 | **graph** (topology) | **Zero consumer agents.** None of the four execution modes in use | ❌ |
 | **context — code comprehension** | Two LSPs. No knowledge-graph asset | ❌ (the LSP is inconclusive) |
