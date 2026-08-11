@@ -96,4 +96,76 @@ run_case "a subcommand that merely starts with push → allow" 0 \
   '{"tool_name":"Bash","tool_input":{"command":"git pushx --dry-run"}}' \
   CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
 
+# --- block ------------------------------------------------------------------
+
+run_case "git push as the wrong account → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push -u origin feat-x"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+
+run_case "gh pr create as the wrong account → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"gh pr create --title \"[x] y\""}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+
+run_case "gh pr merge as the wrong account → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 3 --squash"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+
+# A global option between git and the subcommand must not smuggle a push past
+# the gate. ai-attribution-guard shipped without this and `git -C <repo> commit`
+# went untouched.
+run_case "git -C elsewhere push as the wrong account → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git -C /elsewhere push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+
+# --- boundary ---------------------------------------------------------------
+
+# The happy path. Easy to leave unasserted, and then the hook could be blocking
+# everything and the suite would still be green.
+run_case "git push as the expected account → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=chpark-ML
+
+run_case "HARNESS_GH_ACCOUNT overrides the file → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct \
+  HARNESS_GH_ACCOUNT=work-acct
+
+# The two self-disabling branches. The gh one needs jq present and gh absent,
+# which is why $JQONLY exists rather than PATH=/nonexistent, and it needs an
+# account declared, or the declaration check exits first and nothing is printed.
+#
+# Each asserts *which* tool it reported missing, not merely that the hook named
+# itself. Both messages begin "gh-account-guard:", so matching that prefix alone
+# would let the gh case pass while jq was the thing actually missing — and exit 0
+# cannot tell a self-disabled hook from one that fell out at the gate.
+run_case "gh missing → allow, and say so" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$JQONLY"
+expect_match "...naming gh as the missing one" "$ERR" "gh not found"
+
+run_case "jq missing → allow, and say so" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH=/nonexistent
+expect_match "...naming jq as the missing one" "$ERR" "jq not found"
+
+# --- the block message has to be actionable ---------------------------------
+
+run_hook '{"tool_name":"Bash","tool_input":{"command":"gh pr create --title x"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" STUB_GH_LOGIN=work-acct
+expect_match "names the active account" "$ERR" "work-acct"
+expect_match "names the expected account" "$ERR" "chpark-ML"
+expect_match "names where the expectation came from" "$ERR" "gh-account.txt"
+expect_match "gives the way to switch" "$ERR" "gh auth switch --user chpark-ML"
+expect_match "gives the way to proceed anyway" "$ERR" "HARNESS_GH_ACCOUNT"
+expect_match "points at the document" "$ERR" "docs/hooks/gh-account-guard.md"
+
+# An env-supplied token is the case where `gh auth switch` appears to do
+# nothing, so the message says where the token came from. The literal value gh
+# reports for that source was NOT verified against a live env-token setup, so
+# the hook prints whatever gh says rather than matching a guessed word.
+run_hook '{"tool_name":"Bash","tool_input":{"command":"git push"}}' \
+  CLAUDE_PROJECT_DIR="$DECLARED" PATH="$GH_PATH" \
+  STUB_GH_LOGIN=work-acct STUB_GH_SOURCE=GITHUB_TOKEN
+expect_match "says the token came from the environment" "$ERR" "GITHUB_TOKEN"
+
 verify_summary

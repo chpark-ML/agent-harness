@@ -114,4 +114,46 @@ elif expected="$(read_account "$USER_CONFIG/gh-account.txt")"; then
 fi
 [ -n "$expected" ] || exit 0
 
-exit 0   # Task 2 replaces this line with the comparison.
+# --- who is active? ---------------------------------------------------------
+if ! command -v gh >/dev/null 2>&1; then
+  echo "gh-account-guard: gh not found — hook disabled for this call." >&2
+  exit 0
+fi
+
+# --active --json hosts, rather than reading the prose. Under --json gh exits 0
+# regardless of any authentication issue (its own help says so), so the payload
+# is read and the exit code never is.
+#
+# ~/.config/gh/hosts.yml would be free and offline, and was rejected: when
+# GH_TOKEN or GITHUB_TOKEN is set, gh uses that token and `gh auth switch` has
+# no effect, yet hosts.yml still names the old account. A guard about mistaken
+# identity must not be confidently wrong exactly when identity is confused.
+status="$(gh auth status --active --hostname github.com --json hosts 2>/dev/null || true)"
+active="$(printf '%s' "$status" | jq -r '.hosts["github.com"][0].login // empty' 2>/dev/null || true)"
+
+# gh answered but named nobody. Not an identity mismatch — let git report the
+# real problem. `state` is not consulted either: a broken token fails loudly on
+# its own, and this hook only ever answers *which account*.
+[ -n "$active" ] || exit 0
+[ "$active" = "$expected" ] && exit 0
+
+token_src="$(printf '%s' "$status" | jq -r '.hosts["github.com"][0].tokenSource // empty' 2>/dev/null || true)"
+from=""
+case "$token_src" in
+  ""|keyring|oauth_token) ;;
+  *) from="   (from $token_src)" ;;
+esac
+
+cat >&2 <<EOF
+gh-account-guard: active GitHub account is "$active", but this repo expects "$expected".
+
+  caught:   $caught
+  active:   $active$from
+  expected: $expected   ($expected_from)
+
+Switch, then retry:     gh auth switch --user $expected
+Or proceed as active:    HARNESS_GH_ACCOUNT=$active <command>
+
+docs/hooks/gh-account-guard.md
+EOF
+exit 2
