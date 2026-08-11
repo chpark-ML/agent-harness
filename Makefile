@@ -57,10 +57,12 @@ syntax:
 # should not need a Korean marker to pass CI. This repository serves Korean
 # prompts today, so it declares that and the check applies to its own skills.
 # Whether those triggers earn what they cost is being measured; see §4b.
-# Comma separates languages that must ALL appear; `|` inside one entry accepts
-# any of its labels. `한국어|Korean` is the check this replaced — a description
-# may mark its Korean triggers in either script.
-TRIGGER_LANGS ?= 한국어|Korean
+# The declaration lives in `.claude/trigger-langs`, not here. It used to be a
+# variable on this line, and Windows `make.exe` re-encodes recipe text through
+# the ANSI codepage on the way into the child environment — `한국어` arrived as
+# mojibake and five skills that carry the marker were failed for missing it. The
+# script reads the file itself, so nothing re-encodes it. HARNESS_TRIGGER_LANGS
+# still overrides for a single run when set from a shell.
 
 # A skill whose frontmatter fails to parse loads with empty metadata and
 # silently stops being routable. Needs nothing but python3, so it runs in
@@ -74,7 +76,7 @@ TRIGGER_LANGS ?= 한국어|Korean
 # em-dash. A verifier that dies on its own output reports nothing.
 frontmatter:
 	@$(BASH) scripts/verify-frontmatter.sh --selftest
-	@HARNESS_TRIGGER_LANGS='$(TRIGGER_LANGS)' $(BASH) scripts/verify-frontmatter.sh
+	@$(BASH) scripts/verify-frontmatter.sh
 
 # A dead link or a mistyped path in an instruction file is not an error — the
 # step just never runs, and nothing says so. Selftest first: this checker's own
