@@ -15,7 +15,7 @@ Meanwhile one reference hook used `python3` to parse stdin, putting it in violat
 
 Hooks are written in **bash 3.2 and jq only**. No Python, Node or perl. No bash 4 syntax such as `mapfile`, associative arrays or `${x^^}`. Under `set -u`, an empty array expands as `"${arr[@]+"${arr[@]}"}"`.
 
-A hook **disables itself with one stderr line and `exit 0`** when `jq` is absent. A missing guard must not become a stopped piece of work. *(Stated here unconditionally; the working rule since gained a carve-out — hooks that only call `git` and never read stdin (`session-brief`, `check-uncommitted`) correctly have no jq guard, and each hook's document says which kind it is. See `CLAUDE.md` §3.)*
+A hook **disables itself with one stderr line and `exit 0`** when `jq` is absent. A missing guard must not become a stopped piece of work. *(Stated here unconditionally; the working rule since gained a carve-out, and the invariant is about stdin, not about which tools a hook shells out to — a hook that never reads stdin has nothing to parse, so it needs no jq and no guard. Today that is the two informational hooks, `session-brief` and `check-uncommitted`; each hook's document says which kind it is. See `CLAUDE.md` §3.)*
 
 **The installer does the opposite: it requires jq, and stops without writing anything if it is missing.** *(After ADR-0008 that preflight lives in `harnessctl`. `install.sh` installs the plugins first and then stops at harnessctl, so "without writing anything" applies to the declarative half only.)* Since hooks require jq, an install without it delivers nothing but self-disabled guards. Better a failed install than that, done quietly.
 
