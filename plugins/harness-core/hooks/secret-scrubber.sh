@@ -95,6 +95,19 @@ EOF
   exit 2
 fi
 
+# One pass before eleven. A clean command matches nothing, and learning that
+# by running each pattern in turn spawned a grep per entry — measured at 63 ms
+# of this hook's 77, on every Bash call the agent makes. The union of the
+# patterns answers the only question the fast path asks: is there anything here
+# at all? The loop below still runs when the answer is yes, because the block
+# message names which key it found, and that is worth one extra pass on the
+# rare command that actually carries a secret.
+ALL_PATTERNS=""
+for entry in "${PATTERNS[@]}"; do
+  ALL_PATTERNS="${ALL_PATTERNS:+$ALL_PATTERNS|}${entry#*|}"
+done
+printf '%s' "$cmd" | grep -qE -- "$ALL_PATTERNS" || exit 0
+
 for entry in "${PATTERNS[@]}"; do
   label="${entry%%|*}"
   pattern="${entry#*|}"
