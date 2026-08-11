@@ -168,6 +168,7 @@ check "manifest records both modules" \
   "got $(jq -c '.modules' "$M")"
 
 for f in CLAUDE.md .claude/rules/harness/workflow.md .claude/protected-paths.txt \
+         .claude/gh-account.txt \
          .claude/rules/harness/dev/review.md .claude/rules/harness/research/notes.md; do
   [ -e "$C/$f" ]; check "installed $f" $?
 done
@@ -293,6 +294,12 @@ check "template edit is preserved" \
 check "managed edit is overwritten" \
   "$(cmp -s "$C/.claude/rules/harness/workflow.md" "$HARNESS/plugins/harness-core/declarative/rules/core/workflow.md" && echo 0 || echo 1)"
 
+# A guard's config file in the managed tier would be overwritten on every
+# reinstall, silently discarding whichever account the consumer declared.
+check "gh-account.txt is in the template tier, not managed" \
+  "$(jq -e '(.files.template | index(".claude/gh-account.txt")) and (((.files.managed // []) | index(".claude/gh-account.txt")) == null)' "$M" >/dev/null 2>&1 && echo 0 || echo 1)" \
+  "template: $(jq -c '.files.template' "$M" 2>/dev/null)"
+
 # --- 5. dropping a module ----------------------------------------------------
 section "module selection"
 
@@ -327,6 +334,7 @@ check "no harness rule remains" \
 check "manifest removed" "$([ ! -e "$M" ] && echo 0 || echo 1)"
 check "template CLAUDE.md left behind by default" "$([ -e "$C/CLAUDE.md" ] && echo 0 || echo 1)"
 check "template protected-paths.txt left behind by default" "$([ -e "$C/.claude/protected-paths.txt" ] && echo 0 || echo 1)"
+check "template gh-account.txt left behind by default" "$([ -e "$C/.claude/gh-account.txt" ] && echo 0 || echo 1)"
 check "a backup of the pre-uninstall settings exists" \
   "$([ "$(find "$C/.claude" -name 'settings.json.bak-*' | wc -l | tr -d ' ')" -ge 1 ] && echo 0 || echo 1)"
 
@@ -344,6 +352,7 @@ check "settings.json removed again (installer created it)" \
 check ".gitignore removed again (installer created it)" \
   "$([ ! -e "$C2/.gitignore" ] && echo 0 || echo 1)"
 check "--purge-templates removes CLAUDE.md too" "$([ ! -e "$C2/CLAUDE.md" ] && echo 0 || echo 1)"
+check "--purge-templates removes gh-account.txt too" "$([ ! -e "$C2/.claude/gh-account.txt" ] && echo 0 || echo 1)"
 # The settings snapshot is deliberately left behind — it is the undo path, and
 # uninstall prints where it is. Everything else must be gone.
 check "nothing left under .claude except the settings snapshot" \
@@ -371,7 +380,7 @@ check "user install exits 0" "$rc" "$(printf '%s' "$out" | tail -5)"
 check "user install needs no git repo" \
   "$([ ! -e "$WORK/.git" ] && [ -f "$U/harness-manifest.json" ] && echo 0 || echo 1)"
 
-for f in CLAUDE.md protected-paths.txt allowed-paths.txt harness-manifest.json; do
+for f in CLAUDE.md protected-paths.txt allowed-paths.txt gh-account.txt harness-manifest.json; do
   [ -e "$U/$f" ]; check "user install placed $f" $?
 done
 
