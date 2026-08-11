@@ -665,6 +665,38 @@ check "uninstall names every installed plugin, not just harness-core" \
   "$(printf '%s' "$uout" | grep -c 'claude plugin uninstall' | grep -q '^3$' && echo 0 || echo 1)" \
   "got: $(printf '%s' "$uout" | grep 'claude plugin uninstall' | tr '\n' ' ')"
 
+# A name is not an identity. A plugin that merely calls itself harness-* in an
+# unrelated marketplace — or a superpowers under the wrong one — must not be
+# swept into a list that ends in destructive uninstall suggestions.
+mkdir -p "$pcache/some-forge/harness-core/3.0.0" \
+         "$pcache/agent-harness/superpowers/1.0.0"
+dout2="$( cd "$C" && env PATH="$PATH" HOME="$WORK/pcache" \
+          CLAUDE_CONFIG_DIR="$WORK/pcache" BIN_DIR="$dshim" \
+          "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"
+check "a harness-core under a foreign marketplace is not listed" \
+  "$(printf '%s' "$dout2" | grep -q 'harness-core@some-forge' && echo 1 || echo 0)" \
+  "got: $(printf '%s' "$dout2" | grep 'some-forge' | head -1)"
+check "a superpowers under agent-harness is not listed" \
+  "$(printf '%s' "$dout2" | grep -q 'superpowers@agent-harness' && echo 1 || echo 0)"
+check "...and the legitimate ones still are" \
+  "$(printf '%s' "$dout2" | grep -q 'harness-core@agent-harness  1.10.0' && echo 0 || echo 1)"
+
+# sort without -V. The resolution has to degrade to lexicographic, not die —
+# a doctor whose sort dies reports a working plugin half as absent.
+nosortv="$WORK/nosortv"; mkdir -p "$nosortv"
+cat > "$nosortv/sort" <<'SH'
+#!/bin/sh
+for a in "$@"; do [ "$a" = "-V" ] && { echo "sort: illegal option -- V" >&2; exit 2; }; done
+exec /usr/bin/sort "$@"
+SH
+chmod +x "$nosortv/sort"
+dout3="$( cd "$C" && env PATH="$nosortv:$PATH" HOME="$WORK/pcache" \
+          CLAUDE_CONFIG_DIR="$WORK/pcache" BIN_DIR="$dshim" \
+          "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"
+check "without sort -V the plugin list still resolves" \
+  "$(printf '%s' "$dout3" | grep -q 'harness-core@agent-harness' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$dout3" | grep -A2 '^plugins' | head -3 | tr '\n' ' ')"
+
 # --- summary -----------------------------------------------------------------
 total=$((PASS + FAIL))
 echo

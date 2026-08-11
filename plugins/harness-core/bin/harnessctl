@@ -126,6 +126,15 @@ SHIM_DIR="${BIN_DIR:-$HOME/.local/bin}"
 # `.in_use` is NOT a reliable signal — it was observed missing from the current
 # version immediately after an update, so requiring it reports a plugin that is
 # installed and working as absent. sort -V is what makes 1.10.0 outrank 1.9.0.
+# sort -V is not everywhere: install.sh already treats it as optional (older
+# BSD sorts lack it), and a doctor whose sort dies reports an installed,
+# working plugin half as absent — the exact failure the .in_use trap taught.
+# Lexicographic order is the degraded answer, wrong only across a digit-count
+# boundary (1.9.0 vs 1.10.0), and reporting slightly-old beats reporting none.
+sort_versions() {
+  if printf 'x' | sort -V >/dev/null 2>&1; then sort -V; else sort; fi
+}
+
 installed_plugins() {
   local mkt pdir v mname pname ver
   for mkt in "$CLAUDE_CACHE"/*/; do
@@ -134,12 +143,19 @@ installed_plugins() {
     for pdir in "$mkt"*/; do
       [ -d "$pdir" ] || continue
       pname="$(basename "$pdir")"
-      case "$pname" in harness-*|superpowers) ;; *) continue ;; esac
+      # Name AND marketplace, not name alone. A plugin that merely calls
+      # itself harness-* in some unrelated marketplace must not be swept into
+      # a list that ends in destructive uninstall suggestions.
+      case "$pname@$mname" in
+        harness-*@agent-harness) ;;
+        superpowers@claude-plugins-official) ;;
+        *) continue ;;
+      esac
       ver="$(for v in "$pdir"*/; do
                [ -d "$v" ] || continue
                [ -f "$v/.orphaned_at" ] && continue
                basename "$v"
-             done | sort -V | tail -1)"
+             done | sort_versions | tail -1)"
       [ -n "$ver" ] || continue
       printf '%s@%s:%s\n' "$pname" "$mname" "$ver"
     done

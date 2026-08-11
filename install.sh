@@ -188,7 +188,13 @@ newest_bindir() {
     out="$out$c/bin
 "
   done
-  printf '%s' "$out" | grep -v '^$' | sort -V | tail -1
+  # Degrade to lexicographic where sort lacks -V, matching step 3 above —
+  # wrong only across a digit-count boundary, and slightly-old beats none.
+  if printf 'x' | sort -V >/dev/null 2>&1; then
+    printf '%s' "$out" | grep -v '^$' | sort -V | tail -1
+  else
+    printf '%s' "$out" | grep -v '^$' | sort | tail -1
+  fi
 }
 
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
@@ -216,7 +222,11 @@ for c in "$cfg"/plugins/cache/*/harness-core/*/; do
   d="$d$c/bin
 "
 done
-d=$(printf '%s' "$d" | grep -v '^$' | sort -V | tail -1)
+if printf 'x' | sort -V >/dev/null 2>&1; then
+  d=$(printf '%s' "$d" | grep -v '^$' | sort -V | tail -1)
+else
+  d=$(printf '%s' "$d" | grep -v '^$' | sort | tail -1)
+fi
 [ -n "$d" ] || { echo "@NAME@: harness-core plugin not found under $cfg. Install it first:" >&2
                  echo "  claude plugin install harness-core@agent-harness --scope user" >&2; exit 1; }
 exec "$d/@NAME@" "$@"
