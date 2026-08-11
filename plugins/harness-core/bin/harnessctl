@@ -194,6 +194,10 @@ if [ "$CMD" = doctor ]; then
      && ! grep -q '^[[:space:]]*[^[:space:]#]' "$CONFIG_DIR/protected-paths.txt" 2>/dev/null; then
     say "  --    protected-paths inactive — list absolute path prefixes in $CONFIG_DIR/protected-paths.txt to turn it on"
   fi
+  if [ -f "$CONFIG_DIR/gh-account.txt" ] \
+     && ! grep -q '^[[:space:]]*[^[:space:]#]' "$CONFIG_DIR/gh-account.txt" 2>/dev/null; then
+    say "  --    gh-account-guard inactive — put the expected account login in $CONFIG_DIR/gh-account.txt to turn it on"
+  fi
 
   say ""
   [ "$fail" -eq 0 ] && say "no problems found." || warn "look at the FAIL entries above."
@@ -228,10 +232,12 @@ addt "$PAYLOAD/CLAUDE.md" "CLAUDE.md"
 if [ "$SCOPE" = user ]; then
   addt "$PAYLOAD/templates/protected-paths.txt" "protected-paths.txt"
   addt "$PAYLOAD/templates/allowed-paths.txt"   "allowed-paths.txt"
+  addt "$PAYLOAD/templates/gh-account.txt"      "gh-account.txt"
   PLAN_SKIPPED="rules/ (path-scoped rules are only read in a project)"
 else
   addt "$PAYLOAD/templates/protected-paths.txt" ".claude/protected-paths.txt"
   addt "$PAYLOAD/templates/allowed-paths.txt"   ".claude/allowed-paths.txt"
+  addt "$PAYLOAD/templates/gh-account.txt"      ".claude/gh-account.txt"
   add "$PAYLOAD/rules/core/workflow.md" ".claude/rules/harness/workflow.md"
   for m in $MODULES; do
     for src in "$PAYLOAD/rules/$m"/*.md; do
