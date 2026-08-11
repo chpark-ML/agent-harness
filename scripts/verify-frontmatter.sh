@@ -10,8 +10,8 @@
 # silently stopped being findable. `claude plugin validate` catches it, but that
 # needs the Claude CLI, so this runs the same check with nothing but python3.
 #
-# Run:  make frontmatter          # declares TRIGGER_LANGS for you
-#       bash scripts/verify-frontmatter.sh   # skips the trigger-language check
+# Run:  make frontmatter          # selftest, then the check
+#       bash scripts/verify-frontmatter.sh   # reads .claude/trigger-langs
 #       bash scripts/verify-frontmatter.sh --selftest   # the reporting path
 
 set -uo pipefail
@@ -93,7 +93,25 @@ sys.stdout.reconfigure(errors='replace')
 sys.stderr.reconfigure(errors='replace')
 
 repo = sys.argv[1]
-LANGS = [x.strip() for x in os.environ.get('HARNESS_TRIGGER_LANGS', '').split(',') if x.strip()]
+# Where the declaration comes from, and why it is not a Makefile variable.
+#
+# HARNESS_TRIGGER_LANGS *present* wins, even when empty — that is how the
+# selftest asks for "no languages" and how a caller overrides for one run.
+# Absent means read .claude/trigger-langs, which is the deployment's standing
+# answer. The env var used to be the only route, set by `make frontmatter`, and
+# Windows `make.exe` re-encodes recipe text through the ANSI codepage on its way
+# into the child environment: `한국어` arrived as mojibake and five skills that
+# carry the marker were reported as missing it. Reading the file here means the
+# value never crosses a process boundary that can re-encode it.
+LANGS_FILE = os.path.join(repo, '.claude', 'trigger-langs')
+raw = os.environ.get('HARNESS_TRIGGER_LANGS')
+if raw is None:
+    raw = ''
+    if os.path.exists(LANGS_FILE):
+        with open(LANGS_FILE, encoding='utf-8') as fh:
+            raw = ','.join(l.strip() for l in fh
+                           if l.strip() and not l.lstrip().startswith('#'))
+LANGS = [x.strip() for x in raw.split(',') if x.strip()]
 try:
     import yaml
 except ImportError:
@@ -191,7 +209,8 @@ total = passed + failed
 print("=== frontmatter verification ===")
 print("  %d / %d passed" % (passed, total))
 print("  trigger languages: %s" % (" + ".join(LANGS) if LANGS
-      else "none declared — HARNESS_TRIGGER_LANGS unset, that check did not run"))
+      else "none declared — .claude/trigger-langs is empty or absent and "
+           "HARNESS_TRIGGER_LANGS was set empty, so that check did not run"))
 for rel, why in problems:
     print("  FAIL  %s — %s" % (rel, why))
 sys.exit(1 if failed else 0)

@@ -1,0 +1,25 @@
+# Line endings are a correctness property here, not a style preference.
+#
+# Git for Windows ships `core.autocrlf=true`, and with no attributes file every
+# checkout on Windows rewrites LF to CRLF. Shell survives that almost
+# everywhere, which is what makes it expensive: bash does not treat CR as
+# whitespace, so it lands inside the last token on a line. `BOTH="a b"` assigns
+# `a b<CR>`, a heredoc writes the CR into the file it generates, and the value
+# travels until something compares it. That is how `verify-gh-account-guard`
+# came to test `chpark-ML<CR>` against `chpark-ML` and report eight failures in
+# a hook that was working correctly.
+#
+# The blobs in this repository are already LF; only the checkout was wrong. So
+# `eol=lf` changes no content — it stops the checkout from introducing a
+# difference that exists on one platform and nowhere else.
+#
+# After adding this file an existing clone still holds the old bytes. Refresh
+# it once:  git add --renormalize . && git checkout-index -a -f
+* text=auto eol=lf
+
+# Binaries must never be touched by any of the above.
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
+*.ico binary

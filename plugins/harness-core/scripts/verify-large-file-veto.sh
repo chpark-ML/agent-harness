@@ -106,9 +106,18 @@ lcase "'git add -u' with a modified tracked big file → block" 2 \
 lcase "'git add --update' → block" 2 \
   '{"tool_name":"Bash","tool_input":{"command":"git add --update"}}'
 
-ln -sf big.bin "$REPO/link-to-big.bin"
-lcase "symlink to a big file → allow (documented: symlinks are skipped)" 0 \
-  '{"tool_name":"Bash","tool_input":{"command":"git add link-to-big.bin"}}'
+# The subject of this case IS the symlink, so there is nothing to substitute
+# when the platform has none: Git Bash without winsymlinks leaves a *copy* of
+# big.bin, and the case would then assert that a plain 40MB file is allowed —
+# the exact opposite of what the hook must do, passing for the wrong reason.
+if symlinks_supported; then
+  ln -sf big.bin "$REPO/link-to-big.bin"
+  lcase "symlink to a big file → allow (documented: symlinks are skipped)" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git add link-to-big.bin"}}'
+else
+  skip_case "symlink to a big file → allow (documented: symlinks are skipped)" \
+    "ln -s yields a copy on this platform, so the premise cannot be built"
+fi
 
 lcase "'--' end-of-options separator → block" 2 \
   '{"tool_name":"Bash","tool_input":{"command":"git add -- big.bin"}}'

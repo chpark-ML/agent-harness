@@ -26,11 +26,19 @@
 
 PASS=0
 FAIL=0
+SKIP=0
+SKIPPED_NAMES=""
 FAILED_NAMES=""
 RC=0
 OUT=""
 ERR=""
 PATH_SAVE="$PATH"
+
+# The verifier's own jq calls need the same normalisation the hooks do: jq on
+# Windows writes CRLF and `$(...)` keeps the CR, so `verify-install` read every
+# manifest path back with a trailing byte and reported the files it had just
+# installed as missing. Repo-only verifiers get this too, via _check-lib.sh.
+jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
 # Run hooks under the same interpreter as the verifier, so invoking the
 # dispatcher with /bin/bash actually exercises the bash 3.2 floor end to end.
 BASH_SAVE="${BASH:-bash}"
@@ -59,6 +67,21 @@ verify_begin() {
   echo "=== $VERIFY_NAME verification ==="
   echo "Hook: $HOOK"
   echo
+
+  # Every hook that parses stdin with jq must normalise its line endings, and
+  # this is asserted here rather than in one verifier so that a new hook cannot
+  # arrive without it. The defect it guards is the quiet kind: on Windows a
+  # captured value keeps a trailing CR, substring matches go on working, exact
+  # comparisons stop, and the guard permits what it exists to block.
+  if grep -q 'jq -r' "$HOOK"; then
+    if grep -q '^jq() { local rc; command jq' "$HOOK"; then
+      _pass "normalises jq's line endings before comparing"
+    else
+      _fail "normalises jq's line endings before comparing" \
+            "no jq wrapper: a captured value keeps its CR on Windows"
+    fi
+  fi
+
 }
 
 # run_hook <json> [VAR=value ...] — sets RC, OUT, ERR.
@@ -81,6 +104,39 @@ _fail() {
   printf '  FAIL  %s\n' "$1"
   [ -n "${2:-}" ] && printf '        %s\n' "$2"
   return 0
+}
+
+# skip_case <name> <why> — for a case whose *premise* the platform cannot build,
+# never for one that is merely inconvenient. Counted and named in the summary
+# rather than dropped: a case that quietly stops running is a case that stopped
+# guarding, and the total would go on claiming it ran.
+skip_case() {
+  SKIP=$((SKIP + 1))
+  SKIPPED_NAMES="$SKIPPED_NAMES$1 ($2)
+"
+  printf '  SKIP  %s -- %s\n' "$1" "$2"
+  return 0
+}
+
+# symlinks_supported — does `ln -s` on this platform actually make a symlink?
+#
+# Git Bash without winsymlinks exits 0 and leaves a *copy*, so the usual
+# `ln -s ... || skip` idiom cannot see the problem: the command succeeded, and
+# the case then quietly tests a regular file. Ask the filesystem what it got
+# rather than asking ln whether it worked. Cached, because cases call it.
+symlinks_supported() {
+  if [ -z "${_SYMLINKS_OK:-}" ]; then
+    _sym_probe="$WORK/.symprobe"
+    rm -rf "$_sym_probe"; mkdir -p "$_sym_probe"
+    : > "$_sym_probe/target"
+    if ln -s "$_sym_probe/target" "$_sym_probe/link" 2>/dev/null && [ -L "$_sym_probe/link" ]; then
+      _SYMLINKS_OK=yes
+    else
+      _SYMLINKS_OK=no
+    fi
+    rm -rf "$_sym_probe"
+  fi
+  [ "$_SYMLINKS_OK" = yes ]
 }
 
 # expect <name> <expected> <actual>
@@ -132,6 +188,12 @@ _summary_print() {
   echo
   echo "=== Summary ==="
   echo "  $PASS / $total passed"
+  if [ "$SKIP" -gt 0 ]; then
+    echo "  $SKIP skipped (this platform cannot build the premise):"
+    printf '%s' "$SKIPPED_NAMES" | while IFS= read -r n; do
+      [ -n "$n" ] && echo "    - $n"
+    done
+  fi
   if [ "$FAIL" -gt 0 ]; then
     echo "  $FAIL failed:"
     printf '%s' "$FAILED_NAMES" | while IFS= read -r n; do

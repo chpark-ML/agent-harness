@@ -46,19 +46,35 @@ GH_PATH="$STUB:$PATH_SAVE"
 # `command` are builtins; these five are not. If the hook ever reaches for a
 # sixth, this case fails loudly instead of quietly testing something else.
 #
-# The absolute-path check is not defensive padding. A relative link makes a
-# self-referential dangling symlink, `grep` then fails inside the gate, `caught`
+# The absolute-path check is not defensive padding. A relative path makes a
+# self-referential dangling entry, `grep` then fails inside the gate, `caught`
 # stays empty, and the hook exits 0 — so the case reports PASS while never
 # reaching the branch it exists to test. It was observed doing exactly that.
+#
+# Exec wrappers rather than `ln -s`, for two reasons that only show up off
+# Linux. Git Bash's `ln -s` returns 0 and writes a *copy*, and the thing it
+# copies is often not there: `command -v grep` reports `/usr/bin/grep` while the
+# file on disk is `grep.exe`, so the copy came out empty and every case that
+# needed this PATH tested a directory of broken stubs. `exec` has no such
+# problem — the shell resolves the same suffix rule the lookup used. A wrapper
+# also works identically on every platform, so there is one code path here.
 JQONLY="$WORK/jqonly"
 mkdir -p "$JQONLY"
 for t in cat jq grep tr git; do
-  tp="$(command -v "$t")"
+  # `type -P`, not `command -v`: _verify-lib.sh defines a `jq` shell function to
+  # strip CRs, and `command -v` answers with the function name. `type -P` does
+  # the PATH lookup only, which is what has to be linked into this directory.
+  tp="$(type -P "$t")"
   case "$tp" in
-    /*) ln -s "$tp" "$JQONLY/$t" ;;
+    /*) printf '#!/bin/bash\nexec "%s" "$@"\n' "$tp" > "$JQONLY/$t"
+        chmod +x "$JQONLY/$t" ;;
     *)  echo "verify-gh-account-guard: cannot resolve '$t' to an absolute path (got '$tp')" >&2; exit 1 ;;
   esac
 done
+# The wrappers are bash scripts, so the interpreter has to be reachable too --
+# `env -i PATH=$JQONLY` means the kernel finds /bin/bash by its shebang, but
+# anything the wrapper itself calls resolves through this PATH.
+[ -x /bin/bash ] || { echo "verify-gh-account-guard: /bin/bash not executable" >&2; exit 1; }
 
 # Fixture projects. The remote is part of the fixture now, because the owner of
 # `origin` is what inference reads.

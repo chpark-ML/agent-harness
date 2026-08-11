@@ -1,0 +1,16 @@
+# Which second languages a skill description must carry triggers in.
+#
+# One entry per line. Commas also separate entries; `|` inside one entry accepts
+# any of its labels, so `한국어|Korean` passes for a description that marks its
+# Korean triggers in either script. Blank lines and `#` comments are ignored.
+#
+# This is a property of THIS deployment, not of the harness: a contributor
+# writing a skill for a Japanese team should not need a Korean marker to pass
+# CI. Change this file, not scripts/verify-frontmatter.sh.
+#
+# It is a file rather than a Makefile variable because Windows `make.exe`
+# re-encodes recipe text through the ANSI codepage on its way into the child
+# environment, which turned `한국어` into mojibake and failed five skills that
+# plainly carry the marker. A file is read straight as UTF-8 by the one program
+# that needs it, so nothing re-encodes it.
+한국어|Korean

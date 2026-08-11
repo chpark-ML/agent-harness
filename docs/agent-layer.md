@@ -111,11 +111,28 @@ The detail behind §3's last three rows (external plugins, external instruments,
 
 **A guard merged without verification is not a guard, it is decoration** ([ADR-0003](adr/0003-verification-mandate.md)).
 
+**Supported platforms: macOS, Linux, and Windows under Git Bash.** `make verify` is expected to come out green on all three, and a check that fails only on one of them is a bug in the check until shown otherwise. This was written down after the first Windows run: **34 failing cases from four causes**, none of them previously observed.
+
+| Cause | Where it showed | Cases |
+|---|---|---|
+| `jq` writes CRLF; `$(...)` strips the newline and keeps the CR | `gh-account-guard` (8), `harnessctl`'s manifest round trip (7) | 15 |
+| `os.path.join` mixes separators, so string comparison misses | `verify-doc-refs` exemptions | 10 |
+| Windows `make.exe` re-encodes recipe text through the ANSI codepage | `TRIGGER_LANGS` reaching the frontmatter check | 5 |
+| `ln -s` exits 0 and leaves a copy | three hook verifiers | 4 |
+
+**One of those 34 was not a test problem.** `gh-account-guard` let through a push it should have blocked: the login read from `gh` was compared as `chpark-ML<CR>` against `chpark-ML`. Note the shape — a trailing CR leaves *substring* matches working and breaks *exact* ones, so the guard did not misfire, it went silent. Three things follow, and they are the general lesson rather than Windows trivia.
+
+- **A platform nobody runs is a platform where the guards are decoration.** The tempting reading is "1 real bug, 33 environment quirks". The honest one is 34 defects that no environment had ever asked about, and the only reason the guard failure was visible at all is that eight cases were already pinning it.
+- **Prefer one code path to a platform branch.** The CR fix is an unconditional `tr -d` wrapper, because `tr` is a no-op on LF and a `case $(uname -s)` arm would be a line that only ever runs in one environment — the §4 rule two paragraphs down.
+- **Write the reproduction so it runs everywhere.** `PYTHONIOENCODING=ascii` reproduces the encoding crash on Linux too, so that case lives in CI. A Windows-only case would have been invisible to the job that runs on every push, which is how the defect got in.
+
+Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=lf`, because Git for Windows defaults to `core.autocrlf=true` and bash does not treat CR as whitespace — it lands inside the last token on the line, so `BOTH="a b"` assigns `a b<CR>` and a heredoc writes that CR into whatever it generates.
+
 | Category | Verification |
 |---|---|
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — one per hook, 8 cases or more, carrying all three kinds: no-op, block, boundary |
 | Installer | `scripts/verify-install.sh` — harnessctl's init → reinstall → module swap → uninstall round trip, **and `install.sh` itself** (is there an executable line in the header; do `--help` and the argument rejections run without the Claude CLI). User scope is checked against a scratch directory via `CLAUDE_CONFIG_DIR`, so the real `~/.claude` is never touched |
-| Frontmatter | `scripts/verify-frontmatter.sh` — YAML parsing of every skill, agent, rule and command, plus a skill description's negative routing and the second-language triggers `TRIGGER_LANGS` declares (this repository declares `한국어\|Korean`; the English triggers cannot be checked by machine and stay a human review item). Runs its own 4 cases first, none of them about frontmatter — they hold the reporting path, which once died on a console that could not encode an em-dash. Needs only python3 |
+| Frontmatter | `scripts/verify-frontmatter.sh` — YAML parsing of every skill, agent, rule and command, plus a skill description's negative routing and the second-language triggers `.claude/trigger-langs` declares (this repository declares `한국어\|Korean`; the English triggers cannot be checked by machine and stay a human review item). Runs its own 7 cases first, none of them about frontmatter — they hold the reporting path, which once died on a console that could not encode an em-dash, and glob every python-embedding verifier for the same two defects. Needs only python3 |
 | Output tools | `plugins/harness-core/scripts/verify-harness-log.sh` — 44 cases. The same three kinds as a hook, but centred on **must-not-appear**: if tool output, a subagent transcript, a skill injection or a compaction summary leaked onto the page, then in a repository running `secret-scrubber` whatever a command printed would survive in a file ([harness-log](harness-log.md)) |
 | Document references | `scripts/verify-doc-refs.sh` — does the file a link points at exist, does `#anchor` resolve to a heading, and does the first segment of a path an instruction file calls exist. Runs its own 19 cases first (false positives being this checker's only failure mode) |
 | Check total | `scripts/verify-check-total.sh` — do the three published totals (the README badge, the README table, §4 of this document) agree with each other **and with what the run actually produced**. `make verify-all` runs verify and then reads its output |
