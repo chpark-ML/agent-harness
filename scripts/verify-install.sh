@@ -512,6 +512,96 @@ check "an unknown --profile is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)
 out="$(run_probe --bogus)"; rc=$?
 check "an unknown flag is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 
+# --- 12. the shell shim ------------------------------------------------------
+# Only --help and the argument surface were covered, so the shim block — the
+# part a consumer's terminal actually depends on — had no test at all. It shipped
+# reading $HOME/.claude while step 3 resolved harnessctl through
+# $CLAUDE_CONFIG_DIR, and the failure was silent: on a non-default config
+# directory the glob matched nothing, the loop ran zero times, and one warning
+# was the only sign of an install that had otherwise succeeded.
+#
+# A fake `claude` on PATH is what makes this testable. The real one reaches the
+# network and needs a marketplace, and neither belongs in a verifier.
+section "shell shim"
+
+shimroot="$WORK/shim"
+fakebin="$shimroot/fakebin"
+mkdir -p "$fakebin"
+# Accepts every subcommand install.sh calls and does nothing. `plugin --help`
+# has to exit 0 or the script dies at its capability check.
+printf '#!/bin/sh\nexit 0\n' > "$fakebin/claude"
+chmod +x "$fakebin/claude"
+
+# A cache in a NON-default config directory, holding two versions so the
+# newest-wins rule is exercised at the same time.
+# `.in_use` marks the live copy and `.orphaned_at` marks a superseded one —
+# step 3 requires the first and skips the second, so a fixture without the
+# marker never reaches the shim block at all.
+altcfg="$shimroot/altcfg"
+for v in 1.9.0 1.10.0; do
+  mkdir -p "$altcfg/plugins/cache/agent-harness/harness-core/$v/bin"
+  : > "$altcfg/plugins/cache/agent-harness/harness-core/$v/.in_use"
+  printf '#!/bin/sh\necho "harnessctl %s"\n' "$v" \
+    > "$altcfg/plugins/cache/agent-harness/harness-core/$v/bin/harnessctl"
+  chmod +x "$altcfg/plugins/cache/agent-harness/harness-core/$v/bin/harnessctl"
+done
+# A superseded copy, left behind by `claude plugin update` with its bin/ emptied
+# — the real shape, verified against this machine's cache. It sorts ABOVE the
+# live versions, so anything that just takes the highest version finds an empty
+# directory. Both the generator and the shim have to skip it.
+mkdir -p "$altcfg/plugins/cache/agent-harness/harness-core/2.0.0/bin"
+: > "$altcfg/plugins/cache/agent-harness/harness-core/2.0.0/.orphaned_at"
+# A second executable, to pin that the loop globs bin/ instead of naming one.
+printf '#!/bin/sh\necho "harness-log"\n' \
+  > "$altcfg/plugins/cache/agent-harness/harness-core/1.10.0/bin/harness-log"
+chmod +x "$altcfg/plugins/cache/agent-harness/harness-core/1.10.0/bin/harness-log"
+# A decoy under the DEFAULT location. If the shim ever reverts to $HOME/.claude
+# it will find this one, and the version assertion below says so by name.
+fakehome="$shimroot/home"
+mkdir -p "$fakehome/.claude/plugins/cache/agent-harness/harness-core/0.0.1/bin"
+printf '#!/bin/sh\necho "harnessctl DECOY"\n' \
+  > "$fakehome/.claude/plugins/cache/agent-harness/harness-core/0.0.1/bin/harnessctl"
+chmod +x "$fakehome/.claude/plugins/cache/agent-harness/harness-core/0.0.1/bin/harnessctl"
+
+shimbin="$shimroot/localbin"
+( cd "$probe_cwd" && env -i PATH="$fakebin:/usr/bin:/bin" HOME="$fakehome" \
+    CLAUDE_CONFIG_DIR="$altcfg" BIN_DIR="$shimbin" SHELL=/bin/bash \
+    "$BASH_BIN" "$probe/install.sh" --scope user >/dev/null 2>&1 )
+
+check "a shim is written for harnessctl" "$([ -x "$shimbin/harnessctl" ] && echo 0 || echo 1)"
+check "a shim is written for every executable in bin/" "$([ -x "$shimbin/harness-log" ] && echo 0 || echo 1)"
+
+# Run the shim the way a user would, with the config directory still set.
+shim_out="$( env PATH="/usr/bin:/bin" HOME="$fakehome" CLAUDE_CONFIG_DIR="$altcfg" \
+             sh "$shimbin/harnessctl" 2>&1 )"
+check "the shim honours CLAUDE_CONFIG_DIR" \
+  "$(printf '%s' "$shim_out" | grep -q 'harnessctl 1.10.0' && echo 0 || echo 1)" \
+  "got: $shim_out"
+check "...and does not fall back to the default cache" \
+  "$(printf '%s' "$shim_out" | grep -q DECOY && echo 1 || echo 0)" \
+  "got: $shim_out"
+
+# 1.10.0 must beat 1.9.0. Lexicographic sorting gets this backwards, which is
+# why the resolution uses sort -V.
+check "the shim picks the newest version, not the last alphabetically" \
+  "$(printf '%s' "$shim_out" | grep -q '1.10.0' && echo 0 || echo 1)" \
+  "got: $shim_out"
+
+# With no config directory set, the shim must fall back to $HOME/.claude — the
+# ordinary case, and the one the fix must not break.
+shim_out="$( env PATH="/usr/bin:/bin" HOME="$fakehome" sh "$shimbin/harnessctl" 2>&1 )"
+check "the shim falls back to \$HOME/.claude when unset" \
+  "$(printf '%s' "$shim_out" | grep -q DECOY && echo 0 || echo 1)" \
+  "got: $shim_out"
+
+# Nothing installed anywhere: the shim must say so and fail, not exec nothing.
+emptyhome="$shimroot/empty"; mkdir -p "$emptyhome"
+shim_out="$( env PATH="/usr/bin:/bin" HOME="$emptyhome" sh "$shimbin/harnessctl" 2>&1 )"; rc=$?
+check "with no plugin installed the shim exits non-zero" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+check "...and names the command that would fix it" \
+  "$(printf '%s' "$shim_out" | grep -q 'claude plugin install harness-core' && echo 0 || echo 1)" \
+  "got: $shim_out"
+
 # --- summary -----------------------------------------------------------------
 total=$((PASS + FAIL))
 echo
