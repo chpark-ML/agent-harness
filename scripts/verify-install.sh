@@ -24,7 +24,7 @@ HARNESS="$(cd "$(dirname "$0")/.." && pwd)"
 HCTL="$HARNESS/plugins/harness-core/bin/harnessctl"
 BASH_BIN="${BASH:-bash}"
 
-command -v jq >/dev/null 2>&1 || { echo "verify-install: jq is required" >&2; exit 1; }
+type -P jq >/dev/null 2>&1 || { echo "verify-install: jq is required" >&2; exit 1; }
 [ -f "$HCTL" ] || { echo "verify-install: $HCTL not found" >&2; exit 1; }
 
 WORK="$(mktemp -d)" || exit 1
@@ -917,6 +917,93 @@ check_eq "every pinned hash is a full sha256" 6 \
   "$(printf '%s' "$table" | grep -c "'[0-9a-f]\{64\}'")"
 check_rc "the pinned linux-amd64 hash is the one upstream published" \
   "$(printf '%s' "$table" | grep -q "$LINUX_AMD64_SHA" && echo 0 || echo 1)"
+
+# --- 14. jq guards that can actually fail ------------------------------------
+# The incident these come from: the CR-stripping `jq()` shell function makes
+# `command -v jq` answer with the function name, so every guard written that way
+# returns 0 whether or not jq exists. harnessctl's preflight was dead, and a
+# machine with no jq was told its settings.json was not a JSON object.
+#
+# verify_begin asserts the same thing per hook. These cover the two executables
+# and the library, which no hook verifier reaches, and they assert on behaviour
+# rather than on the spelling: the message a user without jq actually gets.
+section "jq guards"
+
+nojq="$WORK/nojq"
+mkdir -p "$nojq/cfg"
+# A settings.json that is beyond reproach. If the message mentions it, the
+# preflight above it did not fire.
+printf '{"model":"opus"}\n' > "$nojq/cfg/settings.json"
+
+# $jqreal is the tool set from section 13, deliberately built without jq.
+run_nojq() { ( cd "$WORK" && env -i PATH="$jqreal" HOME="$nojq" \
+                 CLAUDE_CONFIG_DIR="$nojq/cfg" BIN_DIR="$nojq/bin" \
+                 "$BASH_BIN" "$@" 2>&1 ) }
+
+out="$(run_nojq "$HCTL" init --scope user --dry-run)"
+check_rc "harnessctl without jq says so" \
+  "$(printf '%s' "$out" | grep -q 'jq is required' && echo 0 || echo 1)" \
+  "got: $out"
+check_rc "...and does not blame a valid settings.json" \
+  "$(printf '%s' "$out" | grep -q 'not a JSON object' && echo 1 || echo 0)" \
+  "got: $out"
+check_rc "...and names a way to install it" \
+  "$(printf '%s' "$out" | grep -q 'apt-get install jq' && echo 0 || echo 1)" \
+  "got: $out"
+
+# doctor is the tool a stuck user is pointed at, and it used to answer `ok jq `
+# — a blank version — on a machine with none. The preflight now stops it before
+# it can say anything, which is the better answer: the same actionable line
+# every other subcommand gives. What must never come back is the false ok.
+out="$(run_nojq "$HCTL" doctor --scope user)"
+check_rc "doctor without jq refuses rather than reporting" \
+  "$(printf '%s' "$out" | grep -q 'jq is required' && echo 0 || echo 1)" \
+  "got: $out"
+check_rc "...and never claims jq is ok with a blank version" \
+  "$(printf '%s' "$out" | grep -qE 'ok +jq *$' && echo 1 || echo 0)" \
+  "got: $out"
+
+HLOG="$HARNESS/plugins/harness-core/bin/harness-log"
+out="$(run_nojq "$HLOG")"
+check_rc "harness-log without jq says so" \
+  "$(printf '%s' "$out" | grep -q 'jq is required' && echo 0 || echo 1)" \
+  "got: $out"
+
+# Structural, and it is the half verify_begin cannot do: it runs per hook, so it
+# can never assert about _verify-lib.sh itself, about the two executables, or
+# about the repo-only scripts that source the wrapper through _check-lib.sh.
+# Globbed rather than listed, so a new file cannot arrive outside the check.
+#
+# Anchored to the start of a statement, the way verify-frontmatter's selftest
+# had to be. A guard is `command -v jq >/dev/null` opening a line or following
+# `if !`; a mention of the broken spelling inside a comment or a grep pattern is
+# not, and both exist in this repository — including on the line just below,
+# which is why an unanchored first draft reported this file and harnessctl as
+# offenders on the strength of their own explanations.
+offenders=""
+for f in "$HARNESS"/plugins/harness-core/hooks/*.sh \
+         "$HARNESS"/plugins/harness-core/bin/* \
+         "$HARNESS"/plugins/harness-core/scripts/*.sh \
+         "$HARNESS"/scripts/*.sh; do
+  [ -f "$f" ] || continue
+  { grep -q '^jq() { local rc; command jq' "$f" \
+    || grep -q '_check-lib\.sh\|_verify-lib\.sh' "$f"; } || continue
+  grep -q '^[[:space:]]*\(if ! \)\?command -v jq >/dev/null' "$f" \
+    && offenders="$offenders ${f#"$HARNESS"/}"
+done
+check_rc "no file defining the jq wrapper resolves jq with command -v" \
+  "$([ -z "$offenders" ] && echo 0 || echo 1)" \
+  "offenders:$offenders"
+
+# And the wrapper is what makes that necessary, so pin that it is still there —
+# otherwise the check above passes by the wrapper quietly disappearing.
+wrapped=0
+for f in "$HARNESS"/plugins/harness-core/hooks/*.sh \
+         "$HARNESS"/plugins/harness-core/bin/* \
+         "$HARNESS"/plugins/harness-core/scripts/_verify-lib.sh; do
+  [ -f "$f" ] && grep -q '^jq() { local rc; command jq' "$f" && wrapped=$((wrapped + 1))
+done
+check_eq "the CR-stripping wrapper is still in all eight" 8 "$wrapped"
 
 # --- summary -----------------------------------------------------------------
 summary

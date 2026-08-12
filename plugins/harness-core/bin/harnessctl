@@ -32,6 +32,13 @@ set -uo pipefail
 #
 # PIPESTATUS keeps jq's own exit status, which matters here more than in the
 # hooks: `jq -e` and `jq empty` are used for validity checks throughout.
+#
+# Defining this makes `command -v jq` answer "jq" -- the function -- whether or
+# not the binary exists, so every jq guard in this file and in the hooks uses
+# `type -P`, which only ever answers with a path. That is not a style choice:
+# the preflight below sat dead behind `command -v` and a machine with no jq was
+# told its settings.json was not a JSON object. `verify-install` asserts that no
+# file defining this wrapper reaches for `command -v jq` again.
 jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
 
 CMD=""
@@ -105,7 +112,7 @@ validate_manifest() {
      rm '$MANIFEST' && harnessctl init --scope $SCOPE"
 }
 
-command -v jq >/dev/null 2>&1 || die "jq is required.
+type -P jq >/dev/null 2>&1 || die "jq is required.
    Install: brew install jq | apt-get install jq | dnf install jq | apk add jq"
 
 if [ "$SCOPE" = user ]; then
@@ -187,7 +194,12 @@ if [ "$CMD" = doctor ]; then
   say "harnessctl doctor  (scope: $SCOPE, target: $TARGET)"
   say ""
   say "required tools:"
-  command -v jq >/dev/null 2>&1 && ok "jq $(jq --version)" || bad "jq missing" "brew install jq"
+  # No `bad` branch: the preflight above refuses to reach any subcommand without
+  # jq, so doctor cannot run and report it missing. It used to have one, and
+  # that branch was reachable only because the preflight was dead — which is
+  # exactly how doctor came to print `ok jq` with a blank version on a machine
+  # that had none. `verify-install` pins the message a jq-less user now gets.
+  ok "jq $(jq --version)"
   command -v git >/dev/null 2>&1 && ok "git $(git --version | awk '{print $3}')" || bad "git missing"
 
   say ""

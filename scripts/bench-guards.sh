@@ -28,7 +28,7 @@ BASH_BIN="${BASH:-bash}"
 VERBOSE=0
 [ "${1:-}" = "--verbose" ] && VERBOSE=1
 
-command -v jq >/dev/null 2>&1 || { echo "bench-guards: jq is required" >&2; exit 1; }
+type -P jq >/dev/null 2>&1 || { echo "bench-guards: jq is required" >&2; exit 1; }
 
 WORK="$(mktemp -d)" || exit 1
 trap 'rm -rf "$WORK"' EXIT

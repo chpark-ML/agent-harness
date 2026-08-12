@@ -38,7 +38,7 @@ REPO="${VERIFY_INVENTORY_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 HOOKS_JSON="$REPO/plugins/harness-core/hooks/hooks.json"
 FRAGMENT="$REPO/plugins/harness-core/declarative/settings-fragment.json"
 
-command -v jq >/dev/null 2>&1 || { echo "verify-inventory: jq is required" >&2; exit 1; }
+type -P jq >/dev/null 2>&1 || { echo "verify-inventory: jq is required" >&2; exit 1; }
 
 . "$(cd "$(dirname "$0")" && pwd)/_check-lib.sh"
 
