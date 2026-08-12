@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-705-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-724-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 132 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 151 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -243,6 +243,8 @@ harnessctl uninstall --scope user    # 설정·규칙·CLAUDE.md
 
 bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그인을 지원하는 Claude Code. 전제는 하나 더 있다 — **git 저장소**. 가드 둘과 규약 대부분이 git 과 forge(PR) 를 가정한다.
 
+**jq 만은 직접 갖추지 않아도 된다.** 없어도 되는 물건이 아니라서다 — 모든 가드가 stdin 을 jq 로 파싱하고 `harnessctl` 이 `settings.json` 을 jq 로 병합한다. 그래서 `install.sh` 는 jq 를 못 찾으면 고정된 버전을 `~/.local/bin` 에 받아 이 저장소에 커밋된 SHA-256 과 대조하고, 어긋나면 실행하지 않고 멈춘다. root 가 필요 없다. 이미 jq 가 있으면 아무것도 내려받지 않는다.
+
 ---
 
 ## 이 저장소가 하는 일
@@ -407,7 +409,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **255** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **45** |
-| 설치기 왕복 | **132** assertion |
+| 설치기 왕복 | **151** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
 | 발표 수치 검사기 | **36** |
@@ -417,7 +419,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **61** 파일 + 자체 **19** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **705** |
+| **합계** | **724** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
