@@ -68,7 +68,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-command -v jq >/dev/null 2>&1 || die "jq is required"
+type -P jq >/dev/null 2>&1 || die "jq is required"
 case "$LIMIT" in ''|*[!0-9]*) die "--limit takes a non-negative integer" ;; esac
 
 # --- where the project is, and where its transcripts live -------------------

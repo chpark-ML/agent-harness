@@ -52,7 +52,7 @@
 
 set -euo pipefail
 
-if ! command -v jq >/dev/null 2>&1; then
+if ! type -P jq >/dev/null 2>&1; then
   echo "protected-paths: jq not found — hook disabled. Install jq to enable." >&2
   exit 0
 fi

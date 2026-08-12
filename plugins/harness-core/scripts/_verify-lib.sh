@@ -55,7 +55,7 @@ verify_begin() {
     echo "verify-$VERIFY_NAME: hook not found at $HOOK" >&2
     exit 1
   fi
-  if ! command -v jq >/dev/null 2>&1; then
+  if ! type -P jq >/dev/null 2>&1; then
     echo "verify-$VERIFY_NAME: jq not installed — cannot verify hook behaviour." >&2
     exit 1
   fi
@@ -79,6 +79,22 @@ verify_begin() {
     else
       _fail "normalises jq's line endings before comparing" \
             "no jq wrapper: a captured value keeps its CR on Windows"
+    fi
+  fi
+
+  # The wrapper above has a second effect, and it cost this repository a live
+  # bug: with a `jq` shell function defined, `command -v jq` answers "jq" even
+  # when no binary exists, so any guard written that way is dead. In harnessctl
+  # it meant a machine with no jq was told its settings.json was not a JSON
+  # object. The hooks survived only because their guard happens to sit above
+  # the wrapper -- accidental ordering, one edit away from silence, which is
+  # why this is asserted per hook rather than trusted.
+  if grep -q '^jq() { local rc; command jq' "$HOOK"; then
+    if grep -q 'command -v jq' "$HOOK"; then
+      _fail "resolves jq with type -P, not command -v" \
+            "command -v answers with the jq() function, so the guard cannot fail"
+    else
+      _pass "resolves jq with type -P, not command -v"
     fi
   fi
 
