@@ -735,6 +735,189 @@ kout="$( cd "$C" && env PATH="$PATH" HOME="$cfg2" CLAUDE_CONFIG_DIR="$cfg2" \
 check_rc "a superseded-only cache counts as not installed" \
   "$(printf '%s' "$kout" | grep -q 'enabled but not installed: harness-dev@agent-harness' && echo 0 || echo 1)"
 
+# --- 13. the jq bootstrap ----------------------------------------------------
+# jq is required by every guard and by harnessctl, and a machine without root
+# had no way through. What made it worth a verifier rather than a one-liner is
+# how it failed: harnessctl's own `jq is required` preflight never fired (a CR
+# wrapper shadowed `command -v jq` with a shell function), so the install died
+# blaming a settings.json that was perfectly valid. Nothing said "jq".
+#
+# The platform is stubbed to Linux/x86_64 throughout, so these run identically
+# on macOS, Linux and CI, and the expected hash below is a fixed constant rather
+# than whatever the host happens to be.
+section "jq bootstrap"
+
+LINUX_AMD64_SHA="b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f"
+
+jqroot="$WORK/jq"
+jqstub="$jqroot/stub"      # stubs: claude, curl, uname, sha256sum
+jqreal="$jqroot/real"      # the real tools install.sh needs, deliberately no jq
+mkdir -p "$jqstub" "$jqreal"
+
+# A PATH with the usual tools and no jq. `env -i` plus this is what makes the
+# absence real; pointing PATH at /usr/bin would hand the script the host's jq.
+# `bash` is on this list because install.sh invokes harnessctl as `bash "$HCTL"`,
+# by name and not by path.
+for t in bash sh env sed grep ls sort tail head cut basename dirname mkdir mv rm \
+         chmod cmp cat mktemp uname awk tr find touch wc; do
+  p="$(command -v "$t" 2>/dev/null)" && ln -sf "$p" "$jqreal/$t"
+done
+# Both hashers, when the host has them: file_sha256 prefers sha256sum and falls
+# back to shasum, and the mismatch case below needs a real one of either.
+have_hasher=0
+for t in sha256sum shasum; do
+  p="$(command -v "$t" 2>/dev/null)" && { ln -sf "$p" "$jqreal/$t"; have_hasher=1; }
+done
+
+printf '#!/bin/sh\nexit 0\n' > "$jqstub/claude"
+printf '#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo x86_64 ;; esac\n' > "$jqstub/uname"
+# Records the URL, then serves a runnable stand-in so the post-install smoke
+# test (`jq --version`) has something to execute.
+cat > "$jqstub/curl" <<'CURL'
+#!/bin/sh
+echo "$*" >> "$CURL_LOG"
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in -o) shift; out="$1" ;; esac
+  shift
+done
+[ -n "$out" ] || exit 1
+printf '#!/bin/sh\necho jq-1.8.2\n' > "$out"
+CURL
+chmod +x "$jqstub/claude" "$jqstub/uname" "$jqstub/curl"
+
+# A stubbed hasher that agrees with the table, so the success path can be
+# exercised without a byte-exact copy of the real release.
+printf '#!/bin/sh\necho "%s  $1"\n' "$LINUX_AMD64_SHA" > "$jqstub/sha256sum"
+chmod +x "$jqstub/sha256sum"
+
+# A cache holding a fake harnessctl that reports whether jq reached it. This is
+# the only honest test of the PATH export: install.sh itself never calls jq, so
+# the property is "the child process that needs jq can find it", and asserting
+# on install.sh's own output cannot tell the export apart from the absolute path
+# it prints anyway. Removing the export has to turn a case red, and this is the
+# case that goes red.
+jqcache="$jqroot/cfg/plugins/cache/agent-harness/harness-core/1.0.0"
+mkdir -p "$jqcache/bin"
+: > "$jqcache/.in_use"
+printf '#!/bin/sh\necho "harnessctl saw jq at: $(command -v jq || echo NONE)"\n' \
+  > "$jqcache/bin/harnessctl"
+chmod +x "$jqcache/bin/harnessctl"
+
+# install.sh reads BIN_DIR for both the shims and a bootstrapped jq.
+run_install() {
+  # $1 = BIN_DIR, rest = PATH entries in order
+  local bd="$1"; shift
+  local p=""
+  for d in "$@"; do p="${p:+$p:}$d"; done
+  ( cd "$probe_cwd" && env -i PATH="$p" HOME="$jqroot/home" SHELL=/bin/bash \
+      CLAUDE_CONFIG_DIR="$jqroot/cfg" BIN_DIR="$bd" CURL_LOG="$jqroot/curl.log" \
+      "$BASH_BIN" "$probe/install.sh" --scope user 2>&1 )
+}
+
+# --- no-op: a machine that already has jq must not fetch one.
+: > "$jqroot/curl.log"
+mkdir -p "$jqroot/hasjq"
+printf '#!/bin/sh\necho jq-1.7.1\n' > "$jqroot/hasjq/jq"
+chmod +x "$jqroot/hasjq/jq"
+out="$(run_install "$jqroot/bin-hasjq" "$jqroot/hasjq" "$jqstub" "$jqreal")"
+check_rc "an existing jq is left alone" \
+  "$([ ! -s "$jqroot/curl.log" ] && echo 0 || echo 1)" \
+  "curl was called: $(cat "$jqroot/curl.log")"
+check_rc "...and nothing is written to BIN_DIR for it" \
+  "$([ ! -e "$jqroot/bin-hasjq/jq" ] && echo 0 || echo 1)"
+
+# --- success: jq absent, download served by the stub.
+: > "$jqroot/curl.log"
+out="$(run_install "$jqroot/bin-ok" "$jqstub" "$jqreal")"
+check_rc "a missing jq is fetched" \
+  "$([ -s "$jqroot/curl.log" ] && echo 0 || echo 1)"
+check_rc "...from the pinned release, for this platform's asset" \
+  "$(grep -q 'releases/download/jq-1.8.2/jq-linux-amd64$' "$jqroot/curl.log" && echo 0 || echo 1)" \
+  "asked for: $(cat "$jqroot/curl.log")"
+check_rc "...and lands in BIN_DIR, executable" \
+  "$([ -x "$jqroot/bin-ok/jq" ] && echo 0 || echo 1)"
+check_rc "...leaving no partial download behind" \
+  "$(ls "$jqroot/bin-ok"/jq.download.* >/dev/null 2>&1 && echo 1 || echo 0)"
+check_rc "...and the install carries on past it" \
+  "$(printf '%s' "$out" | grep -q '==> marketplace' && echo 0 || echo 1)" \
+  "got: $out"
+# The whole point of the PATH export: harnessctl needs jq, and it is a child
+# process, so it gets whatever PATH install.sh leaves it.
+check_rc "...and harnessctl inherits a PATH that finds the new jq" \
+  "$(printf '%s' "$out" | grep -q "harnessctl saw jq at: $jqroot/bin-ok/jq" && echo 0 || echo 1)" \
+  "got: $out"
+
+# --- boundary: the checksum is what decides, and it must be able to say no.
+# The real hasher runs against the stand-in file, whose hash is nothing like the
+# pinned one. Dropping the stubbed hasher from PATH is cleaner than trying to
+# outrank it.
+jqstub_nohash="$jqroot/stub-nohash"
+mkdir -p "$jqstub_nohash"
+for f in claude curl uname; do cp "$jqstub/$f" "$jqstub_nohash/$f"; done
+chmod +x "$jqstub_nohash"/*
+if [ "$have_hasher" -eq 1 ]; then
+  : > "$jqroot/curl.log"
+  out="$(run_install "$jqroot/bin-bad" "$jqstub_nohash" "$jqreal")"
+  check_rc "a checksum mismatch stops the install" \
+    "$(printf '%s' "$out" | grep -q 'checksum mismatch' && echo 0 || echo 1)" \
+    "got: $out"
+  check_rc "...and refuses to leave the binary behind" \
+    "$([ ! -e "$jqroot/bin-bad/jq" ] && echo 0 || echo 1)"
+  check_rc "...including the partial download" \
+    "$(ls "$jqroot/bin-bad"/jq.download.* >/dev/null 2>&1 && echo 1 || echo 0)"
+else
+  skip_case "a checksum mismatch stops the install" "no sha256sum or shasum on this machine"
+fi
+
+# --- boundary: no hasher at all. An unverifiable binary is not run.
+jqreal_nohash="$jqroot/real-nohash"
+mkdir -p "$jqreal_nohash"
+for f in "$jqreal"/*; do
+  case "$(basename "$f")" in sha256sum|shasum) ;; *) ln -sf "$f" "$jqreal_nohash/$(basename "$f")" ;; esac
+done
+: > "$jqroot/curl.log"
+out="$(run_install "$jqroot/bin-nohash" "$jqstub_nohash" "$jqreal_nohash")"
+check_rc "an unverifiable download is refused" \
+  "$(printf '%s' "$out" | grep -q 'neither sha256sum nor shasum' && echo 0 || echo 1)" \
+  "got: $out"
+check_rc "...and nothing is left in BIN_DIR" \
+  "$([ ! -e "$jqroot/bin-nohash/jq" ] && echo 0 || echo 1)"
+
+# --- boundary: no curl. The message must name jq, which is the whole point.
+jqstub_nocurl="$jqroot/stub-nocurl"
+mkdir -p "$jqstub_nocurl"
+cp "$jqstub/claude" "$jqstub/uname" "$jqstub_nocurl/"
+chmod +x "$jqstub_nocurl"/*
+out="$(run_install "$jqroot/bin-nocurl" "$jqstub_nocurl" "$jqreal")"
+check_rc "no curl fails with a message that names jq" \
+  "$(printf '%s' "$out" | grep -q 'jq is missing and there is no curl' && echo 0 || echo 1)" \
+  "got: $out"
+
+# --- boundary: a platform jq does not publish for.
+jqstub_sun="$jqroot/stub-sun"
+mkdir -p "$jqstub_sun"
+cp "$jqstub/claude" "$jqstub/curl" "$jqstub_sun/"
+printf '#!/bin/sh\ncase "$1" in -s) echo SunOS ;; -m) echo sparc ;; esac\n' > "$jqstub_sun/uname"
+chmod +x "$jqstub_sun"/*
+: > "$jqroot/curl.log"
+out="$(run_install "$jqroot/bin-sun" "$jqstub_sun" "$jqreal")"
+check_rc "an unpublished platform fails without guessing an asset" \
+  "$(printf '%s' "$out" | grep -q 'publishes no build for this platform' && echo 0 || echo 1)" \
+  "got: $out"
+check_rc "...and downloads nothing" \
+  "$([ ! -s "$jqroot/curl.log" ] && echo 0 || echo 1)"
+
+# --- static: the pinned table. A truncated or edited hash is not something the
+# stubbed cases above can see, because they stub the hasher.
+table="$(sed -n '/^jq_sha256()/,/^}/p' "$INSTALL_SH")"
+check_eq "the hash table covers all six published assets" 6 \
+  "$(printf '%s' "$table" | grep -c "jq-\(linux\|macos\|windows\)-\(amd64\|arm64\)")"
+check_eq "every pinned hash is a full sha256" 6 \
+  "$(printf '%s' "$table" | grep -c "'[0-9a-f]\{64\}'")"
+check_rc "the pinned linux-amd64 hash is the one upstream published" \
+  "$(printf '%s' "$table" | grep -q "$LINUX_AMD64_SHA" && echo 0 || echo 1)"
+
 # --- summary -----------------------------------------------------------------
 summary
 exit $?
