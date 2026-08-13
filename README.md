@@ -202,7 +202,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
 | **Installer** | does uninstall restore the original? | **canonically identical**, 159 assertions |
 
-**Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 8% is the price of the 93%.
+**Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
 ### Things it is measured *not* to do
 
