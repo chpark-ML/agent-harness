@@ -1149,3 +1149,63 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   `Bash(gh pr merge:*)` 를 추가한다. 더 좁은 규칙이 이기는지를 먼저 확인해야
   하고 (확인 안 함), 이긴다면 이것이 최소 수정이다.
 - **회차**: 1
+
+## 2026-08-13 — 채택했다고 적힌 외부 계측기가 설치되어 있지 않다
+
+- **어디**: `docs/agent-layer.md:74` (§3 "External instruments" 행의 ✅) 와
+  같은 문서 `:164` (§4b 비용표의 `skill-creator` 112 / 10.9k 행). 판정의 출처는
+  `docs/adr/0011-ecosystem-survey.md` §1 *"Adopt `skill-creator`"*.
+- **무슨 일**: 외부 후보 11 개를 재검토하다 확인했다.
+  `~/.claude/plugins/installed_plugins.json` 에 `skill-creator` 항목이 없다.
+  설치된 것은 harness-core/dev/research/slides 와 superpowers 뿐이고,
+  캐시(`cache/claude-plugins-official/skill-creator/unknown/`)에는
+  `.orphaned_at = 1786230100534` (2026-08-09 08:01) 가 놓여 있다. **§3 의 ✅ 와
+  §4b 의 "112 always-on" 은 이 기계에서 참이 아니다.**
+- **왜 사소하지 않은가**: ADR-0011 의 Consequences 는 `run_eval.py` 를 쓰지
+  않는다고 이미 취소선으로 적었다 (`scripts/bench-trigger.py` 가 대체). 그래서
+  남은 채택 사유는 `analyzer`·`grader`·`comparator` 와
+  `aggregate_benchmark.py` 뿐인데, §4b *"Not yet measured"* 는 `CLAUDE.md`
+  원칙을 측정할 후보 자리로 바로 그 `grader` 를 지목해 둔 상태다. **한 번도
+  쓰지 않은 도구가 조용히 빠졌고, 판정만 문서에 남았다.**
+- **일반화**: 프로파일의 `dependencies` 에 적힌 외부 의존은
+  `harnessctl doctor` 가 본다. 그런데 *"개발자만 쓰는, 배포하지 않는 외부
+  계측기"* 는 확인 장치가 하나도 없다 — 문서의 ✅ 한 글자가 유일한 기록이고,
+  그 글자는 아무도 검사하지 않는다.
+- **왜 지금 안 고치나**: 1회차. 그리고 방향이 둘인데 어느 쪽인지 모른다 —
+  다시 설치해 §4b 의 미측정 항목에 실제로 쓰거나, ✅ 를 내려 *"판정은 있고
+  설치는 없음"* 으로 정직하게 적거나. `grader` 를 쓸 계획이 실제로 있느냐가
+  정한다.
+- **2026-08-13 분류**: 방향 결정 — ✅ 를 내린다 (같은 날 문서 PR, ADR-0011 에
+  정정 블록). 재채택 조건을 함께 적었다: `claude plugin eval` 이 early access
+  를 벗는 순간. help 는 이미 `--ablation with-without` 를 광고하는데 런타임은
+  아직 차단 — 열리면 채택 사유였던 paired-run 이 네이티브로 대체된다.
+- **회차**: 1 (해결됨 — 강등으로)
+
+## 2026-08-13 — 천장 게이트가 서드파티 user-scope 플러그인을 못 본다
+
+- **어디**: `scripts/context-budget.sh` 의 플러그인 합산부, 그리고 그것을
+  서술하는 `docs/agent-layer.md` §4 표의 문구 — *"sums the **entire always-on
+  footprint** (declarative plus plugins) per scope × profile"*.
+- **무슨 일**: 외부 후보를 실측하려고 `watch@claude-video` (~98 tok) 와
+  `taste-skill@taste-skill` (~1,697 tok, 스킬 13개) 를 user 스코프에 설치했다.
+  이 저장소에서 도는 세션의 실제 always-on 은 7,934 + 1,795 = **~9,729 로
+  9,000 천장을 넘었다.** 그런데 `make context-budget` 은 설치 전과 똑같이
+  **7,934 / OK (1066 headroom)** 을 찍는다. **예산이 초과된 채로 게이트가
+  초록이다.**
+- **왜 사소하지 않은가**: 이 숫자가 실제로 내리는 결정은 §4 의
+  *"There is ~1k of headroom, and it is there for the next one thing"* 이다.
+  그 1k 는 이미 서드파티 플러그인 하나가 먹었는데 표는 아직 남았다고 말한다.
+  즉 §4 의 **"entire always-on footprint" 가 실제보다 넓은 주장**이다 —
+  스크립트가 세는 것은 *우리* 플러그인뿐이고, `claude plugin details` 로
+  세면서도 설치된 목록이 아니라 이름 목록을 돈다.
+- **왜 지금 안 고치나**: 1회차. 그리고 고칠 곳이 자명하지 않다. 천장은
+  *하네스가 배포하는 것*에 대한 게이트여야 맞고, 사용자가 뭘 깔았다고 CI 가
+  빨개지는 것은 틀렸다. 그러면 고칠 대상은 게이트가 아니라 **문구**(§4 의
+  "entire") 이거나, 아니면 `harnessctl doctor` 쪽에 *정보성* 실측(설치된 전체
+  플러그인 합)을 따로 붙이는 것이다. 후자는 CI 에 없는 CLI 를 요구하므로
+  `verify` 에는 못 들어간다.
+- **2026-08-13 분류**: 같은 날 사용자 지시의 재검토(명시적 retro)로 §5 의 제안
+  조건 성립. 대책 확정 — 둘 다 한다: 게이트(CI, 우리 지분)는 그대로 두고
+  `harnessctl doctor` 에 설치된 *전체* 플러그인 합산을 정보성으로 추가하며,
+  §4 의 "entire" 문구를 같은 PR 에서 좁힌다. 별도 PR 로 진행.
+- **회차**: 1 — 제안함
