@@ -354,7 +354,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 |---|---|---|
 | 1 | `.claude/rules/harness/**` | **관리 파일** — 덮어쓴다. 고칠 것은 하네스 저장소에서 고친다. `--scope user` 에서는 설치 안 함 |
 | 2 | `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` | **템플릿** — 없을 때만 복사. 이후 프로젝트 소유 |
-| 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 `includeCoAuthoredBy: false` 만 |
+| 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 스칼라 두 개 — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true` |
 | 4 | `settings.json.bak-<ts>` | 설정이 실제로 바뀔 때만 남기는 직전 스냅샷 |
 | 5 | `.gitignore` | 두 줄 (프로젝트 스코프에서만) |
 | 6 | `harness-manifest.json` | 위 전부의 영수증. 제거는 이 영수증만 되돌린다 |

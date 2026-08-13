@@ -236,7 +236,7 @@ See [ADR-0008](docs/adr/0008-plugin-declarative-split.md). `harnessctl` ships in
 |---|---|---|
 | 1 | `.claude/rules/harness/**` | **managed** — overwritten on reinstall. Fix these upstream. Not installed at user scope |
 | 2 | `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` | **templates** — copied only when absent, yours afterwards |
-| 3 | `settings.json` | parsed and **re-serialised**, never replaced. Only missing permission strings and `includeCoAuthoredBy: false` |
+| 3 | `settings.json` | parsed and **re-serialised**, never replaced. Only missing permission strings and two scalars — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true` |
 | 4 | `settings.json.bak-<ts>` | a snapshot, only when settings actually change |
 | 5 | `.gitignore` | two lines, project scope only |
 | 6 | `harness-manifest.json` | the receipt for all of the above. Uninstall reverts only this |

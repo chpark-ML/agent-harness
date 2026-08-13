@@ -11,6 +11,7 @@
 #
 #   permissions allow/ask/deny   a plugin's settings.json supports only the
 #   includeCoAuthoredBy          `agent` and `subagentStatusLine` keys
+#   terminalProgressBarEnabled
 #   CLAUDE.md                    a plugin-root CLAUDE.md is not loaded as context
 #   .claude/rules/**             rules are not a plugin component, and are read
 #                                from a project only
