@@ -82,11 +82,18 @@ GUARDS="$(jq -r '[.hooks.PreToolUse[]?.hooks[].command] | .[]' "$HOOKS/hooks.jso
 # network and answers for whoever is logged in on this machine — either one
 # makes the arm nondeterministic — so the sandbox gets the same frozen-JSON
 # stub its verifier uses, pinned to an account the corpus can declare against.
+#
+# The roster carries BOTH accounts, and `someone-else` is listed first without
+# the active flag. That ordering is the measurement: the guard selects on
+# `.active` rather than `.[0]`, and with a one-account roster those two are
+# indistinguishable, so the arm scored the same whether the guard was right or
+# had regressed to the first entry. First-entry selection now makes the
+# wrong-account case match and stop blocking, which the arm reports.
 GH_STUB="$WORK/ghstub"
 mkdir -p "$GH_STUB"
 cat > "$GH_STUB/gh" <<'SH'
 #!/bin/sh
-printf '{"hosts":{"github.com":[{"state":"success","active":true,"host":"github.com","login":"bench-active","tokenSource":"keyring","scopes":"repo","gitProtocol":"https"}]}}\n'
+printf '{"hosts":{"github.com":[{"state":"success","active":false,"host":"github.com","login":"someone-else","tokenSource":"keyring","scopes":"repo","gitProtocol":"https"},{"state":"success","active":true,"host":"github.com","login":"bench-active","tokenSource":"keyring","scopes":"repo","gitProtocol":"https"}]}}\n'
 SH
 chmod +x "$GH_STUB/gh"
 
