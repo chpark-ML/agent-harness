@@ -735,6 +735,81 @@ kout="$( cd "$C" && env PATH="$PATH" HOME="$cfg2" CLAUDE_CONFIG_DIR="$cfg2" \
 check_rc "a superseded-only cache counts as not installed" \
   "$(printf '%s' "$kout" | grep -q 'enabled but not installed: harness-dev@agent-harness' && echo 0 || echo 1)"
 
+# --- 15. doctor: composite always-on cost -------------------------------------
+# The context-budget gate sums what this harness ships; a session pays for every
+# enabled plugin. Two third-party installs pushed a real session past the
+# ceiling while the gate printed green (2026-08-13), so doctor now reports the
+# whole composite, informationally. The claude CLI is stubbed so the priced
+# branch runs identically on machines with and without the real one — a branch
+# that runs in only one environment is an unverified branch.
+section "doctor: composite always-on cost"
+
+cfg3="$WORK/cfg3"
+mkdir -p "$cfg3/plugins/cache/forge/alpha/1.0.0" \
+         "$cfg3/plugins/cache/forge/beta/1.0.0" \
+         "$cfg3/plugins/cache/forge/gamma/1.0.0" \
+         "$cfg3/plugins/cache/forge/delta/1.0.0" \
+         "$cfg3/plugins/marketplaces/forge"
+cat > "$cfg3/settings.json" <<'J'
+{"enabledPlugins":{"alpha@forge":true,"beta@forge":true,"gamma@forge":false,"delta@forge":true}}
+J
+
+# The stub answers the one call doctor makes. alpha's figure carries a comma —
+# the real CLI prints `~28,321 tok` — so the sum below also pins the parsing.
+cstub="$WORK/cstub"; mkdir -p "$cstub"
+cat > "$cstub/claude" <<'SH'
+#!/bin/sh
+[ "$1" = plugin ] && [ "$2" = details ] || exit 1
+case "$3" in
+  alpha@forge) printf 'Projected token cost\n  Always-on:   ~1,234 tok   added to every session\n' ;;
+  beta@forge)  printf '  Always-on:   ~98 tok   added to every session\n' ;;
+  *) echo "no such plugin" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$cstub/claude"
+
+lout="$( cd "$C" && env PATH="$cstub:$PATH" HOME="$cfg3" CLAUDE_CONFIG_DIR="$cfg3" \
+         BIN_DIR="$cfg3/nobin" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"; lrc=$?
+check_rc "the composite total sums every priced plugin, commas stripped" \
+  "$(printf '%s' "$lout" | grep -q 'total ~1332 tok' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$lout" | grep 'total ~' | head -1)"
+check_rc "...a disabled entry is neither priced nor listed" \
+  "$(printf '%s' "$lout" | grep -q 'gamma@forge' && echo 1 || echo 0)"
+check_rc "...a plugin the CLI cannot price is named, not dropped" \
+  "$(printf '%s' "$lout" | grep -q 'no Always-on figure.*delta@forge' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$lout" | grep 'no Always-on' | head -1)"
+check_rc "...and the section is informational — the run still passes" \
+  "$([ "$lrc" -eq 0 ] && echo 0 || echo 1)" "got exit $lrc"
+
+# No enabled plugins at all is a note, not silence and not a failure.
+cfg3b="$WORK/cfg3b"; mkdir -p "$cfg3b/plugins/cache"
+printf '{"enabledPlugins":{}}\n' > "$cfg3b/settings.json"
+nout="$( cd "$C" && env PATH="$cstub:$PATH" HOME="$cfg3b" CLAUDE_CONFIG_DIR="$cfg3b" \
+         BIN_DIR="$cfg3b/nobin" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"
+check_rc "an empty enabledPlugins degrades to a note" \
+  "$(printf '%s' "$nout" | grep -q 'no enabled plugins recorded' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$nout" | grep -A1 'always-on context' | tail -1)"
+
+# Without the claude CLI the section skips with a note — built from wrappers so
+# the absence is real on a machine that has the CLI, and the case still runs on
+# one that does not. Resolved with `type -P`, not `command -v`: this library
+# defines jq as a CR-stripping shell function, and `command -v jq` answers with
+# the function — the same trap the hook verifiers already document.
+noclaude="$WORK/noclaude"; mkdir -p "$noclaude"
+for t in bash jq git awk grep sed tr head sort basename dirname ls cat mktemp uname; do
+  p="$(type -P "$t" 2>/dev/null)" || continue
+  case "$p" in /*) ;; *) continue ;; esac
+  printf '#!/bin/sh\nexec %s "$@"\n' "$p" > "$noclaude/$t"
+  chmod +x "$noclaude/$t"
+done
+mout="$( cd "$C" && env PATH="$noclaude" HOME="$cfg3" CLAUDE_CONFIG_DIR="$cfg3" \
+         BIN_DIR="$cfg3/nobin" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )"; mrc=$?
+check_rc "without the claude CLI the composite section skips with a note" \
+  "$(printf '%s' "$mout" | grep -q 'skipped — claude CLI not on PATH' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$mout" | grep -A1 'always-on context' | tail -1)"
+check_rc "...and skipping is not a failure" \
+  "$([ "$mrc" -eq 0 ] && echo 0 || echo 1)" "got exit $mrc"
+
 # --- 13. the jq bootstrap ----------------------------------------------------
 # jq is required by every guard and by harnessctl, and a machine without root
 # had no way through. What made it worth a verifier rather than a one-liner is

@@ -338,6 +338,47 @@ if [ "$CMD" = doctor ]; then
     fi
   fi
 
+  # What the whole room costs — not only our share. context-budget.sh gates a
+  # CI ceiling on what this harness ships, and that is the right scope for a
+  # gate: a consumer's third-party installs must not turn our CI red. But a
+  # session pays for every enabled plugin, whoever shipped it — measured
+  # 2026-08-13, two third-party installs pushed a session past the ceiling
+  # while the gate printed green (harness-gaps.md, same date). So doctor,
+  # which runs on the machine where the truth lives, reports the composite
+  # informationally and fails nothing. `claude plugin details` is the same
+  # instrument the SOT's cost table uses, so the numbers are comparable; the
+  # CLI is also what installed whatever the cache holds, so asking for it here
+  # asks for nothing the machine does not already have — still, degrade to a
+  # note rather than fail when it is absent.
+  say ""
+  say "always-on context (every enabled plugin — the CI ceiling gates only this harness's share):"
+  if [ -f "$USER_SETTINGS" ] && jq empty "$USER_SETTINGS" 2>/dev/null; then
+    if command -v claude >/dev/null 2>&1; then
+      comp_total=0; comp_unmeasured=""; comp_any=0
+      for spec in $(jq -r '(.enabledPlugins // {}) | to_entries[] | select(.value == true) | .key' "$USER_SETTINGS" 2>/dev/null); do
+        comp_any=1
+        tok="$(claude plugin details "$spec" 2>/dev/null | tr -d '\r' \
+               | sed -n 's/.*Always-on:[[:space:]]*~\{0,1\}\([0-9,][0-9,]*\)[[:space:]]*tok.*/\1/p' \
+               | head -1 | tr -d ',')"
+        case "$tok" in
+          ''|*[!0-9]*) comp_unmeasured="$comp_unmeasured $spec" ;;
+          *) say "  ok    $spec  ~$tok tok"
+             comp_total=$((comp_total + tok)) ;;
+        esac
+      done
+      if [ "$comp_any" -eq 0 ]; then
+        say "  --    no enabled plugins recorded in $USER_SETTINGS"
+      else
+        say "        total ~$comp_total tok added to every session on this machine"
+        [ -n "$comp_unmeasured" ] && say "  --    no Always-on figure from claude plugin details:$comp_unmeasured"
+      fi
+    else
+      say "  --    skipped — claude CLI not on PATH (it is the cost table's instrument)"
+    fi
+  else
+    say "  --    skipped — no readable settings.json at $USER_SETTINGS"
+  fi
+
   # The shims are written by install.sh, not by harnessctl, so uninstall does
   # not take them back either. They are harmless once the plugin is gone (each
   # prints an install hint and exits 1), but a complete removal includes them.
