@@ -217,7 +217,7 @@ Below is the basis for each row. **If you take one line: guards and conventions 
 
 `evals/incidents.sh` is a 65-case corpus written **independently of the verifiers** (drawn from the §2 accident table and from things that actually happen, without looking at the regexes). By category: attribution 5/5, protected 6/6, ghaccount 6/6, secret 10/11, bigfile 6/7. **The 2 misses and the 2 false positives are exactly the four `docs/hooks/*.md` already records as limits** — an independent corpus rediscovering the documentation, which is also evidence that the limits are described accurately.
 
-The raw arm being 0/0 is self-evident (no hooks, so nothing blocked and nothing blocking). The meaning is not in that contrast but in **the 8% price tag** — a guard that blocks 100% is switched off within a day, and its block rate is zero from then on.
+The raw arm being 0/0 is self-evident (no hooks, so nothing blocked and nothing blocking). The meaning is not in that contrast but in **the 7% price tag** — a guard that blocks 100% is switched off within a day, and its block rate is zero from then on.
 
 ### Conventions (`make bench-convention`)
 
