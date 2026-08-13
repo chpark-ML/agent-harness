@@ -1127,8 +1127,11 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 
 ## 2026-08-13 — `gh pr merge` 는 자동 승인인데 `git merge` 는 물어본다
 
-- **어디**: `plugins/harness-core/declarative/settings-fragment.json` —
-  `permissions.allow` 의 `Bash(gh pr:*)` 대 `permissions.ask` 의 `Bash(git merge:*)`
+- **어디**: `plugins/harness-core/declarative/settings-fragment.json:51`
+  (`permissions.allow` 의 `Bash(gh pr:*)`) 대 같은 파일 `:59`
+  (`permissions.ask` 의 `Bash(git merge:*)`). 배열이라 항목이 늘면 줄이 밀리므로
+  키 이름을 함께 남긴다 — 이 파일에 대한 앞선 두 항목(64행·308행)도 키로만
+  적었고, 줄 번호는 그때 자리를 가리키는 용도다.
 - **무슨 일**: 이번 세션에서 `gh pr merge 55 --squash --delete-branch` 가
   **프롬프트 없이 실행됐다.** `Bash(gh pr:*)` 가 allow 에 있어서 `gh pr view`·
   `gh pr create` 와 같은 취급을 받는다. 반면 로컬 `git merge` 는 ask 에 있다.
