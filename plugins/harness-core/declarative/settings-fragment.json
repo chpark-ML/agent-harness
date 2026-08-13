@@ -1,6 +1,7 @@
 {
   "scalars": {
-    "includeCoAuthoredBy": false
+    "includeCoAuthoredBy": false,
+    "terminalProgressBarEnabled": true
   },
   "permissions": {
     "allow": [
