@@ -1243,3 +1243,45 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   새 규약도, 열 분리도, 27행 손질도 필요 없다. 새 행을 기록하는 것과는 다른
   단위이므로 별도 PR — 2회차를 기다릴 이유는 없다.
 - **회차**: 1
+
+## 2026-08-14 — doctor composite 절이 프로젝트 스코프 enabledPlugins 를 안 센다
+
+- **어디**: `plugins/harness-core/bin/harnessctl` doctor 의 always-on 절 —
+  `USER_SETTINGS` 의 `enabledPlugins` 만 순회한다. 헤더는 "every enabled
+  plugin" 이라고 말한다.
+- **무슨 일**: PR #60 머지 리뷰에서 확인. 프로젝트 스코프로 enable 된
+  플러그인(이 머신의 `ponytail`·`headroom` 이 실제 사례 — 다른 저장소에
+  project 스코프로 설치돼 있다)은 그 프로젝트의 세션에 로드되는데 합산에서
+  빠진다. #60 이 §4 에서 고친 것과 같은 종류의 과잉 주장이 더 작은 규모로
+  새 코드에 들어갔다.
+- **왜 지금 안 고치나**: 1회차이고 비차단 — 정보성 출력이며 주 사례(user
+  스코프 설치)는 덮는다. 수정 방향은 둘: `--scope project` 일 때 프로젝트
+  `.claude/settings.json` 의 enabledPlugins 를 합치거나, 헤더를 "every
+  plugin enabled at user scope" 로 좁히거나. 전자가 맞아 보이지만 중복
+  항목(user 와 project 에 같은 spec)의 이중 계산을 결정해야 한다.
+- **회차**: 1
+
+## 2026-08-15 — pr-review 의 더러운 트리 대비책이 리뷰를 불필요하게 깎는다
+
+- **어디**: `plugins/harness-dev/skills/pr-review/SKILL.md:46` — *"When dirty,
+  do not check out. Work from `gh pr diff` and the base files, and **say in the
+  report that the surrounding context was not read**."*
+- **무슨 일**: PR #61 리뷰 중. 작업 트리에 커밋 안 된 `.claude/harness-gaps.md`
+  가 있어 이 절이 발동했는데, 스킬이 제시하는 선택지는 둘뿐이다 — 체크아웃
+  하거나, 주변 문맥을 못 읽었다고 실토하거나. **세 번째 길이 있다**:
+  `git worktree add <tmp> origin/<head>` 는 작업 트리를 건드리지 않으면서
+  전체 문맥 열람과 `make verify-all` 실행을 둘 다 준다. 이번엔 그렇게 했고,
+  그 덕분에 차단급 지적 두 건이 나왔다 — 하나는 `make verify-all` 을 PR head
+  에서 직접 돌려야 확인되는 것이었다. 스킬 문구를 그대로 따랐다면 "문맥 못
+  읽었음" 딱지가 붙은 반쪽 리뷰가 됐다.
+- **왜 사소하지 않은가**: Step 3 은 *"Do not review from the diff alone"* 이라고
+  선언해놓고, 바로 밑에서 흔한 상황(더러운 트리)에 대해 diff 만 보라고 한다.
+  스킬이 자기 원칙을 스스로 면제하는 셈이고, 면제 조건이 "커밋 안 한 파일이
+  하나라도 있으면" 이라 발동 빈도가 높다.
+- **왜 지금 안 고치나**: 1회차. 그리고 worktree 가 항상 옳지는 않다 — 디스크와
+  설정 초기화 비용이 있고, PR 브랜치가 이미 로컬에 있으면 불필요하다.
+- **후보 대책 (2회차 도달 시)**: :46 을 3단으로 바꾼다 — 깨끗하면 `gh pr
+  checkout`, 더러우면 `git worktree add` 로 분리된 트리, worktree 도 불가하면
+  그때 diff-only 로 내려가고 그 사실을 보고에 적는다. "문맥을 못 읽었다" 는
+  마지막 수단이지 더러운 트리의 기본값이 아니다.
+- **회차**: 1
