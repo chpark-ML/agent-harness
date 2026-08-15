@@ -1215,29 +1215,31 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   §4 의 "entire" 문구를 같은 PR 에서 좁힌다. 별도 PR 로 진행.
 - **회차**: 1 — 제안함
 
-## 2026-08-14 — §3b 의 Measured 열은 남의 수치와 우리 수치를 구분하지 않는다
+## 2026-08-14 — §3b 의 Measured 열에 귀속 없는 남의 수치가 2칸 있다
 
-- **어디**: `docs/agent-layer.md` §3b 표의 `Measured` 열, 그리고 그 열을
-  경고하는 머리말 — *"Most of it is empty, and that means not yet measured —
-  not no effect."*
+- **어디**: `docs/agent-layer.md` §3b 표의 `Measured` 열 — `ponytail` 행과
+  `codebase-memory-mcp` 행. 그리고 그 열을 경고하는 머리말 — *"Most of it is
+  empty, and that means not yet measured — not no effect."*
 - **무슨 일**: 후보 목록을 통째로 읽어 달라는 요청에 답하려고 열을 세어 보니,
-  채워진 16칸 중 절반 이상이 **남이 발표한 수치**였다. `ponytail` 의
-  LOC −54%, `codebase-memory-mcp` 의 0.83 vs 0.92, `CodeGraph` 의 −47%,
-  `headroom` 의 ~50% — 전부 우리가 잰 것이 아니다. 본문 문장은 *"Others
-  report"*, *"Their claim"* 으로 구분하고 있지만 **표만 훑으면 전부 우리
-  측정으로 읽힌다.**
+  채워진 16칸 중 **6칸**이 남이 발표한 수치였다 — `CodeGraph`, `ponytail`,
+  `codebase-memory-mcp`, `headroom`, `caveman`, `agentmemory`. 그런데 그중
+  **4칸은 이미 Measured 열 안에서 귀속돼 있다**: `Their claim:` 이 셀 첫머리에
+  붙거나(`headroom`, `caveman`, `agentmemory`) *"Others report"* 로 시작한다
+  (`CodeGraph`). 표기가 없는 것은 **`ponytail` 의 LOC −54% 와
+  `codebase-memory-mcp` 의 0.83 vs 0.92, 두 칸뿐이다.**
 - **왜 사소하지 않은가**: 머리말이 경고하는 것은 *빈 칸*(미측정)뿐이고,
-  **채워진 칸의 출처**는 아무도 경고하지 않는다. 이 표가 실제로 내리는 결정은
-  "무엇을 채택할까" 이고, `codebase-memory-mcp` 를 *top candidate* 로 만든
-  근거는 통째로 남의 31개 저장소 실험이다. 우리 저장소의 `ARTIFACTS.md` 가
-  요구하는 *모든 수치는 그것을 낳은 run 으로 추적된다* 를 §3b 자신은 지키지
-  않고 있는 셈이다.
-- **왜 지금 안 고치나**: 1회차. 그리고 이번 PR 이 문제를 **부분적으로만**
-  건드렸다 — 새로 넣은 3행에는 `Theirs, not ours` / `Not measured` 를 붙였으나
-  기존 16행은 그대로다. 표기가 있는 행과 없는 행이 섞였으므로, 지금 상태는
-  고치기 전보다 나은지도 확실하지 않다.
-- **후보 대책 (2회차 도달 시)**: 둘 중 하나. ⑴ Measured 칸의 접두를 규약화
-  (`ours:` / `theirs:`) 하고 전수 손질, ⑵ 열을 `Measured (ours)` 와
-  `Reported (theirs)` 로 분리. 어느 쪽이든 27행 전수 작업이라 별도 PR 이고,
-  `verify-check-total` 처럼 기계로 지킬 방법이 없다는 점도 같이 판단해야 한다.
+  **채워진 칸의 출처**는 아무도 경고하지 않는다. 그리고 하필 미귀속인 두 칸이
+  이 표가 실제로 내리는 결정 — "무엇을 채택할까" — 을 끌고 가는 두 칸이다.
+  `codebase-memory-mcp` 를 *top candidate* 로 만든 근거는 통째로 남의 31개
+  저장소 실험이고, `ponytail` 행은 §4b 가 베낄 설계로 지목한 근거다. 우리
+  저장소의 `ARTIFACTS.md` 가 요구하는 *모든 수치는 그것을 낳은 run 으로
+  추적된다* 를 §3b 자신이 이 두 칸에서 어기고 있다.
+- **최초 기록의 정정 (PR #61 리뷰, 2026-08-15)**: 이 항목은 원래 *"채워진 16칸
+  중 절반 이상"* 이 남의 수치이고 귀속 표기는 *"본문 문장"* 에만 있다고 적었다.
+  둘 다 틀렸다 — 실제로는 6칸이고, 표기는 본문이 아니라 **Measured 셀 안에**
+  있다. 개수를 3배로 잡은 탓에 대책이 "27행 전수 작업, 2회차 대기" 로 부풀었다.
+  머지되면 append-only 라 못 고치므로 머지 전에 정정한다.
+- **대책 (지금 가능)**: 두 칸에 표에 **이미 있는 관례**(`Their claim:`) 를 붙인다.
+  새 규약도, 열 분리도, 27행 손질도 필요 없다. 새 행을 기록하는 것과는 다른
+  단위이므로 별도 PR — 2회차를 기다릴 이유는 없다.
 - **회차**: 1
