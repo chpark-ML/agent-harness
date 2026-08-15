@@ -1243,3 +1243,20 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   새 규약도, 열 분리도, 27행 손질도 필요 없다. 새 행을 기록하는 것과는 다른
   단위이므로 별도 PR — 2회차를 기다릴 이유는 없다.
 - **회차**: 1
+
+## 2026-08-14 — doctor composite 절이 프로젝트 스코프 enabledPlugins 를 안 센다
+
+- **어디**: `plugins/harness-core/bin/harnessctl` doctor 의 always-on 절 —
+  `USER_SETTINGS` 의 `enabledPlugins` 만 순회한다. 헤더는 "every enabled
+  plugin" 이라고 말한다.
+- **무슨 일**: PR #60 머지 리뷰에서 확인. 프로젝트 스코프로 enable 된
+  플러그인(이 머신의 `ponytail`·`headroom` 이 실제 사례 — 다른 저장소에
+  project 스코프로 설치돼 있다)은 그 프로젝트의 세션에 로드되는데 합산에서
+  빠진다. #60 이 §4 에서 고친 것과 같은 종류의 과잉 주장이 더 작은 규모로
+  새 코드에 들어갔다.
+- **왜 지금 안 고치나**: 1회차이고 비차단 — 정보성 출력이며 주 사례(user
+  스코프 설치)는 덮는다. 수정 방향은 둘: `--scope project` 일 때 프로젝트
+  `.claude/settings.json` 의 enabledPlugins 를 합치거나, 헤더를 "every
+  plugin enabled at user scope" 로 좁히거나. 전자가 맞아 보이지만 중복
+  항목(user 와 project 에 같은 spec)의 이중 계산을 결정해야 한다.
+- **회차**: 1
