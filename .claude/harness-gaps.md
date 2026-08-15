@@ -1214,3 +1214,32 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   `harnessctl doctor` 에 설치된 *전체* 플러그인 합산을 정보성으로 추가하며,
   §4 의 "entire" 문구를 같은 PR 에서 좁힌다. 별도 PR 로 진행.
 - **회차**: 1 — 제안함
+
+## 2026-08-14 — §3b 의 Measured 열에 귀속 없는 남의 수치가 2칸 있다
+
+- **어디**: `docs/agent-layer.md` §3b 표의 `Measured` 열 — `ponytail` 행과
+  `codebase-memory-mcp` 행. 그리고 그 열을 경고하는 머리말 — *"Most of it is
+  empty, and that means not yet measured — not no effect."*
+- **무슨 일**: 후보 목록을 통째로 읽어 달라는 요청에 답하려고 열을 세어 보니,
+  채워진 16칸 중 **6칸**이 남이 발표한 수치였다 — `CodeGraph`, `ponytail`,
+  `codebase-memory-mcp`, `headroom`, `caveman`, `agentmemory`. 그런데 그중
+  **4칸은 이미 Measured 열 안에서 귀속돼 있다**: `Their claim:` 이 셀 첫머리에
+  붙거나(`headroom`, `caveman`, `agentmemory`) *"Others report"* 로 시작한다
+  (`CodeGraph`). 표기가 없는 것은 **`ponytail` 의 LOC −54% 와
+  `codebase-memory-mcp` 의 0.83 vs 0.92, 두 칸뿐이다.**
+- **왜 사소하지 않은가**: 머리말이 경고하는 것은 *빈 칸*(미측정)뿐이고,
+  **채워진 칸의 출처**는 아무도 경고하지 않는다. 그리고 하필 미귀속인 두 칸이
+  이 표가 실제로 내리는 결정 — "무엇을 채택할까" — 을 끌고 가는 두 칸이다.
+  `codebase-memory-mcp` 를 *top candidate* 로 만든 근거는 통째로 남의 31개
+  저장소 실험이고, `ponytail` 행은 §4b 가 베낄 설계로 지목한 근거다. 우리
+  저장소의 `ARTIFACTS.md` 가 요구하는 *모든 수치는 그것을 낳은 run 으로
+  추적된다* 를 §3b 자신이 이 두 칸에서 어기고 있다.
+- **최초 기록의 정정 (PR #61 리뷰, 2026-08-15)**: 이 항목은 원래 *"채워진 16칸
+  중 절반 이상"* 이 남의 수치이고 귀속 표기는 *"본문 문장"* 에만 있다고 적었다.
+  둘 다 틀렸다 — 실제로는 6칸이고, 표기는 본문이 아니라 **Measured 셀 안에**
+  있다. 개수를 3배로 잡은 탓에 대책이 "27행 전수 작업, 2회차 대기" 로 부풀었다.
+  머지되면 append-only 라 못 고치므로 머지 전에 정정한다.
+- **대책 (지금 가능)**: 두 칸에 표에 **이미 있는 관례**(`Their claim:`) 를 붙인다.
+  새 규약도, 열 분리도, 27행 손질도 필요 없다. 새 행을 기록하는 것과는 다른
+  단위이므로 별도 PR — 2회차를 기다릴 이유는 없다.
+- **회차**: 1
