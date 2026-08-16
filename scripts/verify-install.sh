@@ -764,6 +764,45 @@ check_rc "...and names what is still holding it" \
   "$(printf '%s' "$un_out" | grep -q 'harness-dev@agent-harness' && echo 0 || echo 1)" \
   "got: $un_out"
 
+# Regression, and the one that matters most. `set -o pipefail` carries
+# harnessctl's status out of step 2's pipeline, but nothing read it: a failed
+# `harnessctl uninstall` printed its error as ordinary indented output and the
+# run carried straight on to delete the plugins. That is unrecoverable — step 3
+# removes the cache harnessctl lives in, so the declarative half it had just
+# failed to revert can never be reverted afterwards. Reproduced before the fix.
+unfail="$shimroot/failcfg"
+mkdir -p "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin"
+: > "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/.in_use"
+: > "$unfail/harness-manifest.json"
+printf '#!/bin/sh\necho "could not write settings" >&2\nexit 1\n' \
+  > "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin/harnessctl"
+chmod +x "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin/harnessctl"
+# Records every uninstall it is asked for, so the assertion is about what the
+# script actually did rather than about what it printed.
+unlog="$shimroot/uninstall-calls.log"
+: > "$unlog"
+cat > "$unfake/claude-failcase" <<'FAKE'
+#!/bin/sh
+if [ "$1" = plugin ] && [ "$2" = list ] && [ "$3" = --json ]; then
+  echo '[{"id":"harness-core@agent-harness","scope":"user","enabled":true}]'; exit 0
+fi
+if [ "$1" = plugin ] && [ "$2" = uninstall ]; then echo "$3" >> "$UNLOG"; exit 0; fi
+exit 0
+FAKE
+unfailbin="$shimroot/failbin"; mkdir -p "$unfailbin"
+cp "$unfake/claude-failcase" "$unfailbin/claude"; chmod +x "$unfailbin/claude"
+un_out="$( cd "$probe_cwd" && env -i PATH="$unfailbin:$unjqdir:/usr/bin:/bin" \
+  HOME="$fakehome" CLAUDE_CONFIG_DIR="$unfail" BIN_DIR="$unbin" UNLOG="$unlog" \
+  "$BASH_BIN" "$UNINSTALL_SH" 2>&1 )"; rc=$?
+check_rc "uninstall.sh: a failed harnessctl uninstall stops the run" \
+  "$([ "$rc" -ne 0 ] && echo 0 || echo 1)" "rc=$rc, got: $un_out"
+check_rc "...before a single plugin is removed" \
+  "$([ -s "$unlog" ] && echo 1 || echo 0)" \
+  "plugins uninstalled anyway: $(cat "$unlog")"
+check_rc "...and says why stopping there is the point" \
+  "$(printf '%s' "$un_out" | grep -q 'delete the only' && echo 0 || echo 1)" \
+  "got: $un_out"
+
 # --- 13. doctor reports the plugin half -------------------------------------
 # harnessctl installs no plugins and removes none, so both commands used to say
 # nothing about them — except one hardcoded line naming harness-core, while a

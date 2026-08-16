@@ -73,6 +73,18 @@ run_quiet() {
   "$@" >/dev/null 2>&1
 }
 
+# The registered marketplace names, one per line. The bullet Claude Code prints
+# is multibyte, so skipping it with `.` matches under a UTF-8 locale and nothing
+# at all under C — the locale CI and a Windows console can both hand this
+# script. Measured: the `.` form returned zero rows under LC_ALL=C. One helper
+# rather than two call sites, because the first of them tested membership with
+# an unanchored grep and matched the "Source: GitHub (owner/agent-harness)"
+# line too — a marketplace pointing at a fork read as ours being registered.
+marketplace_names() {
+  claude plugin marketplace list 2>/dev/null \
+    | sed -n 's/^[^A-Za-z0-9]*\([A-Za-z0-9][A-Za-z0-9._-]*\)$/\1/p'
+}
+
 usage() {
   sed -n '2,8p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'
   cat <<'EOF'
@@ -129,7 +141,16 @@ echo
 # Before step 2 removes the cache it lives in. Same resolution install.sh uses:
 # newest non-orphaned version marked .in_use, then the marketplace clone, then
 # this checkout — so the script also works from a git clone with no install.
-CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+# Guarded, because `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` is still a $HOME read
+# under set -u — and BIN_DIR being set in the environment skips the check above,
+# so this line could reach the raw "HOME: unbound variable" that check exists to
+# replace. Same defect, one line further down.
+if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+  CFG="$CLAUDE_CONFIG_DIR"
+else
+  [ -n "${HOME:-}" ] || die "neither CLAUDE_CONFIG_DIR nor HOME is set, so the plugin cache cannot be found."
+  CFG="$HOME/.claude"
+fi
 HCTL=""
 _cands=""
 for d in "$CFG/plugins/cache/$MARKETPLACE_NAME/harness-core"/*/; do
@@ -172,6 +193,20 @@ if [ -z "$HCTL" ] || [ ! -f "$HCTL" ]; then
   warn "  harnessctl not found — skipping. Files it installed are left behind."
 elif [ -f "$MANIFEST" ]; then
   run bash "$HCTL" uninstall --scope "$SCOPE" ${PT_FLAG:+"$PT_FLAG"} 2>&1 | sed 's/^/    /'
+  # `set -o pipefail` already carries harnessctl's status out of that pipeline;
+  # until now nothing read it, so its error printed as ordinary indented output
+  # and the run carried on. That is the one failure this script's ordering
+  # exists to prevent: step 3 deletes the cache harnessctl lives in, so a
+  # declarative half that failed to revert can never be reverted afterwards.
+  # Half-removed is recoverable by re-running. Unrevertable is not.
+  hctl_rc=${PIPESTATUS[0]}
+  if [ "$hctl_rc" -ne 0 ]; then
+    warn "  harnessctl uninstall failed (exit $hctl_rc)."
+    warn "  Stopping before the plugin half: removing it now would delete the only"
+    warn "  tool that can revert what harnessctl has just failed to revert."
+    warn "  Fix the cause it named above and re-run — nothing else has been touched."
+    exit 1
+  fi
 else
   say "  no manifest at $MANIFEST — nothing to revert"
 fi
@@ -207,14 +242,21 @@ echo
 # Last of the Claude-side steps: removing the registration first would take the
 # marketplace clone that step 1's fallback resolves harnessctl through.
 say "marketplace"
-if claude plugin marketplace list 2>/dev/null | grep -q "$MARKETPLACE_NAME"; then
-  # Only when nothing of ours is left at the *other* scope — a project-scope
-  # install on the same machine still needs the registration to resolve. Asking
-  # about the other scope rather than about what survived step 3 is what makes
-  # --dry-run predict the real run instead of reporting the pre-run state.
-  LEFT="$(claude plugin list --json 2>/dev/null \
-    | jq -r --arg m "@$MARKETPLACE_NAME" --arg s "$SCOPE" \
-        '.[] | select(.id | endswith($m)) | select(.scope != $s) | .id' 2>/dev/null)"
+if marketplace_names | grep -qx "$MARKETPLACE_NAME"; then
+  # Removed only when nothing of ours still needs it. The two modes ask
+  # different questions on purpose. A dry run has removed nothing yet, so it has
+  # to *predict* — everything at this scope is about to go, and what remains is
+  # whatever sits at the other one. A real run can simply *look*, and looking is
+  # stricter: a plugin step 3 failed to remove is still installed at this scope,
+  # and it holds the registration open exactly as it should.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    LEFT="$(claude plugin list --json 2>/dev/null \
+      | jq -r --arg m "@$MARKETPLACE_NAME" --arg s "$SCOPE" \
+          '.[] | select(.id | endswith($m)) | select(.scope != $s) | .id' 2>/dev/null)"
+  else
+    LEFT="$(claude plugin list --json 2>/dev/null \
+      | jq -r --arg m "@$MARKETPLACE_NAME" '.[] | select(.id | endswith($m)) | .id' 2>/dev/null)"
+  fi
   if [ -n "$LEFT" ]; then
     say "  kept — still used by:"
     printf '%s\n' "$LEFT" | sed 's/^/    /'
@@ -281,12 +323,7 @@ if [ -n "$FOREIGN" ]; then
   left_any=1
 fi
 
-# Skip the bullet by character class, not by `.`. The bullet Claude Code prints
-# is multibyte, so `^  . name` matches under a UTF-8 locale and silently matches
-# nothing under C — which is the locale CI and a Windows console can both hand
-# this script. Measured: the `.` form returned zero rows under LC_ALL=C.
-FOREIGN_MKT="$(claude plugin marketplace list 2>/dev/null \
-  | sed -n 's/^[^A-Za-z0-9]*\([A-Za-z0-9][A-Za-z0-9._-]*\)$/\1/p' | grep -v "^$MARKETPLACE_NAME$")"
+FOREIGN_MKT="$(marketplace_names | grep -v "^$MARKETPLACE_NAME$")"
 if [ -n "$FOREIGN_MKT" ]; then
   say "  marketplaces this harness did not register:"
   printf '%s\n' "$FOREIGN_MKT" | sed 's/^/    /'
