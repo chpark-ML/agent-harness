@@ -1288,3 +1288,45 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   그때 diff-only 로 내려가고 그 사실을 보고에 적는다. "문맥을 못 읽었다" 는
   마지막 수단이지 더러운 트리의 기본값이 아니다.
 - **회차**: 1
+
+## 2026-08-15 — 이웃 플러그인의 깨진 훅을 하네스가 못 본다
+
+- **어디**: `plugins/harness-core/bin/harnessctl` doctor — guards 절은 *우리*
+  훅만 실제로 실행해 보고, plugins 절은 설치 여부와 버전만 본다. 등록된 훅의
+  **명령이 실제로 resolve 되는지** 는 아무도 안 본다.
+- **무슨 일**: Windows 세션에서 `headroom@headroom-marketplace` 가 enable 돼
+  있었다. 그 플러그인의 `hooks.json` 은 PreToolUse(matcher `Bash|PowerShell`)
+  에 `headroom init hook ensure` 를 맨 명령으로 등록하는데, 존재 확인 가드가
+  없다. CLI 가 PATH 에 없어서 **Bash 툴을 부를 때마다** 127 로 죽고
+  `headroom: command not found` 가 떴다. 사용자가 눈으로 알아채고 물어볼
+  때까지 아무것도 이걸 말해주지 않았다.
+- **왜 사소하지 않은가**: 이건 §3 훅 계약이 막으려는 바로 그 실패 —
+  *"A missing hook must not block work"* — 인데 계약은 **우리 훅에만** 걸린다.
+  이웃이 어기면 대가는 같은 세션이 치른다. 그리고 doctor 는 이미 서드파티
+  위생을 한 줄 말하고 있어서(*"registered marketplaces no enabled plugin
+  uses"*) 스코프 밖이라고 자르기도 애매하다.
+- **왜 지금 안 고치나**: 1회차. 고칠 방향이 자명하지 않다 — 남의 플러그인
+  훅을 doctor 가 검사하는 게 우리 일인지부터 결정 사항이고, 명령 resolve
+  검사는 셸과 OS 마다 답이 다르다(이번 사례가 정확히 Windows 였다).
+- **회차**: 1
+
+## 2026-08-16 — `install.sh` 는 HOME 없이 `--help` 조차 못 낸다
+
+- **어디**: `install.sh:33` — `BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"` 가
+  인자 루프보다 위에 있다. 그리고 `scripts/verify-install.sh` 의 `run_probe`
+  는 `env -i` 를 쓰지 않아 이 상태를 만들어 보지 않는다.
+- **무슨 일**: `uninstall.sh` 를 쓰면서 같은 줄을 그대로 베꼈고, 새 케이스를
+  `env -i PATH=...` 로 돌리자 바로 터졌다 — `set -u` 아래에서 HOME 이 없으면
+  `HOME: unbound variable` 로 죽고, **`--help` 도 못 나온다**. 컨테이너·cron·
+  systemd 유닛이 실제 사례다. `uninstall.sh` 쪽은 해결를 인자 루프 아래로
+  내리고 이름 붙은 에러를 주는 것으로 고쳤다.
+- **왜 사소하지 않은가**: `--help` 는 "아무것도 안 하는 경로" 라서 가장 척박한
+  환경에서 도는 것이 존재 이유다. 그리고 원인이 메시지에 안 나온다 — 사용자가
+  보는 것은 스크립트 33번째 줄의 변수 이름 하나다.
+- **왜 지금 안 고치나**: 1회차. 그리고 `install.sh` 수정은 이번 변경(제거
+  경로 추가)과 다른 단위다 — §6 이 구조 변경과 내용 추가를 나누라고 한다.
+- **후보 대책 (2회차 도달 시)**: `install.sh:33` 을 `uninstall.sh` 와 같은
+  모양으로 — 선언은 `BIN_DIR="${BIN_DIR:-}"`, 해결은 인자 루프 뒤에서 HOME 을
+  확인하고 이름 붙은 die. 그리고 `run_probe` 를 `env -i` 로 올려 이 성질이
+  회귀하지 않게 한다. 후자가 없으면 같은 줄이 다시 돌아온다.
+- **회차**: 1
