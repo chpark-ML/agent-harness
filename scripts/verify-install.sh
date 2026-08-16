@@ -588,6 +588,221 @@ check_rc "...and names the command that would fix it" \
   "$(printf '%s' "$shim_out" | grep -q 'claude plugin install harness-core' && echo 0 || echo 1)" \
   "got: $shim_out"
 
+# --- 12b. uninstall.sh -------------------------------------------------------
+# install.sh had no counterpart. `harnessctl uninstall` reverts the declarative
+# half from its manifest and then prints "The plugins are untouched", leaving
+# the plugin half, the marketplace registration and the shims as suggestions for
+# the user to copy. uninstall.sh runs all four in the one order that works —
+# harnessctl lives inside the plugin cache, so removing the plugins first
+# strands the declarative half with no tool left to revert it.
+#
+# What is pinned here is the boundary: what it takes, and what it must not.
+section "uninstall.sh"
+
+UNINSTALL_SH="$HARNESS/uninstall.sh"
+
+# The same header property install.sh is held to, for the same reason: a lost
+# `#` in the usage block is perfectly good bash and `bash -n` cannot see it.
+un_header_code="$(awk '/^set -uo pipefail/{exit} /^[[:space:]]*$/{next} /^[[:space:]]*#/{next} {print NR": "$0}' "$UNINSTALL_SH")"
+check_rc "uninstall.sh: nothing executable hides in the usage header" \
+  "$([ -z "$un_header_code" ] && echo 0 || echo 1)"
+[ -n "$un_header_code" ] && printf '        %s\n' "$un_header_code"
+
+# --help and the argument rejections run before the Claude CLI is looked for,
+# so they work on a machine that has never seen Claude Code — including CI.
+( env -i PATH="/usr/bin:/bin" "$BASH_BIN" "$UNINSTALL_SH" --help >/dev/null 2>&1 ); rc=$?
+check_rc "uninstall.sh: --help exits 0 without the Claude CLI" "$rc"
+( env -i PATH="/usr/bin:/bin" "$BASH_BIN" "$UNINSTALL_SH" --nope >/dev/null 2>&1 ); rc=$?
+check_rc "uninstall.sh: an unknown argument is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+( env -i PATH="/usr/bin:/bin" "$BASH_BIN" "$UNINSTALL_SH" --scope sideways >/dev/null 2>&1 ); rc=$?
+check_rc "uninstall.sh: an invalid scope is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+
+# The shims are written by one script and found by the other, on a marker
+# string that lives in both. Generating them with install.sh and removing them
+# with uninstall.sh is what stops the two copies drifting apart in silence — a
+# renamed marker would leave every shim behind and nothing would say so.
+unbin="$shimroot/unbin"
+unjqdir="$(dirname "$(type -P jq)")"
+( cd "$probe_cwd" && env -i PATH="$fakebin:$unjqdir:/usr/bin:/bin" HOME="$fakehome" \
+    CLAUDE_CONFIG_DIR="$altcfg" BIN_DIR="$unbin" SHELL=/bin/bash \
+    "$BASH_BIN" "$probe/install.sh" --scope user >/dev/null 2>&1 )
+check_rc "uninstall.sh: fixture — install.sh wrote a shim to remove" \
+  "$([ -x "$unbin/harnessctl" ] && echo 0 || echo 1)"
+
+# Two files that must survive, in the directory being swept. The jq is where
+# install.sh's own bootstrap puts one, and by now anything on the machine may
+# be using it; the lookalike is somebody else's executable that happens to sit
+# next to ours. Neither carries the marker, so neither may be touched — the
+# marker and not the directory is what decides.
+# A working jq, not a stub, and delegating rather than copied. uninstall.sh
+# prepends BIN_DIR to PATH exactly as install.sh does — that is how a
+# bootstrapped jq becomes usable — so whatever sits here under the name `jq` is
+# the jq the rest of the script then runs, and a stub made every `| jq` return
+# nothing. Copying the real one is worse and quieter: macOS ships jq at
+# /usr/bin, and a copy of a system binary loses its code-signing context and is
+# SIGKILLed (137) the moment it runs, so the pipelines went empty with no error
+# at all. Delegate, and it works wherever the real jq does.
+printf '#!/bin/sh\nexec %s "$@"\n' "$(type -P jq)" > "$unbin/jq"; chmod +x "$unbin/jq"
+printf '#!/bin/sh\necho not ours\n' > "$unbin/harnessctl-lookalike"; chmod +x "$unbin/harnessctl-lookalike"
+
+run_uninstall() { ( cd "$probe_cwd" && env -i PATH="$fakebin:$unjqdir:/usr/bin:/bin" \
+  HOME="$fakehome" CLAUDE_CONFIG_DIR="$altcfg" BIN_DIR="$unbin" SHELL=/bin/bash \
+  "$BASH_BIN" "$UNINSTALL_SH" "$@" 2>&1 ); }
+
+# --dry-run is the property the whole script rests on: every mutation goes
+# through one wrapper, so a step that forgot to check the flag would show up
+# here as a shim that vanished during a run that promised to write nothing.
+un_out="$(run_uninstall --dry-run)"
+check_rc "uninstall.sh: --dry-run leaves the shims in place" \
+  "$([ -x "$unbin/harnessctl" ] && echo 0 || echo 1)"
+check_rc "uninstall.sh: --dry-run says it wrote nothing" \
+  "$(printf '%s' "$un_out" | grep -q 'dry-run finished' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+# A missing manifest is an ordinary state — the plugin half installs without
+# `harnessctl init` ever running — and harnessctl dies on it. uninstall.sh has
+# three steps left at that point, so it must report and carry on, not abort.
+check_rc "uninstall.sh: a missing manifest is reported, not fatal" \
+  "$(printf '%s' "$un_out" | grep -q 'nothing to revert' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "...and the run still reaches the shim step" \
+  "$(printf '%s' "$un_out" | grep -q 'shell shims' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+un_out="$(run_uninstall)"
+check_rc "uninstall.sh: the shims install.sh wrote are removed" \
+  "$([ -e "$unbin/harnessctl" ] && echo 1 || echo 0)"
+check_rc "...every one of them, not just the first" \
+  "$([ -e "$unbin/harness-log" ] && echo 1 || echo 0)"
+check_rc "uninstall.sh: a bootstrapped jq in the same directory survives" \
+  "$([ -x "$unbin/jq" ] && echo 0 || echo 1)"
+check_rc "uninstall.sh: an executable without the marker survives" \
+  "$([ -x "$unbin/harnessctl-lookalike" ] && echo 0 || echo 1)"
+check_rc "uninstall.sh: the surviving jq is reported rather than removed" \
+  "$(printf '%s' "$un_out" | grep -q 'left in place' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+# With a manifest present the declarative branch is taken, and it has to reach
+# harnessctl *in the plugin cache* — the copy step 3 of install.sh resolves, not
+# a shim, which by this point in the run has already been deleted. The fixture
+# harnessctl announces its version, so its appearance in the output is proof the
+# right binary was invoked and not merely that the branch was entered.
+: > "$altcfg/harness-manifest.json"
+un_out="$(run_uninstall --dry-run)"
+check_rc "uninstall.sh: a present manifest reaches harnessctl in the cache" \
+  "$(printf '%s' "$un_out" | grep -q 'harnessctl uninstall --scope user' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "...the newest one, not a superseded copy" \
+  "$(printf '%s' "$un_out" | grep -q '1\.10\.0' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+# Regression. The plugin and marketplace steps were written as
+# `run cmd >/dev/null 2>&1`, which redirects the *wrapper's* own "would run"
+# line as well — so --dry-run went silent about the two steps it was being
+# asked to preview, and the marketplace step then reported "removed" for a
+# registration it had not touched. The fake above answers `plugin --help` and
+# nothing else, so neither step had anything to do and neither bug showed up.
+# This fake answers the three subcommands the steps actually read.
+unfake="$shimroot/unfakebin"
+mkdir -p "$unfake"
+cat > "$unfake/claude" <<'FAKE'
+#!/bin/sh
+if [ "$1" = plugin ] && [ "$2" = list ] && [ "$3" = --json ]; then
+  cat "$UNFAKE_JSON"; exit 0
+fi
+if [ "$1" = plugin ] && [ "$2" = marketplace ] && [ "$3" = list ]; then
+  printf 'Configured marketplaces:\n\n  \342\235\257 agent-harness\n    Source: GitHub (chpark-ML/agent-harness)\n\n  \342\235\257 headroom-marketplace\n    Source: GitHub (headroomlabs-ai/headroom)\n'
+  exit 0
+fi
+exit 0
+FAKE
+chmod +x "$unfake/claude"
+
+# Everything of ours at the scope being removed, so step 4 reaches its remove
+# branch. The foreign entry is what the report at the end must find.
+cat > "$shimroot/all-user.json" <<'J'
+[{"id":"harness-core@agent-harness","scope":"user","enabled":true},
+ {"id":"headroom@headroom-marketplace","scope":"project","enabled":false}]
+J
+un_out="$( cd "$probe_cwd" && env -i PATH="$unfake:$unjqdir:/usr/bin:/bin" \
+  HOME="$fakehome" CLAUDE_CONFIG_DIR="$altcfg" BIN_DIR="$unbin" \
+  UNFAKE_JSON="$shimroot/all-user.json" \
+  "$BASH_BIN" "$UNINSTALL_SH" --dry-run 2>&1 )"
+check_rc "uninstall.sh: --dry-run shows the plugin command it would run" \
+  "$(printf '%s' "$un_out" | grep -q 'would run: claude plugin uninstall harness-core@agent-harness' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "uninstall.sh: --dry-run shows the marketplace command it would run" \
+  "$(printf '%s' "$un_out" | grep -q 'would run: claude plugin marketplace remove agent-harness' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "uninstall.sh: --dry-run never claims the marketplace was removed" \
+  "$(printf '%s' "$un_out" | grep -qE '^==>   removed$' && echo 1 || echo 0)" \
+  "got: $un_out"
+# The bullet Claude Code prints is multibyte. Parsing it with `.` matched under
+# a UTF-8 locale and nothing at all under C, which is the locale CI and a
+# Windows console both hand this script — a silently empty report.
+check_rc "uninstall.sh: a foreign marketplace is reported under LC_ALL=C" \
+  "$(printf '%s' "$un_out" | grep -q 'headroom-marketplace' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "uninstall.sh: a foreign plugin is reported, not removed" \
+  "$(printf '%s' "$un_out" | grep -q 'headroom@headroom-marketplace' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+# The other side of step 4: something of ours still installed at the other
+# scope means the registration has to stay, or that install stops resolving.
+cat > "$shimroot/split-scope.json" <<'J'
+[{"id":"harness-core@agent-harness","scope":"user","enabled":true},
+ {"id":"harness-dev@agent-harness","scope":"project","enabled":true}]
+J
+un_out="$( cd "$probe_cwd" && env -i PATH="$unfake:$unjqdir:/usr/bin:/bin" \
+  HOME="$fakehome" CLAUDE_CONFIG_DIR="$altcfg" BIN_DIR="$unbin" \
+  UNFAKE_JSON="$shimroot/split-scope.json" \
+  "$BASH_BIN" "$UNINSTALL_SH" --dry-run 2>&1 )"
+check_rc "uninstall.sh: the marketplace is kept while another scope still uses it" \
+  "$(printf '%s' "$un_out" | grep -q 'kept — still used by' && echo 0 || echo 1)" \
+  "got: $un_out"
+check_rc "...and names what is still holding it" \
+  "$(printf '%s' "$un_out" | grep -q 'harness-dev@agent-harness' && echo 0 || echo 1)" \
+  "got: $un_out"
+
+# Regression, and the one that matters most. `set -o pipefail` carries
+# harnessctl's status out of step 2's pipeline, but nothing read it: a failed
+# `harnessctl uninstall` printed its error as ordinary indented output and the
+# run carried straight on to delete the plugins. That is unrecoverable — step 3
+# removes the cache harnessctl lives in, so the declarative half it had just
+# failed to revert can never be reverted afterwards. Reproduced before the fix.
+unfail="$shimroot/failcfg"
+mkdir -p "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin"
+: > "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/.in_use"
+: > "$unfail/harness-manifest.json"
+printf '#!/bin/sh\necho "could not write settings" >&2\nexit 1\n' \
+  > "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin/harnessctl"
+chmod +x "$unfail/plugins/cache/agent-harness/harness-core/1.0.0/bin/harnessctl"
+# Records every uninstall it is asked for, so the assertion is about what the
+# script actually did rather than about what it printed.
+unlog="$shimroot/uninstall-calls.log"
+: > "$unlog"
+cat > "$unfake/claude-failcase" <<'FAKE'
+#!/bin/sh
+if [ "$1" = plugin ] && [ "$2" = list ] && [ "$3" = --json ]; then
+  echo '[{"id":"harness-core@agent-harness","scope":"user","enabled":true}]'; exit 0
+fi
+if [ "$1" = plugin ] && [ "$2" = uninstall ]; then echo "$3" >> "$UNLOG"; exit 0; fi
+exit 0
+FAKE
+unfailbin="$shimroot/failbin"; mkdir -p "$unfailbin"
+cp "$unfake/claude-failcase" "$unfailbin/claude"; chmod +x "$unfailbin/claude"
+un_out="$( cd "$probe_cwd" && env -i PATH="$unfailbin:$unjqdir:/usr/bin:/bin" \
+  HOME="$fakehome" CLAUDE_CONFIG_DIR="$unfail" BIN_DIR="$unbin" UNLOG="$unlog" \
+  "$BASH_BIN" "$UNINSTALL_SH" 2>&1 )"; rc=$?
+check_rc "uninstall.sh: a failed harnessctl uninstall stops the run" \
+  "$([ "$rc" -ne 0 ] && echo 0 || echo 1)" "rc=$rc, got: $un_out"
+check_rc "...before a single plugin is removed" \
+  "$([ -s "$unlog" ] && echo 1 || echo 0)" \
+  "plugins uninstalled anyway: $(cat "$unlog")"
+check_rc "...and says why stopping there is the point" \
+  "$(printf '%s' "$un_out" | grep -q 'delete the only' && echo 0 || echo 1)" \
+  "got: $un_out"
+
 # --- 13. doctor reports the plugin half -------------------------------------
 # harnessctl installs no plugins and removes none, so both commands used to say
 # nothing about them — except one hardcoded line naming harness-core, while a
