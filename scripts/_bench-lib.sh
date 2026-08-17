@@ -87,15 +87,3 @@ bench_json_field() { # bench_json_field <json> <jq path> [default]
   v="$(printf '%s' "$1" | jq -r "$2 // empty" 2>/dev/null)"
   [ -n "$v" ] && printf '%s' "$v" || printf '%s' "${3:-0}"
 }
-
-# Prints one tab-separated record: cost, duration_ms, turns, in, out, cache_read.
-# Feed it the raw stdout of `claude -p --output-format json`.
-bench_metrics() { # bench_metrics <json>
-  printf '%s\t%s\t%s\t%s\t%s\t%s' \
-    "$(bench_json_field "$1" .total_cost_usd)" \
-    "$(bench_json_field "$1" .duration_ms)" \
-    "$(bench_json_field "$1" .num_turns)" \
-    "$(bench_json_field "$1" .usage.input_tokens)" \
-    "$(bench_json_field "$1" .usage.output_tokens)" \
-    "$(bench_json_field "$1" .usage.cache_read_input_tokens)"
-}
