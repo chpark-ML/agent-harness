@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-774-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-779-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 192 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 197 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -176,6 +176,24 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 **`--scope` 를 한 번은 생각하고 고른다.** 기본은 `user` (머신 전체) 인데, `dev`·`research` 의 **규칙 파일은 프로젝트 스코프에만 설치된다** — `~/.claude/rules` 는 읽히는 자리가 아니라서다. 두 프로파일을 제대로 쓰려면 작업 저장소에서 `--scope project` 로 한 번 더 설치한다.
 
 설치가 끝나면 **Claude Code 를 재시작**한다. 플러그인은 새 세션에서 로드된다.
+
+### 갱신
+
+설치기를 다시 돌리면 된다. 양쪽 절반을 제자리에서 갱신하고, `--ref` 고정은 유지된다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
+```
+
+플러그인 절반만 옮기려면 설치한 프로파일마다 한 번씩:
+
+```bash
+claude plugin update harness-core@agent-harness
+```
+
+**이 절이 생기기 전에 설치했다면 뒤처져 있을 가능성이 높다.** 설치기는 `claude plugin install` 만 불렀는데, 이 명령은 존재 확인이다 — 이미 설치된 플러그인에는 `is already installed` 를 찍고 버전을 비교하지 않은 채 0 으로 끝난다. 그래서 재실행은 marketplace 를 최신으로 옮기고 성공을 보고한 뒤 플러그인은 그대로 두었다. 실제로 marketplace 가 1.21.0 을 주는데 `harness-core` 가 1.13.0 에 머물러 있던 기계가 발견됐다 — 훅·스킬·검증기가 마이너 8개 뒤처진 상태였고, 그렇다고 말해주는 것이 아무것도 없었다. `claude plugin list` 를 이 저장소의 버전과 대조하면 자기 기계가 그런 상태인지 알 수 있다.
+
+**그다음 Claude Code 를 재시작한다.** 플러그인은 세션 시작에 로드되므로, 재시작 전까지는 새 버전이 디스크에만 있고 도는 것은 옛 버전이다.
 
 ### 옵션
 
@@ -420,7 +438,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **260** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
-| 설치기 왕복 | **192** assertion |
+| 설치기 왕복 | **197** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
 | 발표 수치 검사기 | **36** |
@@ -430,7 +448,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **63** 파일 + 자체 **19** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **774** |
+| **합계** | **779** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

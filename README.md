@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-774-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-779-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -121,6 +121,24 @@ You do not have to remember that. From the next session in an uninstalled projec
 
 Restart Claude Code when the installer finishes. Plugins load at session start.
 
+### Updating
+
+Re-run the installer. It updates both halves in place, and a `--ref` pin is respected.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
+```
+
+Or move the plugin half on its own — one command per profile you installed:
+
+```bash
+claude plugin update harness-core@agent-harness
+```
+
+**If you installed before this section existed, you are probably behind.** The installer used to run only `claude plugin install`, and that command is a presence check: on a plugin that is already installed it prints "is already installed" and exits 0 without comparing versions. So re-running it moved the marketplace to the latest, reported success, and left the plugins exactly where they were. One machine was found at `harness-core` 1.13.0 against a marketplace serving 1.21.0 — eight minor versions of hooks, skills and verifiers behind, with nothing saying so. Compare `claude plugin list` against the versions in this repository to see whether it happened to you.
+
+**Restart Claude Code afterwards.** Plugins load at session start, so until you do, the new version is on disk and the old one is still the one running.
+
 ### Verify and undo
 
 ```bash
@@ -152,7 +170,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 192 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 197 assertions hold that line.
 
 ### Requirements
 
@@ -210,7 +228,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 192 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 197 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -267,7 +285,7 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **260** |
 | session-log renderer | **46** |
-| installer round trip | **192** assertions |
+| installer round trip | **197** assertions |
 | context-budget gate | **14** |
 | inventory figures | **39** + selftest **7** |
 | slide claim checker | **36** |
@@ -277,7 +295,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **7** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **774** |
+| **Total** | **779** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
