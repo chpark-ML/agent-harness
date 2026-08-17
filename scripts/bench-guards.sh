@@ -64,7 +64,6 @@ USERCFG="$WORK/usercfg"; mkdir -p "$USERCFG"
 
 TOTAL_B=0; CAUGHT_B=0; TOTAL_A=0; TRIPPED_A=0
 MISSES=""; FALSEPOS=""
-declare_cat() { :; }
 CATS=""
 
 # Run the blocking guards the way Claude Code does: any exit 2 stops the call,
