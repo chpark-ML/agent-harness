@@ -66,7 +66,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
-| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, with Superpowers 14 on top |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 1, with Superpowers 14 on top |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
 | **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
@@ -160,7 +160,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 192 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 11 + selftest 7, plugin manifests 7, benchmark health 14, document references 61 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 771. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 192 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 12 + selftest 7, plugin manifests 7, benchmark health 14, document references 63 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 774. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
