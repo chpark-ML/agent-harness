@@ -52,17 +52,23 @@ Then wait for an explicit yes. **Per invocation** — an approval from earlier i
 
 If the user declines, that is a complete outcome: say the review did not happen and offer `requesting-code-review`.
 
-## Step 4 — Send it, with the two guards
+## Step 4 — Send it: the diff as a file, the instruction as text
 
-Compose one message: the intent from Step 2, then the diff, then what shape of answer you want (blocking versus non-blocking, `file:line` on everything).
+**Attach the diff. Do not put it in the composer.** Write the range to a `.diff` file — a header comment carrying the commit subjects, then `git diff` — and upload it to the composer's file input. Then type only the instruction: what the file is, and what shape of answer you want (blocking versus non-blocking, `file:line` on everything).
 
-Both guards below come from failures actually observed driving this UI on 2026-08-17. Neither is theoretical, and neither announces itself.
+Everything below was observed on the first real run, 2026-08-17. None of it announces itself.
 
-**Guard 1 — read the composer back before pressing Enter.** Typing `파리의 수도는?` produced `파리의수도는` in the box: the space and the `?` were dropped in IME composition. A prompt that loses characters gets you a confident review of a question you did not ask. Compare what is in the composer against what you meant to type, and retype if they differ.
+**Typing a diff does not work, and neither does pasting one.** 23 KB is not typeable, and a synthetic `cmd+v` did not paste at all — the keystroke reaches the page but carries no clipboard. The file input is the only path that worked. It is also the better one: the diff arrives intact rather than through a text editor that reflows it.
 
-**Guard 2 — poll until two consecutive reads agree.** Mid-stream, the page text returns a prefix that looks like a finished answer — `1,` where the model went on to write `1, 4, 9, 16, 25`. Two identical reads in a row, or a screenshot as the tiebreak. One read is how a truncated review gets reported as the whole review.
+**Guard 1 — poll the composer until it is stable, then compare, then press Enter.** Reading it once is not enough, because *the composer lags the same way the response does*. A screenshot taken right after the upload showed the box empty; the pasted content landed seconds later, so an instruction typed in between produced 23 KB of duplicate followed by the instruction. Read twice with a wait between, and only compare once two reads agree.
 
-**On size, say what is not known.** This path has only been exercised on short prompts. A large diff may hit the composer rather than the model, and where that ceiling sits has not been measured. Over roughly 800 changed lines, **do not truncate silently** — report the size and ask the user what to leave out. A review of a diff the reviewer never saw all of is worse than no review, because it reads like a clean bill.
+**Guard 2 — the first character of Korean text goes missing.** Typing `파리의 수도는?` produced `파리의수도는`; a second attempt lost the leading `R` of an English sentence. Both times the loss was silent. Type a leading space, and compare the composer against what you meant to send before Enter — a prompt that loses characters buys a confident answer to a question nobody asked.
+
+**Guard 3 — poll the response until two consecutive reads agree, and treat an ending mid-structure as unfinished.** The page text returns prefixes that read as finished answers: `1,` where the model went on to write `1, 4, 9, 16, 25`, and — on the real run — a review that stopped at the words `Non-blocking findings` with the findings still to come. Two identical reads were not enough there; both landed inside the same stall. **When the text ends on a heading or a colon, take a screenshot before believing it.** Reporting "no findings" from a truncated read is the worst outcome this skill has, because it reads exactly like good news.
+
+**On size.** The attachment path has been exercised at 23 KB / 273 changed lines, and no ceiling was found there. Where one sits is still unmeasured. **Never truncate to fit** — report the size and ask what to leave out. A review of a diff the reviewer never saw all of reads like a clean bill.
+
+**Say what the diff cannot show.** A claim like "nothing calls this function" rests on evidence outside the range, and the reviewer has no way to check it — on the first run ChatGPT correctly refused to confirm exactly that. Either include the evidence, or tell the reviewer which claims they are being asked to take on trust.
 
 ## Step 5 — Report, with your own verdict on each finding
 
@@ -79,6 +85,8 @@ Bring back what the other model said, and then **judge it**. An unevaluated seco
 
 Cross-model review has a specific failure mode: **the outside model does not know this repository's rules**, so it will confidently suggest things our conventions forbid. Flag those rather than passing them through. Say plainly which findings you could not verify.
 
+**A scope note is a finding.** When the reviewer says which claims it could not check from the diff alone, that is more useful than most of the list above it, and it goes in the report rather than being dropped as preamble.
+
 ## Step 6 — Clean up
 
 Close the tab you opened. Tell the user the conversation stays in their ChatGPT history — the tab closing does not delete it.
@@ -86,6 +94,7 @@ Close the tab you opened. Tell the user the conversation stays in their ChatGPT 
 ## What this skill does not do
 
 - Send anything before Step 3's explicit yes.
+- Put the diff in the composer. It goes in as a file.
 - Fall back to a Claude review when the channel is down. Say it is down.
 - Log in, solve a bot check, or enter a credential.
 - Truncate a diff to make it fit.
