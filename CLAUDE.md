@@ -51,6 +51,8 @@ The `<name>` has to match in all four places or the audit cannot run mechanicall
 
 **The version bump is not optional.** The manifest states a `version`, so committing alone delivers nothing to users — Claude Code sees the same version string and keeps its cache. We accept that constraint in order to use `claude plugin validate --strict` as a CI gate (an unspecified `version` turns from a warning into a failure under strict).
 
+**But the bump is necessary, not sufficient — it does not reach anyone by itself.** `claude plugin install` is a presence check: on a plugin that is already installed it exits 0 without comparing versions, so the documented install command delivered a bumped version to new machines only. Returning users needed `claude plugin update`, which nothing told them to run. `install.sh` now issues it (`verify-install.sh` §12a holds that), and the README has an Updating section. When judging whether a change has shipped, the question is whether an *installed* machine moved, not whether the manifest did.
+
 ## 2b. A new skill is a bundle too
 
 For the same reason hooks owe a verifier, skills owe a **trigger eval**. A description's triggers and its negative routing are claims about behaviour, and an unmeasured claim is just a claim.

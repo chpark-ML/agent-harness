@@ -208,10 +208,25 @@ else
 fi
 
 # ---- 2. plugins ---------------------------------------------------------------
+# `plugin install` is a presence check, not a version check: on a plugin that is
+# already installed it prints "is already installed" and exits 0 without looking
+# at the version. Step 1 just moved the marketplace to the latest, so install
+# alone would leave a returning machine advertising new versions while running
+# whichever ones arrived first — measured once at harness-core 1.13.0 against a
+# marketplace serving 1.21.0. `plugin update` is the only command that advances
+# it, and it resolves "latest" from the marketplace, so a --ref pin is respected
+# rather than broken (measured: pinned to v0.2.0 it answers "already at the
+# latest version (1.11.0)").
 for p in $PROFILE_LIST; do
   say "plugin: harness-$p (scope: $SCOPE)"
   out="$(claude plugin install "harness-$p@$MARKETPLACE_NAME" --scope "$SCOPE" 2>&1)"
   if [ $? -ne 0 ]; then printf '%s\n' "$out" >&2; die "could not install harness-$p"; fi
+  case "$out" in
+    *"already installed"*)
+      out="$(claude plugin update "harness-$p@$MARKETPLACE_NAME" --scope "$SCOPE" 2>&1)"
+      if [ $? -ne 0 ]; then printf '%s\n' "$out" >&2; die "could not update harness-$p"; fi
+      ;;
+  esac
   printf '%s\n' "$out" | sed 's/^/    /' | tail -2
 done
 

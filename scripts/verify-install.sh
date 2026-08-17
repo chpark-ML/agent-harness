@@ -588,6 +588,84 @@ check_rc "...and names the command that would fix it" \
   "$(printf '%s' "$shim_out" | grep -q 'claude plugin install harness-core' && echo 0 || echo 1)" \
   "got: $shim_out"
 
+# --- 12a. the plugin upgrade path --------------------------------------------
+# `claude plugin install` is a presence check: on an already-installed plugin it
+# prints "is already installed" and exits 0 without comparing versions. So the
+# installer's step 1 moved the marketplace to the latest while step 2 left the
+# plugins where they were, and re-running the documented install command updated
+# nothing. Found in the field at harness-core 1.13.0 against a marketplace
+# serving 1.21.0 — eight minor versions of hooks, skills and verifiers, with no
+# warning anywhere.
+#
+# Section 3's idempotence cases assert the opposite property ("re-install changes
+# nothing on disk") and are right to: that is the declarative half, where a
+# re-run must not churn a consumer's settings.json. The plugin half is the one
+# place where a re-run is *supposed* to change something, and nothing looked at
+# it. These cases are that.
+#
+# The fake claude logs its argv, so the assertion is on the command the installer
+# actually issued rather than on anything it printed.
+section "plugin upgrade path"
+
+upg="$WORK/upgrade"
+mkdir -p "$upg"
+# $1 selects the plugin-install reply, $2 the plugin-update exit code. env -i
+# clears the environment, so the log path is baked in rather than exported.
+mk_fake_claude() {
+  mkdir -p "$2"
+  cat > "$2/claude" <<FAKE
+#!/bin/sh
+printf '%s\n' "\$*" >> "$3"
+case "\$1 \$2" in
+  'plugin install') echo '$1'; exit 0 ;;
+  'plugin update')  exit $4 ;;
+esac
+exit 0
+FAKE
+  chmod +x "$2/claude"
+}
+
+run_upgrade_probe() {  # $1 = fakebin dir
+  ( cd "$probe_cwd" && env -i PATH="$1:/usr/bin:/bin" HOME="$upg/home" \
+      CLAUDE_CONFIG_DIR="$upg/cfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
+      "$BASH_BIN" "$probe/install.sh" --profile core --scope user 2>&1 )
+}
+
+# Case 1 — already installed: the installer must follow up with an update.
+log_a="$upg/a.log"; : > "$log_a"
+mk_fake_claude '✔ Plugin "harness-core@agent-harness" is already installed (scope: user)' \
+               "$upg/bin-a" "$log_a" 0
+run_upgrade_probe "$upg/bin-a" >/dev/null 2>&1
+check_rc "an already-installed plugin is followed by plugin update" \
+  "$(grep -q 'plugin update harness-core@agent-harness' "$log_a" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_a")"
+check_rc "...at the scope the install ran at" \
+  "$(grep -q 'plugin update harness-core@agent-harness --scope user' "$log_a" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_a")"
+
+# Case 2 — the boundary, and the one that earns its keep. A first install must
+# NOT be chased with an update: that would prove only that an unconditional call
+# was added, which is a different change with a different failure mode.
+log_b="$upg/b.log"; : > "$log_b"
+mk_fake_claude '✔ Successfully installed plugin: harness-core@agent-harness (scope: user)' \
+               "$upg/bin-b" "$log_b" 0
+run_upgrade_probe "$upg/bin-b" >/dev/null 2>&1
+check_rc "a fresh install is not chased with an update" \
+  "$(grep -q 'plugin update' "$log_b" && echo 1 || echo 0)" \
+  "issued: $(tr '\n' '|' < "$log_b")"
+
+# Case 3 — a failing update must stop the run. Reporting a successful install
+# over a plugin half that did not move is the bug this section exists to catch,
+# so the failure has to be loud.
+log_c="$upg/c.log"; : > "$log_c"
+mk_fake_claude '✔ Plugin "harness-core@agent-harness" is already installed (scope: user)' \
+               "$upg/bin-c" "$log_c" 1
+upg_out="$(run_upgrade_probe "$upg/bin-c")"; rc=$?
+check_rc "a failing update aborts the install" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+check_rc "...and the message names the plugin that failed" \
+  "$(printf '%s' "$upg_out" | grep -q 'could not update harness-core' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$upg_out" | tail -3)"
+
 # --- 12b. uninstall.sh -------------------------------------------------------
 # install.sh had no counterpart. `harnessctl uninstall` reverts the declarative
 # half from its manifest and then prints "The plugins are untouched", leaving
