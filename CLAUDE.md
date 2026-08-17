@@ -43,8 +43,11 @@ Miss one and it is unfinished. The [`harness-reviewer`](.claude/agents/harness-r
 4. Registration in `plugins/harness-core/hooks/hooks.json` (anchored on `${CLAUDE_PLUGIN_ROOT}`)
 5. `docs/agent-layer.md` updated
 6. `version` bumped in `plugins/harness-core/.claude-plugin/plugin.json`
+7. **Blocking hooks only** — cases in `evals/incidents.sh`, written from the §2 accident table without looking at the hook's regexes
 
 The `<name>` has to match in all four places or the audit cannot run mechanically.
+
+**Item 7 is what the verifier cannot do.** `verify-<name>.sh` scores the hook against cases drawn from its own patterns, so on its own it measures what we built rather than what we meant to stop. `gh-account-guard` shipped with a full verifier and no corpus cases at all, and the published catch rate then described four blocking hooks while reading as if it described five.
 
 **The version bump is not optional.** The manifest states a `version`, so committing alone delivers nothing to users — Claude Code sees the same version string and keeps its cache. We accept that constraint in order to use `claude plugin validate --strict` as a CI gate (an unspecified `version` turns from a warning into a failure under strict).
 
@@ -55,7 +58,11 @@ For the same reason hooks owe a verifier, skills owe a **trigger eval**. A descr
 1. `plugins/harness-<profile>/skills/<name>/SKILL.md` — the description **must be quoted** (§4)
 2. `evals/trigger/<name>.json` — 6 positive, 6 negative. **The negatives matter more**: put in the near-misses that should reach a neighbouring skill.
 3. Measure with `make bench-trigger` and put the result in the §4b table of `docs/agent-layer.md`
-4. Bump that plugin's `version`
+4. An entry in the §3 inventory of `docs/agent-layer.md` — the skills row counts per profile
+5. **Run the body once, end to end, before merging.** Any commit range will do
+6. Bump that plugin's `version`
+
+**Item 5 is the one the trigger eval cannot cover.** `bench-trigger` measures whether the skill *fires*; nothing measures whether its procedure *runs*. A hook has `verify-<name>.sh` and an executable has its own verifier — a skill body is prose, and prose is not executed by anything. `cross-model-review` merged at 12/12 with three defects in its Step 4, and one real run found all three: a transport that did not exist, a guard that read the page once when the page lags, and a stability test that both reads passed while the answer was still truncated.
 
 **A negative case asks "did the work go where we wrote that it would", not "did our skill stay quiet".** `bench-trigger` records which skill was actually called, so you can check whether it reached the neighbour the negative routing named. If it reached nothing at all, that is a different result and it is fixed differently.
 
@@ -71,6 +78,15 @@ Different from a hook in two places, which is why it needs its own list.
 4. **A shim in `install.sh`**, not a `hooks.json` entry. A plugin's `bin/` reaches the Bash tool's PATH but **not the user's terminal**, so an executable with no shim ships with a documented command that does not exist. The shim loop globs `bin/`; do not add a name to it.
 5. `docs/agent-layer.md` updated
 6. `version` bumped
+
+## 2d. And every bundle moves the published numbers
+
+The three lists above say what to write. This says what writing it breaks, and it applies to all of them — the counts in the documents are derived from the tree, so adding a file changes them.
+
+- **The check total.** A new `SKILL.md` is +3 on its own: `verify-doc-refs` scans it twice (once as a document, once as an instruction file) and `verify-frontmatter` once. `make verify-all` fails until the five published copies agree, so this one announces itself — but budget the commit.
+- **The always-on worst case.** Only CI can measure it. `context-budget` reads the *installed* plugin, and a developer machine has the released version from GitHub, not the tree — it will say `measuring the OLD one` and refuse to gate. So **the first CI run on the PR produces the real number, and a second commit republishes it** in `README.md`, `README.ko.md`, `docs/agent-layer.md` and the `Makefile`. Plan for the round trip rather than discovering it.
+
+Do not hand-edit either figure to what you expect. Both are generated, and the last time one was typed it was wrong by 3.6×.
 
 ## 3. The hook contract
 

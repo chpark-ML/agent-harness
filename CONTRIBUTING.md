@@ -47,7 +47,7 @@ An empty ledger is not evidence that there are no gaps. It usually means nobody 
 
 ### A hook
 
-Six artefacts, and the same `<name>` in four of them so the audit is mechanical:
+Seven artefacts, and the same `<name>` in four of them so the audit is mechanical:
 
 1. `plugins/harness-core/hooks/<name>.sh`
 2. `plugins/harness-core/scripts/verify-<name>.sh` — 8+ cases
@@ -55,6 +55,9 @@ Six artefacts, and the same `<name>` in four of them so the audit is mechanical:
 4. registration in `plugins/harness-core/hooks/hooks.json`, anchored on `${CLAUDE_PLUGIN_ROOT}`
 5. an entry in `docs/agent-layer.md`
 6. a `version` bump in the plugin manifest
+7. blocking hooks only — cases in `evals/incidents.sh`, written from the accident table without reading the hook's regexes
+
+The verifier scores a hook against cases drawn from its own patterns, so alone it measures what we built rather than what we meant to stop. That is what item 7 is for: `gh-account-guard` shipped with a full verifier and no corpus cases at all.
 
 **The version bump is not optional.** Manifests pin a version, so a commit alone does not reach users — Claude Code keeps the cached copy when the version string has not moved.
 
@@ -65,7 +68,11 @@ Same idea, with the verifier replaced by a measurement:
 1. `plugins/harness-<profile>/skills/<name>/SKILL.md` — the description **must be quoted** (see below)
 2. `evals/trigger/<name>.json` — 6 positive, 6 negative. **The negatives matter more**: use near-misses that should route to a neighbouring skill
 3. `make bench-trigger`, with the numbers recorded in `docs/agent-layer.md` §4b
-4. a `version` bump
+4. an entry in the `docs/agent-layer.md` §3 inventory — the skills row counts per profile
+5. **one end-to-end run of the body before merging**, against any commit range
+6. a `version` bump
+
+Step 5 covers what the eval cannot. `bench-trigger` measures whether a skill *fires*, never whether its procedure *runs* — a hook has a verifier and an executable has one, and a skill body is prose that nothing executes. `cross-model-review` merged at 12/12 carrying three defects in one step, and a single real run found all three.
 
 A negative case asks *"did the work go where we said it would"*, not *"did our skill stay quiet"*. `bench-trigger` records which skill was actually invoked, so routing to the named neighbour is a pass and routing nowhere is a different result with a different fix.
 
@@ -82,6 +89,16 @@ A negative case asks *"did the work go where we said it would"*, not *"did our s
 | self-evident | neither | `verify-frontmatter`'s checks (its reporting path earned 4 of its own) |
 
 **A line that runs in only one of the environments a verifier meets is unverified.** `verify-check-total` carried a branch that only runs without the Claude CLI, was written on a machine that has one, and broke the first time CI ran it.
+
+### Whatever you added, it moved the published numbers
+
+The counts in the documents are derived from the tree, so a new file changes them. Two of them, every time.
+
+The **check total** goes up — a new `SKILL.md` is +3 on its own, because `verify-doc-refs` scans it twice and `verify-frontmatter` once. `make verify-all` fails until the five published copies agree, so this one announces itself.
+
+The **always-on worst case** does not announce itself, and only CI can measure it. `context-budget` reads the *installed* plugin, and a developer machine has the released version rather than the tree — it prints `measuring the OLD one` and refuses to gate. The first CI run on the PR produces the real figure, and republishing it in `README.md`, `README.ko.md`, `docs/agent-layer.md` and the `Makefile` is a second commit. Plan the round trip instead of discovering it.
+
+Do not type either number to what you expect it to be. Both are generated, and §"Context budget" below records the time one was typed and came out 3.6× wrong.
 
 ---
 
