@@ -281,7 +281,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 | **2. Simplicity First** | 문제를 푸는 최소 코드. 200줄인데 50줄로 되면 다시 쓴다 |
 | **3. Surgical Changes** | 바뀐 줄 전부가 요청으로 추적돼야 한다. 남의 죽은 코드는 말만 하고 둔다 |
 | **4. Goal-Driven Execution** | 성공 기준을 정하고 실제로 돌려서 확인한다. "될 것이다" 는 검증이 아니다 |
-| **5. Surface Harness Gaps** | 하네스가 틀렸으면 우회하지 말고 드러낸다. **2회 이상 발생** 해야 제안하고, 그 횟수는 원장에 센다 |
+| **5. Surface Harness Gaps** | 하네스가 틀렸으면 우회하지 말고 드러낸다. **2회 이상 발생** 해야 제안하고, 그 횟수는 발생 기록 파일에 센다 |
 
 ### 작업 규약
 
@@ -388,7 +388,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 | `pyright-lsp` · `typescript-lsp` | **의존** | 상시 비용 0. 효과는 **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
 | [`harness-100`](https://github.com/revfactory/harness-100) 100벌 | **의존, 흡수 안 함** | 우리 자리를 하나도 안 뺏는다 (음성 **6/6**). 담으면 6도메인 ≈ 35k tok |
 | `slides-grab` (npm) | **외부 도구** | 렌더링은 이미 풀린 문제. `results-deck` 은 그 **입력** 을 만든다 |
-| `karpathy-guidelines` (MIT) · `task-observer` (CC BY 4.0) | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 와 §5 의 원장이 이것이다. 출처는 Credits 에 |
+| `karpathy-guidelines` (MIT) · `task-observer` (CC BY 4.0) | **설치 안 함, 본문 흡수** | 우리 `CLAUDE.md` §1–4 와 §5 의 발생 기록 방식이 이것이다. 출처는 Credits 에 |
 | `caveman` · `claude-mem` · `omniroute` · `ui-ux-pro-max` · `handoff` | **기각 · 보류** | 훅 계약 충돌 · 시크릿 확인 미완 · 보안 결정 · 발생 0회 |
 
 ### 우리가 직접 만든 것 — 남이 안 만든 자리만
@@ -462,9 +462,9 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 #### 계측기를 여섯 번 틀렸다
 
-측정보다 이쪽이 값졌을지 모른다. 여섯 번 모두 화면에는 **"0.0 / 실패" 로 똑같이 보였고**, 전부 하네스를 부당하게 나쁘게 보이게 했다 — 읽기 전용 과제라 기제가 발동 못 함 · 타임아웃이 미트리거와 구분 안 됨 · 이미 설치된 스킬은 대역으로 못 잼 · 첫 도구 호출만 봄 · 픽스처에 규칙이 없었음 · 과제가 규칙의 예외 조항에 걸림.
+측정보다 이쪽이 값졌을지 모른다. 여섯 번 모두 화면에는 **"0.0 / 실패" 로 똑같이 보였고**, 전부 하네스를 부당하게 나쁘게 보이게 했다 — 읽기 전용 과제라 검사 대상이 발동 못 함 · 타임아웃이 미트리거와 구분 안 됨 · 이미 설치된 스킬은 대역으로 못 잼 · 첫 도구 호출만 봄 · 픽스처에 규칙이 없었음 · 과제가 규칙의 예외 조항에 걸림.
 
-**규칙: 음성 결과를 얻으면 결론 내기 전에 기제가 발동할 조건이 갖춰졌는지부터 확인한다.** 그리고 **쿼리당 1회는 측정이 아니다.**
+**규칙: 음성 결과를 얻으면 결론 내기 전에 재려던 장치가 발동할 조건이 갖춰졌는지부터 확인한다.** 그리고 **쿼리당 1회는 측정이 아니다.**
 
 여섯 건 전부와 방법·표본·한계는 [`docs/agent-layer.md` §4b](docs/agent-layer.md) 에 표로 있다.
 
@@ -493,7 +493,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 외부 저작물에서 가져온 것 둘, 출처와 라이선스를 밝힌다.
 
 - **`CLAUDE.md` §1–§4** — MIT 라이선스 [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) 를 거의 그대로 옮겼다. Andrej Karpathy 의 LLM 코딩 함정 관찰에서 나온 것이다. §5 만 우리 것이다.
-- **`CLAUDE.md` §5 의 원장(ledger) 기제** — CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) 에서 가져왔다. "적는 행위가 곧 집행" 이라는 논지가 그쪽 것이다.
+- **`CLAUDE.md` §5 의 발생 기록(ledger) 방식** — CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) 에서 가져왔다. "적는 행위가 곧 집행" 이라는 논지가 그쪽 것이다.
 
 의존으로 들이는 것은 [`superpowers`](https://github.com/obra/superpowers) 와 공식 마켓플레이스의 LSP 플러그인들이고, 각자의 라이선스를 따른다.
 
