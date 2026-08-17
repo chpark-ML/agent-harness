@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-771-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-774-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -173,14 +173,14 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | |
 | **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | |
-| **Our skills** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
+| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
 | **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | |
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | language server (LSP) |
 | **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,085 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227). The estimator varies by environment: the same checkout measures ~7,934 on a macOS workstation under the identical version, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,211 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227). The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -271,13 +271,13 @@ make context-budget          # always-on token cost per scope and profile
 | context-budget gate | **14** |
 | inventory figures | **39** + selftest **7** |
 | slide claim checker | **36** |
-| document references | **61** files + **19** own cases |
+| document references | **63** files + **19** own cases |
 | documented commands exist | **45** + selftest **12** |
-| frontmatter | **11** + selftest **7** |
+| frontmatter | **12** + selftest **7** |
 | plugin and marketplace manifests | **7** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **771** |
+| **Total** | **774** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

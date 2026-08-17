@@ -66,7 +66,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
-| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 1 + research 2 + slides 1, with Superpowers 14 on top |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 1, with Superpowers 14 on top |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
 | **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
@@ -160,7 +160,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 192 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 11 + selftest 7, plugin manifests 7, benchmark health 14, document references 61 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 771. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 192 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 12 + selftest 7, plugin manifests 7, benchmark health 14, document references 63 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 774. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -178,7 +178,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `harness-dev` + `superpowers` | ~240 + ~688 | `dev` |
 | `harness-research` | ~480 | `research` |
 | `harness-slides` | ~446 | `slides` |
-| **worst case** (project, every profile) | **~7,085 tok / session** (CI; ~7,934 on macOS — the estimator varies) | ceiling 9,000, enforced in CI |
+| **worst case** (project, every profile) | **~7,211 tok / session** (CI; ~7,934 on macOS before `cross-model-review` — the estimator varies) | ceiling 9,000, enforced in CI |
 | Every profile at user scope | ~3,919 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
@@ -268,6 +268,12 @@ A description's English and Korean triggers and its negative routing were both c
 Only `results-deck` started at 4/6, and both misses were *development-side reporting* — the Korean triggers leaned research-side. After strengthening them, the pairwise comparison went 12/18 → 14/18, **2 improved, 0 worsened**. Sign test *p* = 0.25, not significant, so what is claimed is the absence of a regression, not an effect size.
 
 **We also saw someone else's skill decline.** "Merge this PR and clean up the branch" is `superpowers:finishing-a-development-branch`'s seat, and all three runs went to `Bash`. Our routing is clean but the delegate does not always accept, which is the concrete instance of ADR-0009's "our routing discipline now depends on somebody else's repository".
+
+> *Added 2026-08-17*: `cross-model-review` measured on the same instrument at 3 runs — **12/12**, pass@1 1.00, pass^3 1.00, spread 0.00. This is a separate measurement with its own date and its own room, not an edit to the 59/60 above. **The claim under test was sharper than for the other five**: this skill's input is *the same commit range* `superpowers:requesting-code-review` takes, so ADR-0009's dividing line has no lifecycle stage to cut on and the boundary had to be *who reviews* instead. The negatives reached the seats the description names — `requesting-code-review`, `pr-review`, `pr-create`, `receiving-code-review` — so a prompt that does not name another model does not arrive here.
+>
+> **It could not be measured the way the other five were.** The instrument reads the *installed* plugin and an unmerged skill is not in the cache, so it ran as a project skill in a scratch clone under `--cwd` — the method the Korean-trigger pilot below used, for the same reason. Run through the plugin untouched it would have printed six clean zeros: the shape of every instrument failure catalogued further down, and the reason `.claude/harness-gaps.md` now carries it as occurrence 1.
+>
+> **Two negatives wobbled, neither onto us.** Pre-merge commit-range review went to `requesting-code-review` twice and to `Bash` once, and "get me GPT's ideas for designing this feature, no code written yet" went to `Bash` all three times rather than to `brainstorming`. Our skill was silent in all 18 negative runs, so this is the delegate-does-not-accept consequence recorded in the paragraph above, not a defect in our routing.
 
 ### Do the Korean triggers earn their cost? (pilot, 2026-08-08)
 

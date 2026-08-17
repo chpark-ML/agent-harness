@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-771-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-774-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,085 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.227). 추정기는 환경을 탄다: 같은 체크아웃이 macOS 워크스테이션에서는 동일 버전으로 ~7,934 가 나온다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,211 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.227). 추정기는 환경을 탄다: `cross-model-review` 추가 전 같은 체크아웃이 macOS 워크스테이션에서는 동일 버전으로 ~7,934 가 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -344,12 +344,13 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 **차단하는 훅만 exit 2.** 정보성 훅이 턴을 막으면 그건 버그다. 차단 메시지는 *무엇이 걸렸는지* 와 *어떻게 푸는지* 를 둘 다 담는다 — 컨슈머는 훅 파일을 자기 트리에서 열 수 없으므로 (플러그인 캐시에 있다) 메시지가 유일한 인터페이스다.
 
-### 스킬 5개
+### 스킬 6개
 
 | 스킬 | 프로파일 | 언제 |
 |---|---|---|
 | `pr-create` | core | 현재 작업을 이 저장소 규약대로 PR 로. PR 열고 멈춤, 머지 안 함 |
 | `pr-review` | dev | **이미 열린** PR 을 체크리스트로 훑고 blocking/non-blocking 분리 |
+| `cross-model-review` | dev | 커밋 범위를 **다른 모델** 에 보내 제2의견. 반출 전 매번 명시적 승인 |
 | `research-notes` | research | 5문서 세트(STATUS·experiment_plan·FINDINGS·ARTIFACTS·review_log) 생성·유지 |
 | `repro-checklist` | research | 시드·환경·config 3기둥. 인용될 결과를 내기 전에 |
 | `results-deck` | slides | 산출물 → 발표 서사. 모든 수치가 근거로 추적되는지 기계 검사 |
@@ -423,13 +424,13 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
 | 발표 수치 검사기 | **36** |
-| frontmatter 파싱 | **11** + selftest **7** |
+| frontmatter 파싱 | **12** + selftest **7** |
 | 플러그인·마켓플레이스 매니페스트 | **7** |
 | 벤치마크 건강 (`verify-benches`) | **14** |
-| 문서 내부 참조 (`verify-doc-refs`) | **61** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **63** 파일 + 자체 **19** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **771** |
+| **합계** | **774** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
