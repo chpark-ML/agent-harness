@@ -1,0 +1,53 @@
+{
+ "skill": "harness-dev:cross-model-review",
+ "cases": [
+  {
+   "query": "지금 브랜치에 쌓인 커밋들 ChatGPT 한테도 한번 리뷰받아줘. 우리 둘만 보고 넘어가는 게 좀 불안해",
+   "should_trigger": true
+  },
+  {
+   "query": "main..HEAD 를 다른 모델한테 교차 검토시켜줘. 크롬에 ChatGPT 로그인 되어 있어",
+   "should_trigger": true
+  },
+  {
+   "query": "get a second opinion on this branch from GPT before i open the PR — i want a model that hasn't been in this conversation to look at it",
+   "should_trigger": true
+  },
+  {
+   "query": "이번 작업 외부 의견도 받아보자. 브라우저 열어서 ChatGPT 에 diff 보내고 지적사항 받아와줘",
+   "should_trigger": true
+  },
+  {
+   "query": "our own review keeps agreeing with itself. run the commit range past another model and tell me where the two of you disagree",
+   "should_trigger": true
+  },
+  {
+   "query": "PR 올리기 전에 GPT 의견 한 번 듣고 싶어. 커밋 범위 통째로 보내서 blocking 인 것만 뽑아줘",
+   "should_trigger": true
+  },
+  {
+   "query": "머지하기 전에 내 커밋들 좀 검토해줘. 아직 PR 은 안 만들었고 main..HEAD 범위야",
+   "should_trigger": false
+  },
+  {
+   "query": "PR #47 리뷰해줘. 이미 열려있고 diff 가 좀 커서 눈으로 보기 부담스러워",
+   "should_trigger": false
+  },
+  {
+   "query": "이 작업 PR 로 올려줘. 브랜치 만들고 커밋 나눠서 푸시까지 해줘",
+   "should_trigger": false
+  },
+  {
+   "query": "리뷰어가 코멘트 다섯 개 남겼는데 어떻게 대응할지 같이 정리해줘. 두 개는 동의 안 되는 내용이야",
+   "should_trigger": false
+  },
+  {
+   "query": "이 버그 왜 나는지 모르겠어. 다른 모델한테 물어보든 뭘 하든 원인 좀 찾아줘",
+   "should_trigger": false
+  },
+  {
+   "query": "GPT 한테 이 기능 어떻게 설계할지 아이디어 좀 받아와줘. 아직 코드는 한 줄도 안 짰어",
+   "should_trigger": false
+  }
+ ]
+}
