@@ -178,7 +178,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `harness-dev` + `superpowers` | ~240 + ~688 | `dev` |
 | `harness-research` | ~480 | `research` |
 | `harness-slides` | ~446 | `slides` |
-| **worst case** (project, every profile) | **~7,085 tok / session** (CI; ~7,934 on macOS — the estimator varies) | ceiling 9,000, enforced in CI |
+| **worst case** (project, every profile) | **~7,211 tok / session** (CI; ~7,934 on macOS before `cross-model-review` — the estimator varies) | ceiling 9,000, enforced in CI |
 | Every profile at user scope | ~3,919 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
