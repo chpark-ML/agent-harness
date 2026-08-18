@@ -105,6 +105,7 @@ you want it back.
 | Development only | `--profile dev` | Drops the five-document note discipline and `results-deck`. Saves ~2,100 tok per session |
 | Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
 | A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
+| Game or app work | `--profile dev,csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) | One language server each. **`--with-tools` cannot fetch these** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
 | Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
 | UI/UX work as well | `--profile dev,frontend` | Adds [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). **Opt-in, and the only profile that is not in the default** — it costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate |
 

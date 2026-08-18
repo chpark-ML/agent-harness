@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness-lua",
+  "displayName": "Harness Lua",
+  "version": "1.0.0",
+  "description": "harness-core plus the Lua language server, for Roblox, love2d and Lua-scripted engines. The LSP plugin does not bundle the server binary — run 'harnessctl doctor' to check",
+  "author": {
+    "name": "chpark-ML"
+  },
+  "repository": "https://github.com/chpark-ML/agent-harness",
+  "license": "MIT",
+  "dependencies": [
+    "harness-core",
+    {
+      "name": "lua-lsp",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

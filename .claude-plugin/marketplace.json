@@ -58,6 +58,41 @@
       "description": "Core plus ui-ux-pro-max, a UI/UX design reference. Depends on a third-party marketplace — register it before installing",
       "source": "./plugins/harness-frontend",
       "category": "development"
+    },
+    {
+      "name": "harness-csharp",
+      "displayName": "Harness C#",
+      "description": "Core plus the C# language server (csharp-ls) — Unity and .NET. Requires csharp-ls on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-csharp",
+      "category": "development"
+    },
+    {
+      "name": "harness-cpp",
+      "displayName": "Harness C/C++",
+      "description": "Core plus clangd — Unreal and native work. Requires clangd on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-cpp",
+      "category": "development"
+    },
+    {
+      "name": "harness-lua",
+      "displayName": "Harness Lua",
+      "description": "Core plus the Lua language server — Roblox, love2d and Lua-scripted engines. Requires lua-language-server on PATH",
+      "source": "./plugins/harness-lua",
+      "category": "development"
+    },
+    {
+      "name": "harness-swift",
+      "displayName": "Harness Swift",
+      "description": "Core plus SourceKit-LSP — iOS and macOS. Requires sourcekit-lsp on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-swift",
+      "category": "development"
+    },
+    {
+      "name": "harness-kotlin",
+      "displayName": "Harness Kotlin",
+      "description": "Core plus the Kotlin language server — Android. Requires kotlin-lsp on PATH — run harnessctl doctor",
+      "source": "./plugins/harness-kotlin",
+      "category": "development"
     }
   ]
 }
