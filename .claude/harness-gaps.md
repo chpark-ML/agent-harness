@@ -1610,3 +1610,31 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **왜 지금 안 고치나**: 1회차다. 그리고 `harness-frontend` 가 실제로 들어오면
   같은 커밋에서 자연히 두 번째 발생이 되므로, 그때 같이 본다.
 - **회차**: 1
+
+## 2026-08-18 — 공표 검사 총계가 개발 기계마다 다르다 (untracked rule 파일 때문)
+
+- **어디**: `scripts/verify-doc-refs.sh:237` 의 `DOCS` glob 중 `.claude/**/*.md` ·
+  검사받는 쪽은 `README.md:10,299` · `README.ko.md:10,453` ·
+  `docs/agent-layer.md:163` · 판정은 `scripts/verify-check-total.sh`
+- **무슨 일**: `harness-frontend` 을 더하고 `make verify-all` 을 돌리니 총계가
+  **783** 이라고 나왔다. 그대로 공표했으면 CI 가 떨어졌다. 깨끗한 clone 에서
+  `verify-doc-refs.sh` 를 돌리니 **63 파일**, 이 기계에서는 **66 파일**이다.
+  차이 셋은 `.claude/rules/harness/{workflow,dev/review,research/notes}.md` —
+  **이 저장소에 `harnessctl init` 을 한 번 돌리면 생기는 untracked 파일**이고,
+  `.gitignore` 에 없다. glob 이 그걸 같이 집는다.
+- **왜 날카로운가**: `CLAUDE.md` §4 의 *"한쪽 환경에서만 도는 줄은 검증 안 된
+  줄이다"* 와 뿌리는 같은데 **방향이 반대**다. 그 항목들은 *검사가 한쪽에서만
+  돌아서* 문제였고, 이것은 **검사는 양쪽 다 도는데 입력 집합이 달라서** 답이
+  달라진다. 그리고 이 저장소는 자기 훅을 자기한테 못 깐다고 적어 놨지만,
+  실제로는 `harnessctl init` 을 돌려 본 흔적이 작업 트리에 있다 — 그 흔적이
+  계측기에 새는 것이다.
+- **이번에 우회한 방법**: 브랜치를 scratch 로 clone 해서 거기서 쟀다. 우회가
+  아니라 이 경우엔 그게 정답이지만, **아무도 그렇게 하라고 적어 두지 않았다.**
+- **후보 규약** (승인 대기): `.gitignore` 에 `.claude/rules/` 를 넣는다. 이 저장소
+  자신의 rule 은 이미 `plugins/harness-core/declarative/rules/` 가 원본이고,
+  `.claude/rules/` 는 설치 산출물이므로 추적할 이유가 없다. 같은 이유로
+  `.claude/harness-manifest.json` 과 `.claude/{allowed,protected}-paths.txt`,
+  `.claude/gh-account.txt` 도 지금 untracked 로 떠 있다 — 한 묶음이다.
+  더 단단한 쪽은 `verify-doc-refs.sh` 가 `git ls-files` 로 대상을 정하는 것인데,
+  그러면 새로 쓴 아직 add 안 한 문서를 안 보게 되므로 맞바꿈이 있다.
+- **회차**: 1
