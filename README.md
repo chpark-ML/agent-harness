@@ -193,7 +193,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
 | **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | | |
-| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck` | | |
+| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |

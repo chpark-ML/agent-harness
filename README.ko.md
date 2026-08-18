@@ -46,7 +46,7 @@
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
-| **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | | |
+| **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |

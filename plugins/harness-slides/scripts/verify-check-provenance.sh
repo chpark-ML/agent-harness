@@ -83,7 +83,7 @@ says "two blocks are counted as two" "^2 table/figure blocks" tex "$TBL
 $TBL"
 # The leak: if the pending marker is not cleared when a block consumes it, the
 # next unmarked block inherits it and passes while claiming nothing.
-says "one block's marker does not leak into the next" "1 carry a source, 1 do not" tex "% source: make eval-main
+says "one block's marker does not leak into the next" "1 traced, 1 unsourced" tex "% source: make eval-main
 $TBL
 
 $TBL"
@@ -96,6 +96,14 @@ says "tikzpicture is a block" "^1 table/figure blocks" tex "\\begin{tikzpicture}
 says "prose with no blocks at all → zero" "^0 table/figure blocks" tex "Just a sentence with 12.5 in it."
 says "an unterminated environment still counts" "^1 table/figure blocks" tex "\\begin{table}
 \\begin{tabular}{l} 1 \\\\ \\end{tabular}"
+
+says "the summary names all three categories, so the counts add up" "traced.*unsourced.*naming a run" tex "% source: make eval-main
+$TBL
+
+% source: make eval-nowhere
+$TBL
+
+$TBL"
 
 # --- markdown -----------------------------------------------------------------
 says "a markdown pipe table is a block" "^1 table/figure blocks" md "| a | b |

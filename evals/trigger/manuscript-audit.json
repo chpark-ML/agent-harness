@@ -1,0 +1,54 @@
+{
+  "skill": "harness-slides:manuscript-audit",
+  "cases": [
+    {
+      "query": "투고 전에 논문 수치 한 번 점검하고 싶어. paper/iclr_paper.tex 에 있는 숫자들이 실제 돌린 결과랑 맞는지 확인해줘",
+      "should_trigger": true
+    },
+    {
+      "query": "The manuscript is in paper/main.tex and the runs are recorded in docs/ARTIFACTS.md. Check that every figure I quote actually traces back to a run.",
+      "should_trigger": true
+    },
+    {
+      "query": "이 표 어디서 나온 거야? 논문 Table 3 값이 어느 스크립트에서 만들어진 건지 추적해줘",
+      "should_trigger": true
+    },
+    {
+      "query": "We re-ran the ablation last week and I am not sure the paper was updated. Can you find numbers in the draft that no longer match anything we have?",
+      "should_trigger": true
+    },
+    {
+      "query": "리비전 내기 전에 원고랑 코드 정합성 감사 좀 돌려줘. 표랑 그림이 어느 실행에서 나온 건지 다 달려 있는지도 같이",
+      "should_trigger": true
+    },
+    {
+      "query": "Before I submit, audit the draft: which claims in it can a reviewer actually reproduce from what we have committed?",
+      "should_trigger": true
+    },
+
+    {
+      "query": "이번 실험 결과로 팀 발표자료 만들어줘. FINDINGS.md 랑 ARTIFACTS.md 에 다 정리돼 있어",
+      "should_trigger": false
+    },
+    {
+      "query": "실험 하나 더 돌렸는데 결과를 노트에 기록해줘. experiment_plan.md 에 항목 추가하고 FINDINGS 도 갱신",
+      "should_trigger": false
+    },
+    {
+      "query": "이 실험 나중에 다시 돌릴 수 있게 시드랑 환경 설정 어디에 남겨야 하는지 알려줘",
+      "should_trigger": false
+    },
+    {
+      "query": "Build the paper and tell me if it is over the page limit for the venue.",
+      "should_trigger": false
+    },
+    {
+      "query": "논문 초록 문장이 좀 어색한데 영어 표현 좀 다듬어줘",
+      "should_trigger": false
+    },
+    {
+      "query": "Review the code changes on this branch before I open a PR.",
+      "should_trigger": false
+    }
+  ]
+}
