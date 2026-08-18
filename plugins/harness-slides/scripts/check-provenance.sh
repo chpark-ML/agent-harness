@@ -1,0 +1,179 @@
+#!/bin/bash
+# check-provenance.sh — every table and figure must name the run that made it.
+#
+#   check-provenance.sh <document> [artifacts.md] [--strict]
+#
+# The sibling of check-claims.sh, and deliberately a different check. That one
+# asks whether a *number* appears in the artifacts file, which works for prose
+# and for a deck that quotes a handful of figures. It does not work for a table:
+# measured on a real 574-line manuscript, 493 of its numeric tokens sat inside
+# 12 table and figure blocks, and requiring every cell to be transcribed into
+# ARTIFACTS.md is a demand nobody meets. check-claims.sh therefore skips those
+# blocks and counts them. This is what they need instead — one question per
+# block rather than one per cell:
+#
+#   does this block say which run produced it, and is that run in the map?
+#
+# That is O(10) findings per manuscript instead of O(500), and the fix is one
+# comment line per block.
+#
+# The marker is a comment, so it is native to the format and invisible in the
+# built output — no macro to define, no package to load:
+#
+#   LaTeX      % source: make eval-main
+#   Markdown   <!-- source: make eval-main -->
+#
+# It goes on the line before the block opens, or anywhere inside it. Its text
+# must appear somewhere in the artifacts file; the comparison is a substring,
+# the same deliberately-dumb matching check-claims.sh uses. A marker naming a
+# run nobody recorded is the failure this catches.
+#
+# Exit codes — the two findings are NOT the same severity, and collapsing them
+# is how this check would get switched off on day one:
+#
+#   0  every marker resolved. Unmarked blocks are reported, not failed: a
+#      project that has not adopted the convention yet is the normal starting
+#      state, and a check that fails 100% on first run gets turned off.
+#   1  a marker names something absent from the artifacts file. A block that
+#      claims provenance it does not have is worse than one that claims none.
+#   1  ...or, with --strict, any unmarked block. Use it once a document has
+#      been marked up, the way context-budget.sh's --require-plugins turns a
+#      partial measurement into a gate.
+#   2  operational failure — no document, no artifacts file.
+#
+# Blocks recognised:
+#   LaTeX      table, tabular, figure, tikzpicture, axis  (outermost only, so a
+#              tabular inside a table is one block, not two)
+#   Markdown   a pipe table, and an image  ![alt](path)
+#
+# Requires bash 3.2. No jq, no network.
+set -uo pipefail
+
+DOC=""
+ART=""
+STRICT=0
+for a in "$@"; do
+  case "$a" in
+    --strict) STRICT=1 ;;
+    -*)       printf '!  unknown flag: %s\n' "$a" >&2; exit 2 ;;
+    *)        if [ -z "$DOC" ]; then DOC="$a"; elif [ -z "$ART" ]; then ART="$a"; fi ;;
+  esac
+done
+
+usage() { sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//'; }
+[ -n "$DOC" ] || { usage; exit 2; }
+[ -f "$DOC" ] || { printf '!  document not found: %s\n' "$DOC" >&2; exit 2; }
+
+if [ -z "$ART" ]; then
+  for c in "$(dirname "$DOC")/ARTIFACTS.md" "$(dirname "$DOC")/../ARTIFACTS.md" "./ARTIFACTS.md" "./docs/ARTIFACTS.md"; do
+    [ -f "$c" ] && { ART="$c"; break; }
+  done
+fi
+[ -n "$ART" ] && [ -f "$ART" ] || {
+  printf '!  no artifacts file found. Pass one:  check-provenance.sh %s <artifacts.md>\n' "$DOC" >&2
+  exit 2
+}
+
+case "$DOC" in
+  *.tex|*.ltx) FMT=latex ;;
+  *)           FMT=markdown ;;
+esac
+
+blocks=0
+marked=0
+unmarked=""
+broken=""
+depth=0
+start=0
+marker=""
+pending=""          # a marker seen on the line before the block opens
+lineno=0
+in_table=0          # markdown pipe table, which has no explicit end
+
+# A marker resolves when its text appears anywhere in the artifacts file.
+resolves() { grep -qF -- "$1" "$ART" 2>/dev/null; }
+
+finish_block() {
+  blocks=$((blocks + 1))
+  if [ -z "$marker" ]; then
+    unmarked="${unmarked}  ${DOC}:${start}
+"
+  elif resolves "$marker"; then
+    marked=$((marked + 1))
+  else
+    broken="${broken}  ${DOC}:${start}  source: ${marker}
+"
+  fi
+  marker=""
+}
+
+while IFS= read -r line || [ -n "$line" ]; do
+  lineno=$((lineno + 1))
+
+  # Pick the marker up wherever it is. Held in `pending` until a block opens,
+  # because the natural place to write it is the line above \begin.
+  case "$line" in
+    *"source:"*)
+      m="${line#*source:}"
+      m="${m%%-->*}"                                   # markdown comment close
+      m="$(printf '%s' "$m" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      if [ -n "$m" ]; then
+        if [ "$depth" -gt 0 ] || [ "$in_table" -eq 1 ]; then marker="$m"; else pending="$m"; fi
+      fi ;;
+  esac
+
+  if [ "$FMT" = latex ]; then
+    case "$line" in
+      *'\begin{table}'*|*'\begin{tabular}'*|*'\begin{figure}'*|*'\begin{tikzpicture}'*|*'\begin{axis}'*)
+        if [ "$depth" -eq 0 ]; then start="$lineno"; marker="$pending"; pending=""; fi
+        depth=$((depth + 1)) ;;
+    esac
+    case "$line" in
+      *'\end{table}'*|*'\end{tabular}'*|*'\end{figure}'*|*'\end{tikzpicture}'*|*'\end{axis}'*)
+        if [ "$depth" -gt 0 ]; then
+          depth=$((depth - 1))
+          [ "$depth" -eq 0 ] && finish_block
+        fi ;;
+    esac
+  else
+    # An image is a block on one line.
+    case "$line" in
+      *'!['*']('*)
+        if [ "$in_table" -eq 0 ]; then start="$lineno"; marker="$pending"; pending=""; finish_block; fi ;;
+    esac
+    # A pipe table runs until the first line that is not one.
+    case "$line" in
+      \|*\|*)
+        if [ "$in_table" -eq 0 ]; then in_table=1; start="$lineno"; marker="$pending"; pending=""; fi ;;
+      *)
+        if [ "$in_table" -eq 1 ]; then in_table=0; finish_block; fi ;;
+    esac
+  fi
+done < "$DOC"
+
+[ "$depth" -gt 0 ] && finish_block          # unterminated environment
+[ "$in_table" -eq 1 ] && { in_table=0; finish_block; }
+
+unmarked_n=0
+[ -n "$unmarked" ] && unmarked_n="$(printf '%s' "$unmarked" | grep -c .)"
+broken_n=0
+[ -n "$broken" ] && broken_n="$(printf '%s' "$broken" | grep -c .)"
+
+printf '%d table/figure blocks in %s — %d carry a source, %d do not\n' \
+  "$blocks" "$DOC" "$marked" "$unmarked_n"
+
+rc=0
+if [ -n "$broken" ]; then
+  printf '\nsource names nothing in %s:\n%s' "$ART" "$broken"
+  printf '\nA block claiming a run that was never recorded is worse than one\n'
+  printf 'claiming none. Add the row to %s, or correct the name.\n' "$ART"
+  rc=1
+fi
+if [ -n "$unmarked" ]; then
+  if [ "$FMT" = latex ]; then ex='% source: make eval-main'; else ex='<!-- source: make eval-main -->'; fi
+  printf '\nno source (reported, not failed%s):\n%s' "$([ "$STRICT" -eq 1 ] && printf ' — --strict makes it one')" "$unmarked"
+  printf '\nPut a comment above each, naming a run that appears in %s:\n  %s\n' "$ART" "$ex"
+  [ "$STRICT" -eq 1 ] && rc=1
+fi
+[ "$rc" -eq 0 ] && [ "$blocks" -gt 0 ] && [ -z "$unmarked" ] && printf 'every block traceable\n'
+exit "$rc"
