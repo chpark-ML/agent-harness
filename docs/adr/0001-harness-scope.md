@@ -36,3 +36,13 @@ This repository is separate from the extraction target mentioned above. It is a 
 ---
 
 > **Correction (2026-08-06, after [ADR-0008](0008-plugin-declarative-split.md)).** The scope decision still holds — the harness still covers only the agent layer, it is still core plus optional modules, and the admission test is unchanged. What changed is the delivery shape. Modules became plugin profiles (`harness-dev`, `harness-research`, the language profiles), and selection is now split between `claude plugin install harness-<profile>@agent-harness` and `harnessctl init --with <names>` rather than `install.sh --with <names>`. The reason given for rejecting the plugin option above was refuted by observation; the real boundary was that a plugin cannot carry permissions, `CLAUDE.md` or `rules`. That the admission test **governs core and not the opt-in profiles** is handled separately by [ADR-0009](0009-external-dependencies.md).
+
+---
+
+> **Correction (2026-08-18).** The Consequences list above says *"Domain-specific assets (a medical PHI scrubber, a LaTeX build, a literature-survey skill) do not come in here."* **That sentence is now false as written, and it was already false when two profiles shipped past it.**
+>
+> What it should say is that domain-specific assets do not come into **`core`**. The 2026-08-06 correction above already recorded that the admission test governs core and not the opt-in profiles, and [ADR-0009](0009-external-dependencies.md) carries the reasoning — but the Consequences bullet was never brought into line, so it still reads as a blanket exclusion. Two shipped profiles contradict it: [`harness-slides`](0010-slides-profile.md) carries presentation material, and `harness-frontend` carries a UI/UX reference. Presentation and interface design are no less domain-bound than a manuscript.
+>
+> **Why this matters rather than being tidy-up.** The harness was built for five kinds of work, and paper writing is one of them. An architecture record that names *a LaTeX build* and *a literature-survey skill* as excluded is the first thing anyone reads when asking whether that work belongs here, and it says no. The answer is yes, as an opt-in profile, on the same footing as slides — and `results-deck` is the precedent to copy rather than a thing to invent around, because turning `FINDINGS.md` and `ARTIFACTS.md` into an artefact where every number traces to the run that produced it is the same transform a manuscript needs.
+>
+> **What is unchanged.** The admission test still governs `core`, and it still refuses anything site-specific there. A PHI scrubber remains the consumer's own business — not because it is domain material but because no profile has asked for it.
