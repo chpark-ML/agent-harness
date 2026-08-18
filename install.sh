@@ -63,7 +63,9 @@ usage() {
   sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 
-  --profile <list>   comma-separated: core, dev, research, slides, python, typescript, frontend
+  --profile <list>   comma-separated: core, dev, research, slides, frontend,
+                     and the language profiles python, typescript, csharp, cpp,
+                     lua, swift, kotlin
                      (default: core,dev,research,slides — pass this only to get less)
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
@@ -91,7 +93,7 @@ case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $S
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
 for p in $PROFILE_LIST; do
-  case "$p" in core|dev|research|slides|python|typescript|frontend) ;; *) die "unknown profile: $p" ;; esac
+  case "$p" in core|dev|research|slides|frontend|python|typescript|csharp|cpp|lua|swift|kotlin) ;; *) die "unknown profile: $p" ;; esac
 done
 
 # Only dev and research carry declarative rules. The language profiles are
@@ -311,6 +313,12 @@ for p in $PROFILE_LIST; do
   case "$p" in
     python)     install_tool pyright-langserver "pyright" ;;
     typescript) install_tool typescript-language-server "typescript-language-server typescript" ;;
+    # The other five language servers do not come from npm — csharp-ls is a
+    # dotnet tool, sourcekit-lsp ships with Xcode, and the rest are brew or a
+    # distribution package. --with-tools only knows `npm install -g`, so there
+    # is nothing honest for it to do here and `harnessctl doctor` reports them
+    # with the right command instead.
+    csharp|cpp|lua|swift|kotlin) : ;;
   esac
 done
 

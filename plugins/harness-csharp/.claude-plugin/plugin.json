@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness-csharp",
+  "displayName": "Harness C#",
+  "version": "1.0.0",
+  "description": "harness-core plus the C# language server (csharp-ls), for Unity and .NET. The LSP plugin does not bundle the server binary — run 'harnessctl doctor' to check",
+  "author": {
+    "name": "chpark-ML"
+  },
+  "repository": "https://github.com/chpark-ML/agent-harness",
+  "license": "MIT",
+  "dependencies": [
+    "harness-core",
+    {
+      "name": "csharp-lsp",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

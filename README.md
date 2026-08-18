@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-781-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-786-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -105,6 +105,7 @@ you want it back.
 | Development only | `--profile dev` | Drops the five-document note discipline and `results-deck`. Saves ~2,100 tok per session |
 | Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
 | A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
+| Game or app work | `--profile dev,csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) | One language server each. **`--with-tools` cannot fetch these** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
 | Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
 | UI/UX work as well | `--profile dev,frontend` | Adds [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). **Opt-in, and the only profile that is not in the default** — it costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate |
 
@@ -293,10 +294,10 @@ make context-budget          # always-on token cost per scope and profile
 | document references | **63** files + **19** own cases |
 | documented commands exist | **45** + selftest **12** |
 | frontmatter | **12** + selftest **7** |
-| plugin and marketplace manifests | **8** |
+| plugin and marketplace manifests | **13** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **781** |
+| **Total** | **786** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

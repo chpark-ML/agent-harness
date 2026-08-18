@@ -205,8 +205,15 @@ if [ "$CMD" = doctor ]; then
 
   say ""
   say "language servers (required by an installed language profile — the LSP plugins do not bundle a binary):"
+  # binary:profile:how-to-install. Only the first two come from npm, which is
+  # why --with-tools stops there and the rest are reported rather than fetched.
   for pair in "pyright-langserver:harness-python:npm install -g pyright" \
-              "typescript-language-server:harness-typescript:npm install -g typescript-language-server typescript"; do
+              "typescript-language-server:harness-typescript:npm install -g typescript-language-server typescript" \
+              "csharp-ls:harness-csharp:dotnet tool install --global csharp-ls" \
+              "clangd:harness-cpp:brew install llvm (macOS, then add its bin to PATH) or apt install clangd" \
+              "lua-language-server:harness-lua:brew install lua-language-server" \
+              "sourcekit-lsp:harness-swift:install Xcode, or brew install swift" \
+              "kotlin-lsp:harness-kotlin:brew install JetBrains/utils/kotlin-lsp"; do
     binname="${pair%%:*}"; rest="${pair#*:}"; prof="${rest%%:*}"; how="${rest#*:}"
     if command -v "$binname" >/dev/null 2>&1; then
       ok "$binname ($prof)"

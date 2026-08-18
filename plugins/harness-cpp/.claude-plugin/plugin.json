@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness-cpp",
+  "displayName": "Harness C/C++",
+  "version": "1.0.0",
+  "description": "harness-core plus the clangd language server, for Unreal and native work. The LSP plugin does not bundle the server binary — run 'harnessctl doctor' to check",
+  "author": {
+    "name": "chpark-ML"
+  },
+  "repository": "https://github.com/chpark-ML/agent-harness",
+  "license": "MIT",
+  "dependencies": [
+    "harness-core",
+    {
+      "name": "clangd-lsp",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

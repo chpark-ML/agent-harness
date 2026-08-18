@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-781-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-786-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -199,7 +199,7 @@ claude plugin update harness-core@agent-harness
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `--profile <list>` | `core` | `core` · `dev` · `research` · `slides` · `python` · `typescript` · `frontend`, 콤마로 조합 |
+| `--profile <list>` | `core` | `core` · `dev` · `research` · `slides` · `frontend` · 언어 축 `python` · `typescript` · `csharp` · `cpp` · `lua` · `swift` · `kotlin`, 콤마로 조합 |
 | `--scope user\|project` | `user` | `user` 는 머신 전체, `project` 는 현재 저장소만 |
 | `--with-tools` | 꺼짐 | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
 | `--ref <tag\|branch>` | — | marketplace 를 특정 리비전에 고정 |
@@ -336,13 +336,15 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 그래서 `install.sh` 가 `~/.local/bin/harnessctl` 에 **shim** 을 쓴다 — 실행 시점에 최신 버전을 찾아 넘기는 3줄짜리 `/bin/sh` 스크립트다. 평범한 실행 파일이라 zsh·bash·fish 에서 똑같이 동작하고, 플러그인을 업데이트해도 따라간다. `~/.local/bin` 이 PATH 에 없으면 설치기가 **쓰는 셸에 맞는 한 줄** 을 알려준다 (`~/.zshrc` · `~/.bashrc` · `fish_add_path`).
 
-### 프로파일 7개
+### 프로파일 12개
 
 전부 `harness-core` 를 dependency 로 갖고, 조합해서 설치한다. 무엇이 더해지는지는 [맨 위 매트릭스](#무엇이-설치되나)에 있고, 여기서는 세 가지만 덧붙인다.
 
 **두 프로파일의 두께가 다른 것은 미완성이 아니다.** Superpowers 가 개발 워크플로를 폭넓게 덮지만 **연구 전용 스킬은 0개** 라서, `harness-dev` 는 우리 것으로는 얇고 (규약 1 + 스킬 1) `harness-research` 는 두껍다 (규약 1 + 스킬 2 + 템플릿 5). dev 를 두껍게 만들려는 충동이 들면 먼저 Superpowers 에 이미 있는지 확인할 것.
 
-**언어 프로파일은 파일이 없다.** `harness-python` · `harness-typescript` 는 각각 `pyright-lsp` · `typescript-lsp` 를 dependency 로 선언하는 manifest 한 장이 전부다. `harness-frontend` 도 같은 모양이다.
+**언어 프로파일은 파일이 없다.** `harness-python` · `harness-typescript` · `harness-csharp`(Unity·.NET) · `harness-cpp`(Unreal) · `harness-lua`(Roblox·love2d) · `harness-swift`(iOS) · `harness-kotlin`(Android) 은 각각 공식 LSP 플러그인 하나를 dependency 로 선언하는 manifest 한 장이 전부다. `harness-frontend` 도 같은 모양이다.
+
+**뒤의 다섯은 `--with-tools` 로 안 깔린다.** `csharp-ls` 는 dotnet 도구, `sourcekit-lsp` 는 Xcode, 나머지는 Homebrew 나 배포판 패키지라 npm 이 아니다. `harnessctl doctor` 가 각각의 설치 명령과 함께 보고한다.
 
 **`frontend` 만 기본 설치에 없다.** 의존하는 [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 가 매 세션 ~716 tok 을 쓰는데, UI 작업이 없는 저장소에서는 그게 전부 손실이다. 그리고 이것은 **Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 첫 의존성**이라 `install.sh` 가 `--profile` 에 `frontend` 가 있을 때만 그 마켓플레이스를 등록한다 ([ADR-0009](docs/adr/0009-external-dependencies.md)).
 
@@ -445,12 +447,12 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
 | 발표 수치 검사기 | **36** |
 | frontmatter 파싱 | **12** + selftest **7** |
-| 플러그인·마켓플레이스 매니페스트 | **8** |
+| 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **14** |
 | 문서 내부 참조 (`verify-doc-refs`) | **63** 파일 + 자체 **19** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **781** |
+| **합계** | **786** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
