@@ -179,7 +179,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `harness-research` | ~480 | `research` |
 | `harness-slides` | ~446 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~7,927 tok / session** — the `+716` for `frontend` is measured, the total is **awaiting this change's first CI run** (§2d of `CLAUDE.md`: the figure is republished from CI, never typed). The previous figure, without `frontend`, was ~7,211 | ceiling 9,000, enforced in CI |
+| **worst case** (project, every profile) | **~7,927 tok / session** — measured in CI, and ~7,211 without the opt-in `frontend` profile | ceiling 9,000, enforced in CI |
 | Every profile at user scope | ~3,919 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
