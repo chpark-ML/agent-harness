@@ -66,7 +66,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
-| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 1, with Superpowers 14 on top |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 1, with Superpowers 14 on top — and `ui-ux-pro-max` 7 more when `frontend` is installed |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
 | **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
@@ -160,7 +160,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 197 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 12 + selftest 7, plugin manifests 8, benchmark health 14, document references 63 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 780. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 36, harnessctl round trip + install.sh and uninstall.sh 198 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 12 + selftest 7, plugin manifests 8, benchmark health 14, document references 63 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 781. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -225,7 +225,7 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
-| **Installer** | Does uninstall restore the original? | 197 assertions | An invariant, not an A/B subject |
+| **Installer** | Does uninstall restore the original? | 198 assertions | An invariant, not an A/B subject |
 
 **Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
@@ -357,7 +357,7 @@ This may have been worth more than the measurements. All nine **looked identical
 
 - **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
 - **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
-- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 197 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 198 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
 
 ## 5. Guide vs Guard
 
