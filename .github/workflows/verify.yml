@@ -64,7 +64,8 @@ jobs:
         run: |
           claude plugin marketplace add "$GITHUB_WORKSPACE"
           claude plugin marketplace add anthropics/claude-plugins-official
-          for p in core dev research slides; do
+          claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
+          for p in core dev research slides frontend; do
             claude plugin install "harness-$p@agent-harness" --scope user
           done
           claude plugin install superpowers@claude-plugins-official --scope user

@@ -5,6 +5,7 @@
 #   ./install.sh --scope project                  # everything, this repo only
 #   ./install.sh --profile dev                    # less than everything
 #   ./install.sh --profile dev,python --with-tools  # plus a language server
+#   ./install.sh --profile dev,frontend           # plus the UI/UX reference
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The
@@ -25,6 +26,12 @@ set -uo pipefail
 
 MARKETPLACE_REPO="chpark-ML/agent-harness"
 MARKETPLACE_NAME="agent-harness"
+# harness-frontend's dependency lives on its author's marketplace, not on
+# claude-plugins-official, so unlike superpowers it has to be registered here.
+UIUX_REPO="nextlevelbuilder/ui-ux-pro-max-skill"
+UIUX_MARKETPLACE="ui-ux-pro-max-skill"
+# frontend is deliberately not in the default set: ui-ux-pro-max costs ~716 tok
+# in every session, which is pure loss on a project that does no UI work.
 PROFILES="core,dev,research,slides"
 SCOPE="user"
 REF=""
@@ -56,7 +63,7 @@ usage() {
   sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 
-  --profile <list>   comma-separated: core, dev, research, slides, python, typescript
+  --profile <list>   comma-separated: core, dev, research, slides, python, typescript, frontend
                      (default: core,dev,research,slides — pass this only to get less)
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
@@ -84,7 +91,7 @@ case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $S
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
 for p in $PROFILE_LIST; do
-  case "$p" in core|dev|research|slides|python|typescript) ;; *) die "unknown profile: $p" ;; esac
+  case "$p" in core|dev|research|slides|python|typescript|frontend) ;; *) die "unknown profile: $p" ;; esac
 done
 
 # Only dev and research carry declarative rules. The language profiles are
@@ -206,6 +213,27 @@ else
   claude plugin marketplace add "$SOURCE" >/dev/null || die "could not register the marketplace"
   say "  registered"
 fi
+
+# ---- 1b. the frontend profile's marketplace -----------------------------------
+# A cross-marketplace dependency does not register the marketplace it points at.
+# Measured on a clean config directory: `plugin install harness-frontend` exits 0
+# and prints success, and the plugin then sits at "failed to load — Dependency
+# \"ui-ux-pro-max@ui-ux-pro-max-skill\" is not installed". Registering the
+# marketplace first is what makes it resolve, and the add pulls the plugin in by
+# itself ("+ 1 dependency: ui-ux-pro-max"). superpowers needs none of this
+# because claude-plugins-official is registered by Claude Code, not by us.
+case " $PROFILE_LIST " in
+  *" frontend "*)
+    say "marketplace: $UIUX_REPO  (required by the frontend profile)"
+    if claude plugin marketplace list 2>/dev/null | grep -q "$UIUX_MARKETPLACE"; then
+      say "  already registered"
+    elif claude plugin marketplace add "$UIUX_REPO" >/dev/null 2>&1; then
+      say "  registered"
+    else
+      die "could not register $UIUX_REPO — harness-frontend cannot resolve ui-ux-pro-max without it"
+    fi
+    ;;
+esac
 
 # ---- 2. plugins ---------------------------------------------------------------
 # `plugin install` is a presence check, not a version check: on a plugin that is
