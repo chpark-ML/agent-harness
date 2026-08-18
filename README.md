@@ -106,6 +106,7 @@ you want it back.
 | Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
 | A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
 | Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
+| UI/UX work as well | `--profile dev,frontend` | Adds [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). **Opt-in, and the only profile that is not in the default** — it costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate |
 
 **The one thing to know about `--scope`.** It defaults to `user`, which covers the whole machine — but the **rule files install at project scope only**, because `~/.claude/rules` is not a location Claude Code reads. So a new project needs one more run inside it:
 
@@ -186,19 +187,19 @@ bash 3.2 or newer (stock macOS `/bin/bash` is the floor) · jq · git · a Claud
 
 Profiles fall on three different axes — what you *do*, what you *produce*, and what you *write it in* — so they are not mutually exclusive.
 
-| | `core`<br><sub>always</sub> | `+dev`<br><sub>role</sub> | `+research`<br><sub>role</sub> | `+slides`<br><sub>output</sub> | `+python`·`+typescript`<br><sub>language</sub> |
-|---|---|---|---|---|---|
-| **Guard hooks** | **7** — 5 blocking, 2 informational | | | | |
-| **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | |
-| **`CLAUDE.md`** | six behavioural principles | | | | |
-| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck` | |
-| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | |
-| **Rule files** | `workflow.md` | `review.md` | `notes.md` | | |
-| **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | |
-| **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | language server (LSP) |
-| **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **0** |
+| | `core`<br><sub>always</sub> | `+dev`<br><sub>role</sub> | `+research`<br><sub>role</sub> | `+slides`<br><sub>output</sub> | `+frontend`<br><sub>domain, opt-in</sub> | `+python`·`+typescript`<br><sub>language</sub> |
+|---|---|---|---|---|---|---|
+| **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
+| **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | | |
+| **`CLAUDE.md`** | six behavioural principles | | | | | |
+| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck` | | |
+| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
+| **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
+| **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
+| **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,211 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227). The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with every default profile is **~7,211 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227) — and **~7,927 with `frontend` on top**, which is the number this repository now gates on. The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 

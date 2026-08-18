@@ -6,7 +6,8 @@
   },
   "description": "Project-agnostic Claude Code harness: guards, conventions and profiles",
   "allowCrossMarketplaceDependenciesOn": [
-    "claude-plugins-official"
+    "claude-plugins-official",
+    "ui-ux-pro-max-skill"
   ],
   "plugins": [
     {
@@ -49,6 +50,13 @@
       "displayName": "Harness Slides",
       "description": "Results-to-deck narrative with a traceability check. Rendering is delegated to slides-grab (npm)",
       "source": "./plugins/harness-slides",
+      "category": "development"
+    },
+    {
+      "name": "harness-frontend",
+      "displayName": "Harness Frontend",
+      "description": "Core plus ui-ux-pro-max, a UI/UX design reference. Depends on a third-party marketplace — register it before installing",
+      "source": "./plugins/harness-frontend",
       "category": "development"
     }
   ]

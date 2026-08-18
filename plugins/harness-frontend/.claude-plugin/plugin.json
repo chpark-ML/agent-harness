@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness-frontend",
+  "displayName": "Harness Frontend",
+  "version": "1.0.0",
+  "description": "harness-core plus ui-ux-pro-max, a UI/UX design reference. Its marketplace is third-party — see docs/adr/0009-external-dependencies.md",
+  "author": {
+    "name": "chpark-ML"
+  },
+  "repository": "https://github.com/chpark-ML/agent-harness",
+  "license": "MIT",
+  "dependencies": [
+    "harness-core",
+    {
+      "name": "ui-ux-pro-max",
+      "marketplace": "ui-ux-pro-max-skill"
+    }
+  ]
+}

@@ -121,13 +121,15 @@ echo "plugins — always-on"
 if [ "$CLI" -eq 0 ]; then
   echo "  skip  claude CLI not on PATH — plugin half unmeasured, totals are declarative only"
 fi
-CORE_P=0; DEV_P=0; RESEARCH_P=0; SLIDES_P=0
+CORE_P=0; DEV_P=0; RESEARCH_P=0; SLIDES_P=0; FRONTEND_P=0
 for spec in \
   "harness-core@agent-harness:CORE_P" \
   "harness-dev@agent-harness:DEV_P" \
   "superpowers@claude-plugins-official:DEV_P" \
   "harness-research@agent-harness:RESEARCH_P" \
-  "harness-slides@agent-harness:SLIDES_P"
+  "harness-slides@agent-harness:SLIDES_P" \
+  "harness-frontend@agent-harness:FRONTEND_P" \
+  "ui-ux-pro-max@ui-ux-pro-max-skill:FRONTEND_P"
 do
   name="${spec%%:*}"; var="${spec##*:}"
   v="$(always_on "$name")"
@@ -154,10 +156,10 @@ done
 # ---- totals -----------------------------------------------------------------
 echo
 echo "totals — scope x profile"
-printf "  %-8s %-26s %10s\n" "scope" "profiles" "~tok"
+printf "  %-8s %-34s %10s\n" "scope" "profiles" "~tok"
 WORST=0
 report() { # scope, label, total
-  printf "  %-8s %-26s %10s\n" "$1" "$2" "$3"
+  printf "  %-8s %-34s %10s\n" "$1" "$2" "$3"
   [ "$3" -gt "$WORST" ] && WORST="$3"
   return 0
 }
@@ -165,10 +167,12 @@ U_CORE=$((CLAUDE_TOK + CORE_P))
 report user    "core"                      "$U_CORE"
 report user    "core,dev"                  "$((U_CORE + DEV_P))"
 report user    "core,dev,research,slides"  "$((U_CORE + DEV_P + RESEARCH_P + SLIDES_P))"
+report user    "core,dev,research,slides,frontend" "$((U_CORE + DEV_P + RESEARCH_P + SLIDES_P + FRONTEND_P))"
 P_CORE=$((CLAUDE_TOK + CORE_RULE_TOK + CORE_P))
 report project "core"                      "$P_CORE"
 report project "core,dev"                  "$((P_CORE + DEV_RULE_TOK + DEV_P))"
 report project "core,dev,research,slides"  "$((P_CORE + DEV_RULE_TOK + DEV_P + RESEARCH_RULE_TOK + RESEARCH_P + SLIDES_P))"
+report project "core,dev,research,slides,frontend" "$((P_CORE + DEV_RULE_TOK + DEV_P + RESEARCH_RULE_TOK + RESEARCH_P + SLIDES_P + FRONTEND_P))"
 
 echo
 echo "  worst case: $WORST tok"
