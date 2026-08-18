@@ -291,6 +291,7 @@ make context-budget          # always-on token cost per scope and profile
 | context-budget gate | **14** |
 | inventory figures | **39** + selftest **7** |
 | slide claim checker | **50** |
+| block provenance checker | **21** |
 | document references | **64** files + **19** own cases |
 | documented commands exist | **45** + selftest **12** |
 | frontmatter | **12** + selftest **7** |

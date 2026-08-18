@@ -159,3 +159,24 @@ Splitting the tokens by where they sit explained it, and reversed a design decis
 - **§3a, §3c and §3d are not started, and §3a's shape is now in question.** The token-level check needs only a path — no `artifacts` key, no `sweep` key — so a three-key config may be two keys more than the checker wants. Decide the config's shape from what the *rule* and the *skill* need, once those exist.
 - **A new item, and it is the one with the most value left**: block-level provenance. *Does every table and figure declare the run that produced it, and is that run in the artifact map?* That is O(10) findings per paper instead of O(500), it is what the 493 skipped tokens actually need, and it did not exist in the source repository either.
 - **T1 is untested** because nothing reads a config yet.
+
+
+---
+
+## Block provenance shipped (2026-08-18)
+
+The item the T2 result named as *the one with the most value left* is now `plugins/harness-slides/scripts/check-provenance.sh`, with 21 cases.
+
+**It is a second script rather than a mode of the first, because it answers a different question at a different granularity.** `check-claims.sh` asks whether a *number* appears in the artifact map — right for prose and for a deck that quotes a handful of figures, useless for a table. This asks, once per block, *does this say which run produced it, and is that run in the map?* Folding it into the first would also have changed that script's contract for every existing Markdown deck.
+
+**The marker is a comment**, so it is native to the format and invisible in the built output — `% source: make eval-main` in LaTeX, `<!-- source: make eval-main -->` in Markdown. No macro to define, no package to load, and it works on the line above the block or inside it.
+
+**The exit codes are split, and that split is the design.** A marker naming a run nobody recorded fails; a block with no marker is reported and does not. Collapsing them would fail every document on first contact — measured: the four test manuscripts have 12, 5, 5 and 5 blocks and **not one carries a marker**, because the convention did not exist until now. `--strict` turns unmarked blocks into a failure once a document has been marked up, the way `context-budget.sh`'s `--require-plugins` turns a partial measurement into a gate.
+
+**The two checks partition the document, and a case pins it.** The blocks `check-claims.sh` skips are exactly the blocks this one counts — verified on the four manuscripts (12 and 12, 5 and 5) and asserted in `verify-check-provenance.sh`, so a number can never be both skipped by one and ignored by the other.
+
+### Still open
+
+- **§3a, §3c, §3d** — the config, the rule and the skill. Both checkers take paths as arguments and need no config at all, so §3a's three keys are now clearly a guess made before the checks existed. Decide its shape from the rule and the skill.
+- **T1** remains untested; nothing reads a config.
+- **Adoption has no path yet.** The convention exists and nothing tells an author about it. That is what the skill in §3d is for.
