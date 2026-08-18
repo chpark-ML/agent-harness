@@ -1,7 +1,12 @@
 #!/bin/bash
-# check-claims.sh — every number on a results slide must be traceable.
+# check-claims.sh — every number in a results document must be traceable.
 #
-#   check-claims.sh <deck.md> [artifacts.md]
+#   check-claims.sh <document> [artifacts.md]
+#
+# The document may be Markdown (a results deck) or LaTeX (a manuscript). The
+# format is taken from the extension — `.tex` and `.ltx` are LaTeX, anything
+# else is Markdown — because the two need different "this is never a claim"
+# rules and guessing from content would misread a file that has both.
 #
 # A results deck is where untraceable numbers get quoted. The research module
 # already states the invariant — a number that cannot be traced through
@@ -66,18 +71,64 @@ fi
 NUM_RE='[0-9]+(,[0-9]{3})*(\.[0-9]+)?'
 ART_NUMS="$(grep -oE "$NUM_RE" "$ART" 2>/dev/null | tr -d ',' | sort -u)"
 
+# LaTeX or Markdown. Only the skip rules differ; the invariant does not.
+case "$DECK" in
+  *.tex|*.ltx) FMT=latex ;;
+  *)           FMT=markdown ;;
+esac
+
+# A .tex file that declares no document and no sectioning is a preamble or a
+# style file: macros, lengths and package options, none of which are claims.
+# It is still checked — a manuscript split across \input files has neither
+# marker either, and silently skipping those would lose real claims — but the
+# warning names it, because the mistake it catches is a `*.tex` glob that swept
+# the preamble in beside the manuscript. Measured on a real repository: one
+# preamble carried 16 numeric tokens and not one of them was a result.
+if [ "$FMT" = latex ] \
+   && ! grep -q '\\begin{document}' "$DECK" 2>/dev/null \
+   && ! grep -qE '\\(sub)*section|\\paragraph' "$DECK" 2>/dev/null; then
+  printf '!  %s declares no document and no sections — a preamble or style file?\n' "$DECK" >&2
+  printf '   Checking it anyway. If this was matched by a glob, narrow the glob.\n' >&2
+fi
+
 untraceable=""
 checked=0
 lineno=0
 in_comment=0
+in_block=0
+blocks=0
 
 while IFS= read -r line || [ -n "$line" ]; do
   lineno=$((lineno + 1))
-  case "$line" in *"<!-- no-claim -->"*) continue ;; esac
+  case "$line" in
+    *"<!-- no-claim -->"*) continue ;;
+    *"% no-claim"*) [ "$FMT" = latex ] && continue ;;
+  esac
 
   # A multi-line html comment: skip until it closes. Checked before anything
-  # else so an opener on this line suppresses the rest of the block.
-  if [ "$in_comment" -eq 1 ]; then
+  # else so an opener on this line suppresses the rest of the block. LaTeX has
+  # no multi-line comment, so this whole block is markdown's.
+  # Tables and figures are skipped and counted, not checked. Their cells are
+  # produced wholesale by a run, and requiring every cell to appear in the
+  # artifacts file is a demand nobody meets: measured on a real 574-line paper,
+  # 493 of its numeric tokens sit inside 12 such blocks. What those blocks need
+  # is a provenance row naming the run, which is a different check from this
+  # one — so this reports how many it did not look at rather than drowning the
+  # prose findings in cells.
+  if [ "$FMT" = latex ]; then
+    case "$line" in
+      *'\begin{tabular}'*|*'\begin{table}'*|*'\begin{figure}'*|*'\begin{tikzpicture}'*|*'\begin{axis}'*)
+        [ "$in_block" -eq 0 ] && blocks=$((blocks + 1)); in_block=$((in_block + 1)) ;;
+    esac
+    case "$line" in
+      *'\end{tabular}'*|*'\end{table}'*|*'\end{figure}'*|*'\end{tikzpicture}'*|*'\end{axis}'*)
+        [ "$in_block" -gt 0 ] && in_block=$((in_block - 1)); continue ;;
+    esac
+    [ "$in_block" -gt 0 ] && continue
+  fi
+
+  if [ "$FMT" = latex ]; then :
+  elif [ "$in_comment" -eq 1 ]; then
     case "$line" in *"-->"*) in_comment=0; line="${line#*-->}" ;; *) continue ;; esac
   fi
   case "$line" in
@@ -90,9 +141,29 @@ while IFS= read -r line || [ -n "$line" ]; do
 
   # Strip the shapes that are never claims before extracting.
   clean="$line"
-  clean="$(printf '%s' "$clean" | sed -E 's/<!--.*-->//g; s/<!--.*$//')"          # html comments never render
-  clean="$(printf '%s' "$clean" | sed -E 's/\]\([^)]*\)/]/g')"                   # markdown link targets
-  clean="$(printf '%s' "$clean" | sed -E 's/`[^`]*`/ /g')"                      # inline code
+  if [ "$FMT" = latex ]; then
+    # A comment runs to end of line, but an escaped \% is a literal percent and
+    # percentages are the commonest claim in a results table. Anchoring on "not
+    # preceded by a backslash" is the whole difference between the two.
+    clean="$(printf '%s' "$clean" | sed -E 's/(^|[^\\])%.*$/\1/')"
+    # Keys that carry digits and mean nothing numerically. The optional argument
+    # of includegraphics goes too (width=0.8\linewidth is a layout, not a result).
+    clean="$(printf '%s' "$clean" | sed -E 's/\\(cite[a-zA-Z]*|[a-zA-Z]*ref|label)\*?(\[[^]]*\])?\{[^}]*\}/ /g')"
+    clean="$(printf '%s' "$clean" | sed -E 's/\\(input|include|includegraphics|usepackage|documentclass|bibliography[a-zA-Z]*)\*?(\[[^]]*\])?(\{[^}]*\})?/ /g')"
+    # Inline math is notation, not results. This reversed a design decision on
+    # measurement: the first version kept math on the reasoning that "a
+    # manuscript states its results in math". On a real paper, 333 of its 376
+    # prose numeric tokens were inside $...$ and they were subscripts, indices
+    # and thresholds — while the 43 in plain text were the headline claims.
+    # Keeping math produced 519 findings on one paper, which is a check nobody
+    # would leave switched on.
+    clean="$(printf '%s' "$clean" | sed -E 's/\$[^$]*\$/ /g')"
+    clean="$(printf '%s' "$clean" | sed -E 's/\\\([^)]*\\\)/ /g')"
+  else
+    clean="$(printf '%s' "$clean" | sed -E 's/<!--.*-->//g; s/<!--.*$//')"          # html comments never render
+    clean="$(printf '%s' "$clean" | sed -E 's/\]\([^)]*\)/]/g')"                   # markdown link targets
+    clean="$(printf '%s' "$clean" | sed -E 's/`[^`]*`/ /g')"                      # inline code
+  fi
   clean="$(printf '%s' "$clean" | sed -E 's/[A-Za-z]+(-[0-9]+)+/ /g')"          # ADR-0008, CVE-2024-1234
   clean="$(printf '%s' "$clean" | sed -E 's/§[0-9]+[a-z]?/ /g')"                # §7, §4b
   # No \b here: BSD sed does not support it and silently matches nothing, which
@@ -114,10 +185,12 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$DECK"
 
 printf 'checked %d numeric claims in %s against %s\n' "$checked" "$DECK" "$ART"
+[ "$blocks" -gt 0 ] && printf 'skipped %d table/figure blocks — their cells need a provenance row, which this does not check\n' "$blocks"
 if [ -n "$untraceable" ]; then
   printf '\nnot found in the artifacts file:\n%s' "$untraceable"
   printf '\nEach of these is either a number nobody can reproduce, or one whose row\n'
-  printf 'is missing from %s. Add the row, or mark the line <!-- no-claim -->.\n' "$ART"
+  if [ "$FMT" = latex ]; then marker='% no-claim'; else marker='<!-- no-claim -->'; fi
+  printf 'is missing from %s. Add the row, or mark the line %s.\n' "$ART" "$marker"
   exit 1
 fi
 printf 'all traceable\n'

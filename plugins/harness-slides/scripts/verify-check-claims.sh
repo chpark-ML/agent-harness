@@ -114,6 +114,85 @@ printf '%s\n' '- 27 of 29' > "$WORK/deck.md"
 ( cd /tmp && "$BASH_BIN" "$CHECK" "$WORK/../nonexistent-dir-xyz/d.md" ) >/dev/null 2>&1
 [ $? -eq 2 ] && ok "no artifacts file anywhere exits 2" || bad "no artifacts file anywhere exits 2"
 
+# --- LaTeX ---------------------------------------------------------------------
+# The document is the same invariant in a different syntax, so these repeat the
+# markdown cases only where LaTeX changes the answer. The pair that earns its
+# keep is the escaped percent: `\%` is a literal, `%` opens a comment, and a
+# percentage is the commonest claim in a results table — read it as a comment
+# and the check goes quiet on exactly the numbers it exists for.
+case_tex() {
+  local name="$1" want="$2" body="$3"
+  printf '%s\n' "$body" > "$WORK/paper.tex"
+  "$BASH_BIN" "$CHECK" "$WORK/paper.tex" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1
+  local got=$?
+  if [ "$got" -eq "$want" ]; then ok "$name"
+  else bad "$name" "expected exit $want, got $got — $(head -3 "$WORK/out" | tr '\n' ' ')"; fi
+}
+
+DOC='\begin{document}\n\section{R}'
+# The pair that pins the measured decision: inline math is notation and is not
+# checked, the same number in plain prose is. Reversing these two is how the
+# check comes back with 519 findings on one paper.
+case_tex "an UNtraceable number in inline math → pass (notation)" 0 "$(printf "$DOC")
+The estimator uses \$0.999\$ as its threshold."
+case_tex "the same UNtraceable number in plain prose → fail" 1 "$(printf "$DOC")
+The estimator reaches 0.999 on the held-out split."
+case_tex "a traceable number in plain prose → pass" 0 "$(printf "$DOC")
+Mean latency is 12.5 ms."
+case_tex "an escaped percent, traceable → pass" 0 "$(printf "$DOC")
+False positives fall to 8\\%."
+case_tex "an escaped percent, UNtraceable → fail" 1 "$(printf "$DOC")
+False positives fall to 42\\%."
+case_tex "a comment carrying an old number → pass" 0 "$(printf "$DOC")
+Results hold. % the earlier draft said 0.799"
+case_tex "a % no-claim line is skipped → pass" 0 "$(printf "$DOC")
+The rejected variant scored 0.612. % no-claim"
+case_tex "cite keys with years are not claims → pass" 0 "$(printf "$DOC")
+This matches \\cite{smith2019deep} and \\citep{lee2024x}."
+case_tex "ref and label targets are not claims → pass" 0 "$(printf "$DOC")
+See Table~\\ref{tab:2} and \\label{sec:3}."
+case_tex "includegraphics layout is not a claim → pass" 0 "$(printf "$DOC")
+\\includegraphics[width=0.8\\linewidth]{figures/f1.pdf}"
+case_tex "package and class options are not claims → pass" 0 "\\documentclass[11pt]{article}
+\\usepackage[margin=1in]{geometry}
+$(printf "$DOC")
+Nothing numeric here."
+
+# Table and figure cells are produced wholesale by a run, so they are skipped
+# and counted rather than checked one cell at a time.
+printf '%s\n' "$(printf "$DOC")
+Prose says 12.5 ms.
+\\begin{tabular}{ll}
+0.999 & 0.888 \\\\
+\\end{tabular}" > "$WORK/paper.tex"
+"$BASH_BIN" "$CHECK" "$WORK/paper.tex" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1
+got=$?
+if [ "$got" -eq 0 ] && grep -q 'skipped 1 table/figure block' "$WORK/out"; then
+  ok "table cells are skipped and the count is reported"
+else
+  bad "table cells are skipped and the count is reported" "exit $got — $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# A preamble swept in by a `*.tex` glob: warn, and still check it. Skipping
+# silently would lose the claims in an \input-ed section file, which has the
+# same two markers missing.
+printf '%% preamble\n\\setlength{\\parskip}{0.5em}\n' > "$WORK/preamble.tex"
+"$BASH_BIN" "$CHECK" "$WORK/preamble.tex" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1
+if grep -q 'declares no document and no sections' "$WORK/out"; then
+  ok "a preamble-shaped .tex warns rather than being skipped"
+else
+  bad "a preamble-shaped .tex warns rather than being skipped" "$(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+# ...and the advice names the marker that works in the file being checked.
+printf '%s\n' "$(printf "$DOC")
+An untraceable 0.999 here." > "$WORK/paper.tex"
+"$BASH_BIN" "$CHECK" "$WORK/paper.tex" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1
+if grep -q 'mark the line % no-claim' "$WORK/out"; then
+  ok "the LaTeX failure names the LaTeX marker, not the markdown one"
+else
+  bad "the LaTeX failure names the LaTeX marker, not the markdown one" "$(tail -1 "$WORK/out")"
+fi
+
 total=$((PASS + FAIL))
 echo
 echo "=== Summary ==="
