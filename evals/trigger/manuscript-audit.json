@@ -2,7 +2,7 @@
   "skill": "harness-slides:manuscript-audit",
   "cases": [
     {
-      "query": "투고 전에 논문 수치 한 번 점검하고 싶어. paper/iclr_paper.tex 에 있는 숫자들이 실제 돌린 결과랑 맞는지 확인해줘",
+      "query": "투고 전에 논문 수치 한 번 점검하고 싶어. paper/main.tex 에 있는 숫자들이 실제 돌린 결과랑 맞는지 확인해줘",
       "should_trigger": true
     },
     {
@@ -25,7 +25,6 @@
       "query": "Before I submit, audit the draft: which claims in it can a reviewer actually reproduce from what we have committed?",
       "should_trigger": true
     },
-
     {
       "query": "이번 실험 결과로 팀 발표자료 만들어줘. FINDINGS.md 랑 ARTIFACTS.md 에 다 정리돼 있어",
       "should_trigger": false

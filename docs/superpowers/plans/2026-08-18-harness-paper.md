@@ -180,3 +180,32 @@ The item the T2 result named as *the one with the most value left* is now `plugi
 - **§3a, §3c, §3d** — the config, the rule and the skill. Both checkers take paths as arguments and need no config at all, so §3a's three keys are now clearly a guess made before the checks existed. Decide its shape from the rule and the skill.
 - **T1** remains untested; nothing reads a config.
 - **Adoption has no path yet.** The convention exists and nothing tells an author about it. That is what the skill in §3d is for.
+
+
+---
+
+## The skill shipped (2026-08-19)
+
+`manuscript-audit` is §3d, in `harness-slides` beside the two checkers it calls.
+
+**Placement was forced, not chosen.** A skill reaches scripts through `${CLAUDE_PLUGIN_ROOT}`, which is its *own* plugin, and cross-plugin references are forbidden — so the skill has to live where the checkers live. §7's question is therefore still open but now has a mechanism attached: `harness-core/bin/` is on the Bash tool's PATH for every session, and every profile depends on core, so promoting the two checkers there is what lets the skill move to `harness-research`. That is a structural change and belongs in its own PR.
+
+What did change is the profile's description, which was narrower than the profile: `harness-slides` now says it covers claim traceability for **what a result becomes** — a deck outline and a manuscript audit. Two skills, one job, two outputs.
+
+**Running the body end to end found three defects**, which is the step a trigger eval cannot cover:
+
+- Listing candidates with `git ls-files '*.tex' '*.md'` returned **53 files in a repository with no manuscript at all**, and `head` hid the rest without saying so. It now greps for `\begin{document}`.
+- The artifact-map glob offered `harness-research`'s **template**, and auditing against an empty template reports every number as untraceable — which reads exactly like a catastrophic finding.
+- `check-provenance.sh`'s summary printed two of its three categories, so on a real draft it said *1 carry a source, 10 do not* out of 12 and left the reader to wonder about the twelfth.
+
+### Routing: 12/12, and a discarded first measurement worth more than the number
+
+The first run scored **1/6 positives** and it was the instrument. Nearly every trial returned `no tool call`, the six negatives included — and a room where nothing fires passes every negative trivially. The prompts named files the working directory did not contain, so the model answered *there is no such file*; the bench measured the fixture's emptiness. Against a fixture that actually holds a manuscript and an artifact map, the same twelve queries and the same description scored **12/12, pass^3 1.00**, with all three named neighbours taking their work 3/3.
+
+**The lesson is a new instance of an old rule and belongs with the others**: a trigger fixture has to satisfy its own prompts' premises, and nothing checks that. Recorded in §4b.
+
+### Still open
+
+- **§3a and §3c** — the config and the rule. Both checkers and the skill take paths as arguments and need no config, so §3a's three keys remain a guess made before anything existed. The rule is the last piece that would need one.
+- **T1** remains untested; nothing reads a config.
+- **Promoting the checkers to `harness-core/bin/`**, which is what unblocks moving the skill to `harness-research`.
