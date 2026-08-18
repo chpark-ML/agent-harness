@@ -48,7 +48,7 @@
     {
       "name": "harness-slides",
       "displayName": "Harness Slides",
-      "description": "Results-to-deck narrative with a traceability check. Rendering is delegated to slides-grab (npm)",
+      "description": "Claim traceability for what a result becomes — a deck outline, and a manuscript audit. Rendering is delegated to slides-grab (npm)",
       "source": "./plugins/harness-slides",
       "category": "development"
     },

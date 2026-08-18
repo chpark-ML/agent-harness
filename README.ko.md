@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-822-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-827-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -46,7 +46,7 @@
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
-| **우리 스킬** | `pr-create` | `pr-review` | `research-notes`<br>`repro-checklist` | `results-deck` | | |
+| **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
@@ -446,14 +446,14 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
 | 발표 수치 검사기 | **50** |
-| 블록 근거 검사기 (`verify-check-provenance`) | **21** |
-| frontmatter 파싱 | **12** + selftest **7** |
+| 블록 근거 검사기 (`verify-check-provenance`) | **22** |
+| frontmatter 파싱 | **13** + selftest **7** |
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **14** |
-| 문서 내부 참조 (`verify-doc-refs`) | **64** 파일 + 자체 **19** |
+| 문서 내부 참조 (`verify-doc-refs`) | **67** 파일 + 자체 **19** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **822** |
+| **합계** | **827** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

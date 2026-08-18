@@ -73,7 +73,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
-| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 1, with Superpowers 14 on top — and `ui-ux-pro-max` 7 more when `frontend` is installed |
+| **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 2, with Superpowers 14 on top — and `ui-ux-pro-max` 7 more when `frontend` is installed |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
 | **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
@@ -175,7 +175,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 21, harnessctl round trip + install.sh and uninstall.sh 198 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 12 + selftest 7, plugin manifests 13, benchmark health 14, document references 64 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 822. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 22, harnessctl round trip + install.sh and uninstall.sh 198 assertions, context-budget gate 14, inventory figures 39 + selftest 7, frontmatter 13 + selftest 7, plugin manifests 13, benchmark health 14, document references 67 files + 19 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 827. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as three jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), and manifests.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -303,6 +303,12 @@ Only `results-deck` started at 4/6, and both misses were *development-side repor
 > **The control is what makes that statement safe, and it also caught a second thing.** Both arms return 10 of 18 positives where the row above publishes 14 of 18. Since the drop reproduces with the dependency *absent*, it is not the dependency — the difference is the room the measurement was taken in: a fresh clone under `--cwd`, not the live tree the 14/18 was measured in. Had the treatment arm run alone, a four-case drop would have been sitting there looking exactly like interference. **This is the fourth time the rule "check the instrument can ring before believing a negative" has paid, and the first time it was paid forward rather than after the fact.**
 >
 > **What is now open is the baseline, not the profile.** Whether `results-deck`'s published 14/18 survives re-measurement in its original room is a separate question with its own cost, and it is not this change's to answer.
+
+> *Added 2026-08-19*: `manuscript-audit` measured at 3 runs — **12/12, pass@1 1.00, pass^3 1.00, spread 0.00**, the first of our skills to fire on every trial of every positive. **The negatives are the stronger half**: all three named neighbours took their work unanimously — a talk to `results-deck`, recording a result to `research-notes`, seeds and environment to `repro-checklist`, 3/3 each — while build, prose polish and code review went to `Bash`, which no skill claims.
+>
+> **The first run of this same set returned 1/6, and it was the instrument, not the description.** Almost every trial came back `no tool call`, negatives included, and a room where nothing fires passes every negative trivially — a skill that does not exist would also have scored 6/6 there. The cause was that the prompts named `paper/main.tex` and `docs/ARTIFACTS.md` in a working directory that had neither, so the model answered *there is no such file* without calling anything. **The measurement was of the fixture's emptiness, not of the description.** Re-run against a repository that actually contains a manuscript and an artifact map, the same twelve queries and the same description scored 12/12.
+>
+> This is the fourth instance of the rule [ADR-0011](adr/0011-ecosystem-survey.md) named — *when a negative result arrives, first check whether the conditions for the mechanism to fire were even met* — and the first where the missing condition was the **content of the working directory** rather than a timeout, a stand-in or the first-tool-call window. A trigger fixture has to satisfy its own prompts' premises, and nothing checks that.
 
 ### Do the Korean triggers earn their cost? (pilot, 2026-08-08)
 

@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-slides",
   "displayName": "Harness Slides",
-  "version": "1.4.1",
-  "description": "Turn a repository's own results into a deck outline whose every number is traceable. Rendering is left to slides-grab",
+  "version": "1.5.0",
+  "description": "Claim traceability for the artifacts a result becomes: a deck outline whose every number traces, and a manuscript audit. Rendering is left to slides-grab",
   "author": {
     "name": "chpark-ML"
   },

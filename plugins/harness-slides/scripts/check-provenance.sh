@@ -159,8 +159,11 @@ unmarked_n=0
 broken_n=0
 [ -n "$broken" ] && broken_n="$(printf '%s' "$broken" | grep -c .)"
 
-printf '%d table/figure blocks in %s — %d carry a source, %d do not\n' \
-  "$blocks" "$DOC" "$marked" "$unmarked_n"
+# All three categories, always. Printing only two of them leaves a reader to
+# subtract and come up short: a document with one resolving marker, one broken
+# one and ten unmarked read as "1 carry a source, 10 do not" out of 12.
+printf '%d table/figure blocks in %s — %d traced, %d unsourced, %d naming a run that is not recorded\n' \
+  "$blocks" "$DOC" "$marked" "$unmarked_n" "$broken_n"
 
 rc=0
 if [ -n "$broken" ]; then
