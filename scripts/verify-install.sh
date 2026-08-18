@@ -495,6 +495,15 @@ out="$(run_probe --scope nowhere)"; rc=$?
 check_rc "an unknown --scope is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 out="$(run_probe --profile nope)"; rc=$?
 check_rc "an unknown --profile is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
+# The boundary: every profile the usage block advertises has to survive the same
+# validation that rejects `nope`. Pairing a real name with a bogus one keeps the
+# probe inert — it dies either way, and the question is *which* name it names.
+# Ordered so the real profile is checked first: if `frontend` were missing from
+# the case list, the message would say frontend rather than nope. Without this,
+# a documented profile can be rejected by the installer and nothing notices.
+out="$(run_probe --profile frontend,nope)"; rc=$?
+check_rc "...but a profile the usage block advertises is not" \
+  "$([ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'unknown profile: nope' && echo 0 || echo 1)"
 out="$(run_probe --bogus)"; rc=$?
 check_rc "an unknown flag is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 

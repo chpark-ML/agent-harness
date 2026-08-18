@@ -38,6 +38,9 @@
 set -uo pipefail
 
 MARKETPLACE_NAME="agent-harness"
+# Registered by install.sh only when --profile includes frontend. Named here so
+# the report below can tell it apart from a marketplace the user added.
+UIUX_MARKETPLACE="ui-ux-pro-max-skill"
 SCOPE="user"
 DRY_RUN=0
 PURGE_TEMPLATES=0
@@ -323,7 +326,19 @@ if [ -n "$FOREIGN" ]; then
   left_any=1
 fi
 
-FOREIGN_MKT="$(marketplace_names | grep -v "^$MARKETPLACE_NAME$")"
+# Ours to have registered, but not ours to remove: this marketplace can serve a
+# plugin the user installed for their own reasons, and §6's ownership model does
+# not delete a value the consumer already had. Reported with the right
+# provenance instead of falling into the "did not register" list below, which
+# would be untrue.
+if marketplace_names | grep -qx "$UIUX_MARKETPLACE"; then
+  say "  $UIUX_MARKETPLACE — registered by install.sh --profile frontend"
+  say "    the ui-ux-pro-max plugin itself already left with --prune above"
+  say "    remove with:  claude plugin marketplace remove $UIUX_MARKETPLACE"
+  left_any=1
+fi
+
+FOREIGN_MKT="$(marketplace_names | grep -v "^$MARKETPLACE_NAME$" | grep -v "^$UIUX_MARKETPLACE$")"
 if [ -n "$FOREIGN_MKT" ]; then
   say "  marketplaces this harness did not register:"
   printf '%s\n' "$FOREIGN_MKT" | sed 's/^/    /'
