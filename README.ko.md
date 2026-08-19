@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-830-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-833-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -41,7 +41,7 @@
 
 프로파일은 **축이 셋**이다 — 무엇을 하는 사람인가(역할) · 무엇을 내놓는가(산출물) · 무슨 언어인가. 축이 다르니 서로 배타적이지 않고, 필요한 것만 골라 겹쳐 쓴다.
 
-| | `core`<br><sub>항상</sub> | `+dev`<br><sub>역할</sub> | `+research`<br><sub>역할</sub> | `+slides`<br><sub>산출물</sub> | `+frontend`<br><sub>도메인, 옵트인</sub> | `+python`·`+typescript`<br><sub>언어</sub> |
+| | `core`<br><sub>항상</sub> | `+dev`<br><sub>역할</sub> | `+research`<br><sub>역할</sub> | `+slides`<br><sub>산출물</sub> | `+frontend`<br><sub>도메인</sub> | `+python`·`+typescript`<br><sub>언어</sub> |
 |---|---|---|---|---|---|---|
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,927 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.227). 옵트인인 `frontend` 를 빼면 ~7,211 이다. 추정기는 환경을 탄다: `cross-model-review` 추가 전 같은 체크아웃이 macOS 워크스테이션에서는 동일 버전으로 ~7,934 가 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,927 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.227). `frontend` 를 빼면 ~7,211 이다. 추정기는 환경을 탄다: `cross-model-review` 추가 전 같은 체크아웃이 macOS 워크스테이션에서는 동일 버전으로 ~7,934 가 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 198 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 200 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -105,10 +105,10 @@
 
 ## 시작하기
 
-**한 줄이면 된다.** 무엇을 하는 사람인지에 따라 프로파일만 고른다 — 전부 조합 가능하고 나중에 더해도 된다.
+**한 줄이면 된다.** 기본값이 전부라서 프로파일을 고를 필요가 없다 — `--profile` 은 덜 받고 싶을 때 쓴다.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
 ```
 
 이것이 **user 스코프**다. 가드 훅·스킬·커맨드가 이 기계에서 여는 모든 저장소에 걸리고, 어느 프로젝트에도 파일을 쓰지 않는다.
@@ -124,11 +124,11 @@ cd your-repo
 그다음은 그대로 붙여넣으면 된다.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile dev,python
-harnessctl init --scope project --with dev
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
+harnessctl init --scope project --with dev,research
 ```
 
-**`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예의 `--profile dev,python` 은 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다). 프로파일을 안 골랐다면 기본값이 `dev,research` 이므로 `--with dev,research`.
+**`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예처럼 `--profile` 을 안 줬다면 기본값에 둘 다 들어 있으므로 `--with dev,research` 이고, `--profile dev,python` 으로 줄여 깔았다면 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다).
 
 나뉘는 기준은 그 자산이 **누구 것인가**다. 가드와 스킬은 내 것이라 기계 전체에 있어야 한다 — 설치를 잊은 저장소 하나가 곧 구멍이다. rule 과 프로젝트 설정은 팀 것이라 커밋에 있어야 한다. clone 과 함께 도착해야 하니까.
 
@@ -155,23 +155,26 @@ bash install.sh --profile dev --ref v0.1.0
 git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/install.sh --profile dev
 ```
 
-`--ref` 는 태그·브랜치·커밋 SHA 를 다 받는다. 릴리스 태그는 **스냅샷 전체** 를 버저닝한다 — 설치기·선언적 페이로드·그 리비전의 플러그인 버전까지. 여섯 플러그인의 자체 버전과는 독립이다 ([ADR-0013](docs/adr/0013-release-tags.md)).
+`--ref` 는 태그·브랜치·커밋 SHA 를 다 받는다. 릴리스 태그는 **스냅샷 전체** 를 버저닝한다 — 설치기·선언적 페이로드·그 리비전의 플러그인 버전까지. 각 플러그인의 자체 버전과는 독립이다 ([ADR-0013](docs/adr/0013-release-tags.md)).
 
 **클론은 원래 필요 없었다.** 설치기는 체크아웃에서 아무것도 읽지 않는다 — `harnessctl` 을 *플러그인 캐시 → 마켓플레이스 클론 → 이 체크아웃* 순으로 찾는데, 앞의 둘은 스크립트 자신이 방금 만든 것이다. 세 번째는 fallback 일 뿐이라 클론은 스크립트 파일 하나를 얻는 용도였다.
 
 </details>
 
-### 무엇을 고를 것인가
+### 전부보다 덜 받기
 
-`--profile` 만 다르다. 위 명령 뒤에 붙이면 된다.
+**프로파일을 고를 필요가 없다.** 전부 합쳐 상시 컨텍스트가 ~8,000 tok 이고 천장이 9,000 이라, 기본값이 전부다. `--profile` 은 *덜* 받으려고 있다 — 아래 플래그를 위 명령 뒤에 붙이면 된다.
 
 | 하는 일 | 플래그 | 받는 것 |
 |---|---|---|
-| **개발** (가장 흔함) | `--profile dev,python --with-tools` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
+| **전부** (기본) | (없음) | 12개 프로파일 전부 — 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14, 우리 스킬 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, 두 역할의 규칙 파일, 언어 서버 플러그인 7 |
+| **개발만** | `--profile dev,python` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
 | **연구** | `--profile research` | 가드 7, 5문서 노트 규율, `research-notes`·`repro-checklist` |
 | **연구 + 발표** | `--profile research,slides` | 위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고 **덱의 모든 수치가 근거로 추적되는지 기계로 검사**. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다 |
+| **UI/UX 는 빼고** | `--profile core,dev,research,slides` | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 를 뺀다. 매 세션 ~716 tok 인데 UI 작업이 없으면 전부 손실이고, **Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 유일한 의존성**이다 — 설치기는 프로파일 목록에 `frontend` 가 있을 때만 그 마켓플레이스를 등록하므로 **이 플래그가 거기서 빠지는 방법이다** |
+| **언어 서버 바이너리까지** | `--with-tools` | LSP *플러그인* 은 기본에 들어 있고, 그것이 구동하는 *바이너리* 는 아니다. `npm install -g` 를 돌리기 때문에 옵트인 |
 | **이 저장소에만** | `--profile dev --scope project` | 머신 전체를 안 건드린다. 현재 저장소의 `.claude/` 와 `settings.json` 만 바뀌고, clone 하는 팀 전체가 같은 규약을 받는다 |
-| **최소** | (없음) | 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나 |
+| **최소** | `--profile core` | 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, 스킬은 `pr-create` 하나 |
 
 **`--scope` 를 한 번은 생각하고 고른다.** 기본은 `user` (머신 전체) 인데, `dev`·`research` 의 **규칙 파일은 프로젝트 스코프에만 설치된다** — `~/.claude/rules` 는 읽히는 자리가 아니라서다. 두 프로파일을 제대로 쓰려면 작업 저장소에서 `--scope project` 로 한 번 더 설치한다.
 
@@ -199,7 +202,7 @@ claude plugin update harness-core@agent-harness
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `--profile <list>` | `core` | `core` · `dev` · `research` · `slides` · `frontend` · 언어 축 `python` · `typescript` · `csharp` · `cpp` · `lua` · `swift` · `kotlin`, 콤마로 조합 |
+| `--profile <list>` | 전부 (12개) | `core` · `dev` · `research` · `slides` · `frontend` · 언어 축 `python` · `typescript` · `csharp` · `cpp` · `lua` · `swift` · `kotlin`, 콤마로 조합. **기본값이 전부이므로 이 옵션은 덜 받으려고 쓴다** |
 | `--scope user\|project` | `user` | `user` 는 머신 전체, `project` 는 현재 저장소만 |
 | `--with-tools` | 꺼짐 | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
 | `--ref <tag\|branch>` | — | marketplace 를 특정 리비전에 고정 |
@@ -346,7 +349,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 **뒤의 다섯은 `--with-tools` 로 안 깔린다.** `csharp-ls` 는 dotnet 도구, `sourcekit-lsp` 는 Xcode, 나머지는 Homebrew 나 배포판 패키지라 npm 이 아니다. `harnessctl doctor` 가 각각의 설치 명령과 함께 보고한다.
 
-**`frontend` 만 기본 설치에 없다.** 의존하는 [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 가 매 세션 ~716 tok 을 쓰는데, UI 작업이 없는 저장소에서는 그게 전부 손실이다. 그리고 이것은 **Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 첫 의존성**이라 `install.sh` 가 `--profile` 에 `frontend` 가 있을 때만 그 마켓플레이스를 등록한다 ([ADR-0009](docs/adr/0009-external-dependencies.md)).
+**`frontend` 는 2026-08-19 부터 기본 설치에 들어간다.** 그 전까지는 옵트인이었다 — 의존하는 [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 가 매 세션 ~716 tok 을 쓰고, UI 작업이 없는 저장소에서는 그게 전부 손실이기 때문이다. 뒤집은 근거는 그 옵트인이 아무도 보호하지 않았다는 것이다: 기본에 없으니 보이지 않았고, 결과적으로 손해를 본 쪽은 UI 작업을 하면서 그런 프로파일이 있는 줄 몰랐던 사용자였다. **다만 이것은 Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 첫 의존성이고, 그 마켓플레이스가 이제 기본 설치마다 등록된다.** 빠지려면 `--profile` 에서 `frontend` 를 빼면 된다 — `install.sh` 는 프로파일 목록에 `frontend` 가 있을 때만 그 마켓플레이스를 등록한다 ([ADR-0009](docs/adr/0009-external-dependencies.md)).
 
 ---
 
@@ -442,9 +445,9 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **260** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
-| 설치기 왕복 | **198** assertion |
+| 설치기 왕복 | **200** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
-| 인벤토리 수치 (`verify-inventory`) | **39** + selftest **7** |
+| 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
 | 블록 근거 검사기 (`verify-check-provenance`) | **22** |
 | frontmatter 파싱 | **13** + selftest **7** |
@@ -453,7 +456,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **68** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **830** |
+| **합계** | **833** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

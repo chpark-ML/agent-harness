@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-830-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-833-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -85,7 +85,7 @@ bash install.sh --profile dev --ref v0.1.0
 git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/install.sh --profile dev
 ```
 
-`--ref` takes a tag, a branch or a commit SHA. Release tags version the whole snapshot — the installer, the declarative payload, and the plugin versions at that revision — and are independent of the six plugins' own versions ([ADR-0013](docs/adr/0013-release-tags.md)).
+`--ref` takes a tag, a branch or a commit SHA. Release tags version the whole snapshot — the installer, the declarative payload, and the plugin versions at that revision — and are independent of the plugins' own versions ([ADR-0013](docs/adr/0013-release-tags.md)).
 
 The clone was never required: the installer reads nothing from the checkout. It looks for `harnessctl` in the plugin cache, then the marketplace clone, then the checkout — and the first two are what the script itself just created.
 
@@ -95,19 +95,19 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 **You do not have to choose a profile.** Everything is ~8,000 tokens of always-on
 context against a ceiling of 9,000, so the default is all of it. `--profile`
-exists for taking *less* — the whole content set costs about 2,100 tokens per
+exists for taking *less* — the whole content set costs about 2,900 tokens per
 session more than development alone, which is worth declining only if you know
 you want it back.
 
 | You want | Flags | Difference from the default |
 |---|---|---|
-| **Everything** | *(none)* | 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, and the rules for both roles |
-| Development only | `--profile dev` | Drops the five-document note discipline and `results-deck`. Saves ~2,100 tok per session |
+| **Everything** | *(none)* | All twelve profiles: 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, the rules for both roles, and all seven language-server plugins |
+| Development only | `--profile dev` | Drops the five-document note discipline, `results-deck` and the UI/UX reference. Saves ~2,900 tok per session — the `+research`, `+slides` and `+frontend` columns of [the profile table below](#what-you-get) |
 | Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
-| A language server too | `--profile dev,python --with-tools` | Adds the LSP. `--with-tools` runs `npm install -g`, which is why it is opt-in |
-| Game or app work | `--profile dev,csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) | One language server each. **`--with-tools` cannot fetch these** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
+| No UI/UX work | `--profile core,dev,research,slides` | Drops [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). It costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate — **this is also the flag that keeps you off that marketplace**, because the installer registers it only when the profile list asks for `frontend` |
+| The language servers themselves | `--with-tools` | The LSP *plugins* are in the default; the *binaries* they drive are not. `--with-tools` runs `npm install -g`, which is why it is opt-in |
+| Game or app work | *(none — already installed)* | `csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) come with the default. **`--with-tools` cannot fetch their binaries** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
 | Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
-| UI/UX work as well | `--profile dev,frontend` | Adds [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). **Opt-in, and the only profile that is not in the default** — it costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate |
 
 **The one thing to know about `--scope`.** It defaults to `user`, which covers the whole machine — but the **rule files install at project scope only**, because `~/.claude/rules` is not a location Claude Code reads. So a new project needs one more run inside it:
 
@@ -172,7 +172,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 198 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 200 assertions hold that line.
 
 ### Requirements
 
@@ -188,7 +188,7 @@ bash 3.2 or newer (stock macOS `/bin/bash` is the floor) · jq · git · a Claud
 
 Profiles fall on three different axes — what you *do*, what you *produce*, and what you *write it in* — so they are not mutually exclusive.
 
-| | `core`<br><sub>always</sub> | `+dev`<br><sub>role</sub> | `+research`<br><sub>role</sub> | `+slides`<br><sub>output</sub> | `+frontend`<br><sub>domain, opt-in</sub> | `+python`·`+typescript`<br><sub>language</sub> |
+| | `core`<br><sub>always</sub> | `+dev`<br><sub>role</sub> | `+research`<br><sub>role</sub> | `+slides`<br><sub>output</sub> | `+frontend`<br><sub>domain</sub> | `+python`·`+typescript`<br><sub>language</sub> |
 |---|---|---|---|---|---|---|
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
 | **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | | |
@@ -200,7 +200,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
 | **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,927 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227), and it is ~7,211 without the opt-in `frontend` profile. The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,927 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227), and it is ~7,211 if you drop `frontend`. The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -230,7 +230,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 198 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 200 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -287,9 +287,9 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **260** |
 | session-log renderer | **46** |
-| installer round trip | **198** assertions |
+| installer round trip | **200** assertions |
 | context-budget gate | **14** |
-| inventory figures | **39** + selftest **7** |
+| inventory figures | **40** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **22** |
 | document references | **68** files + **21** own cases |
@@ -298,7 +298,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **13** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **830** |
+| **Total** | **833** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
