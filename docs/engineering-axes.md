@@ -56,7 +56,7 @@ Guards and guides cannot substitute for each other — a guide can be ignored, a
 | Do the guards stop incidents | **33 / 35**, false positives on ordinary work **2 / 30** |
 | Does written prose change behaviour (branch names) | 0/12 → **10/12**, *p* ≈ 0.00007 |
 | Commit subject ≤ 70 characters | 6/6 against 6/6 — **zero. Removed from the rules** |
-| Does uninstall restore the original | 198 assertions, canonically identical |
+| Does uninstall restore the original | 200 assertions, canonically identical |
 
 **This is the only layer properly measured.** And one of the things measured came back zero, so it was deleted.
 
