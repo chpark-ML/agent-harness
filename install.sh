@@ -4,8 +4,8 @@
 #   ./install.sh                                  # everything, user scope
 #   ./install.sh --scope project                  # everything, this repo only
 #   ./install.sh --profile dev                    # less than everything
-#   ./install.sh --profile dev,python --with-tools  # plus a language server
-#   ./install.sh --profile dev,frontend           # plus the UI/UX reference
+#   ./install.sh --profile dev,python             # one language axis, not all seven
+#   ./install.sh --with-tools                     # npm-install the language servers too
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The
@@ -30,9 +30,15 @@ MARKETPLACE_NAME="agent-harness"
 # claude-plugins-official, so unlike superpowers it has to be registered here.
 UIUX_REPO="nextlevelbuilder/ui-ux-pro-max-skill"
 UIUX_MARKETPLACE="ui-ux-pro-max-skill"
-# frontend is deliberately not in the default set: ui-ux-pro-max costs ~716 tok
-# in every session, which is pure loss on a project that does no UI work.
-PROFILES="core,dev,research,slides"
+# Every profile. The default is what a consumer gets without reading anything,
+# so --profile exists to ask for *less*, not to discover what was held back.
+# frontend was out of the default until 2026-08-19 over its ~716 tok always-on
+# cost; the ceiling has room for it (~7,927 of 9,000, measured in CI) and the
+# language profiles cost nothing in context at all, so what the holdout actually
+# bought was a consumer doing UI work who never learned the profile existed.
+# Kept as a separate variable because usage() prints it — one copy, no drift.
+PROFILES_DEFAULT="core,dev,research,slides,frontend,python,typescript,csharp,cpp,lua,swift,kotlin"
+PROFILES="$PROFILES_DEFAULT"
 SCOPE="user"
 REF=""
 WITH_TOOLS=0
@@ -60,13 +66,17 @@ warn() { printf '!   %s\n' "$*" >&2; }
 die()  { printf '!   %s\n' "$*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
-  cat <<'EOF'
+  # Bounded by the first line of code rather than by a line number: `2,25p` ran
+  # one line long and printed `set -uo pipefail` into --help, and any edit to
+  # the header above would have moved that boundary again.
+  awk 'NR==1{next} /^set -uo pipefail/{exit} {print}' "$0" | sed 's/^# \{0,1\}//'
+  cat <<EOF
 
   --profile <list>   comma-separated: core, dev, research, slides, frontend,
                      and the language profiles python, typescript, csharp, cpp,
                      lua, swift, kotlin
-                     (default: core,dev,research,slides — pass this only to get less)
+                     The default is every one of them, so pass this only to get
+                     less:  $PROFILES_DEFAULT
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
   --ref <ref>        pin the marketplace to a git tag or branch

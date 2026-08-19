@@ -38,8 +38,9 @@
 set -uo pipefail
 
 MARKETPLACE_NAME="agent-harness"
-# Registered by install.sh only when --profile includes frontend. Named here so
-# the report below can tell it apart from a marketplace the user added.
+# Registered by install.sh whenever the profile list includes frontend, which
+# since 2026-08-19 is the default. Named here so the report below can tell it
+# apart from a marketplace the user added.
 UIUX_MARKETPLACE="ui-ux-pro-max-skill"
 SCOPE="user"
 DRY_RUN=0
@@ -332,7 +333,7 @@ fi
 # provenance instead of falling into the "did not register" list below, which
 # would be untrue.
 if marketplace_names | grep -qx "$UIUX_MARKETPLACE"; then
-  say "  $UIUX_MARKETPLACE — registered by install.sh --profile frontend"
+  say "  $UIUX_MARKETPLACE — registered by install.sh for the frontend profile"
   say "    the ui-ux-pro-max plugin itself already left with --prune above"
   say "    remove with:  claude plugin marketplace remove $UIUX_MARKETPLACE"
   left_any=1

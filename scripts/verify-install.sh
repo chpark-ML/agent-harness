@@ -504,6 +504,18 @@ check_rc "an unknown --profile is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo
 out="$(run_probe --profile frontend,nope)"; rc=$?
 check_rc "...but a profile the usage block advertises is not" \
   "$([ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'unknown profile: nope' && echo 0 || echo 1)"
+# The same boundary, applied to the default set rather than to one name. Every
+# profile installed when the consumer passes no flag at all has to survive the
+# validator, and the list is read out of install.sh rather than repeated here so
+# this cannot pass against a stale copy. A typo in PROFILES_DEFAULT makes the
+# no-flag install die on its own first line, which is the whole default path.
+default_profiles="$(sed -n 's/^PROFILES_DEFAULT="\(.*\)"$/\1/p' "$INSTALL_SH")"
+check_rc "install.sh states a default profile set" \
+  "$([ -n "$default_profiles" ] && echo 0 || echo 1)"
+out="$(run_probe --profile "$default_profiles,nope")"; rc=$?
+check_rc "every profile in the default set survives validation" \
+  "$([ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'unknown profile: nope' && echo 0 || echo 1)"
+
 out="$(run_probe --bogus)"; rc=$?
 check_rc "an unknown flag is rejected" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 
