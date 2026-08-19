@@ -42,7 +42,7 @@ Do not drop 4 and 5. **A talk with no overturned results reads as a talk where t
 Once there is a draft, check it by machine. That is not the same as reading it over.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/scripts/check-claims.sh" <deck.md> [ARTIFACTS.md]
+harness-check-claims <deck.md> [ARTIFACTS.md]
 ```
 
 It asks whether every number in the deck appears in the evidence file. A flagged number is one of two things — a figure nobody can reproduce, or a row missing from the evidence table. **Decide which before acting**: if the row is missing, add it; if the number cannot be reproduced, take it off the slide.

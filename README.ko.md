@@ -421,7 +421,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 | `harnessctl` | 플러그인이 못 나르는 셋(permissions·CLAUDE.md·rules)을 **되돌릴 수 있게** 설치하는 것은 아무도 안 한다 |
 | `pr-create` · `pr-review` | Superpowers 의 대응 스킬은 *저장소 규약* 을 모른다. 생애주기 단계로 축을 갈라 공존시켰다 |
 | `research-notes` · `repro-checklist` | Superpowers 의 **연구 전용 스킬은 0개** 다 |
-| `results-deck` + `check-claims.sh` | `slides-grab` 은 렌더링만 한다. *추적 불가능한 수치가 슬라이드에 오르는 사고* 를 막는 자리는 비어 있었다 |
+| `results-deck` + `harness-check-claims` | `slides-grab` 은 렌더링만 한다. *추적 불가능한 수치가 슬라이드에 오르는 사고* 를 막는 자리는 비어 있었다 |
 
 ---
 

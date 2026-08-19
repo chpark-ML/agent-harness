@@ -35,14 +35,14 @@ If there is no artifact map, stop and say so. The audit has nothing to check aga
 ## Step 2 — Two passes, because a manuscript has two kinds of number
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/scripts/check-claims.sh"     <manuscript> <ARTIFACTS.md>
-bash "$CLAUDE_PLUGIN_ROOT/scripts/check-provenance.sh" <manuscript> <ARTIFACTS.md>
+harness-check-claims     <manuscript> <ARTIFACTS.md>
+harness-check-provenance <manuscript> <ARTIFACTS.md>
 ```
 
 The two partition the document, and knowing why keeps the report honest.
 
-- **Prose figures** — the headline claims, in sentences. `check-claims.sh` asks whether each appears in the artifact map. Inline math is skipped: in a manuscript that is notation, not results.
-- **Tables and figures** — cells produced wholesale by a run. Requiring every cell in the artifact map is a demand nobody meets, so `check-provenance.sh` asks once per block instead: does it name the run that made it?
+- **Prose figures** — the headline claims, in sentences. `harness-check-claims` asks whether each appears in the artifact map. Inline math is skipped: in a manuscript that is notation, not results.
+- **Tables and figures** — cells produced wholesale by a run. Requiring every cell in the artifact map is a demand nobody meets, so `harness-check-provenance` asks once per block instead: does it name the run that made it?
 
 A block names its run in a comment, which is invisible in the built output:
 

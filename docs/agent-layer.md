@@ -76,7 +76,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 2, with Superpowers 14 on top — and `ui-ux-pro-max` 7 more when `frontend` is installed |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
-| **3** | Executables | `plugins/*/bin/` | ✅ 2 — `harnessctl` (install, check, remove) and [`harness-log`](harness-log.md) (session history → HTML) |
+| **3** | Executables | `plugins/*/bin/` | ✅ 4 — `harnessctl` (install, check, remove), [`harness-log`](harness-log.md) (session history → HTML), [`harness-check-claims`](harness-check-claims.md) and [`harness-check-provenance`](harness-check-provenance.md) (claim traceability) |
 | **4** | MCP servers | `.mcp.json` | ⏳ none |
 | **—** | External plugins | A profile's `dependencies` | ✅ Superpowers, 2 LSPs, `ui-ux-pro-max` ([ADR-0009](adr/0009-external-dependencies.md)) — the last one is the first dependency taken from a marketplace Anthropic does not curate |
 | **—** | External instruments | Installed by the developer (not shipped) | ⏳ none — `skill-creator` was adopted ([ADR-0011](adr/0011-ecosystem-survey.md)), found orphaned and never used on 2026-08-13, and demoted; re-adopt when `claude plugin eval` leaves early access (its `--ablation with-without` is the native form of the paired runs that justified adoption) |
@@ -333,7 +333,7 @@ The Korean triggers in a skill description take a fifth of a typical skill descr
 
 ### Deck number traceability (`make bench-claims`)
 
-`check-claims.sh` has 33 verifier cases, but **those are not independent evidence** — the regexes and the cases were written in the same sitting, so every "not-a-claim shape" in there is one I had already thought of. So the same approach as the guards was used: **this repository's own documents from a commit before the checker existed** as the corpus.
+`harness-check-claims` has 33 verifier cases, but **those are not independent evidence** — the regexes and the cases were written in the same sitting, so every "not-a-claim shape" in there is one I had already thought of. So the same approach as the guards was used: **this repository's own documents from a commit before the checker existed** as the corpus.
 
 | Corpus | Tokens checked | Flagged | New unclassified shapes |
 |---|---|---|---|
@@ -365,7 +365,7 @@ Of the 41 flags, 5 are that indistinguishable kind (`bash 3.2`) and the other 36
 Two rules from this become measurement discipline.
 
 1. **An A/B whose samples are agent sessions does not claim an effect below 20%.** At realistic n, anything under that is indistinguishable from noise.
-2. **Where possible, push the measurement down to a deterministic layer.** The guard benchmark is definitive at n=1 because hooks live outside the model. `check-claims.sh` is a script rather than a skill instruction for the same reason — **tell the model to be careful and you can only confirm it with an A/B; tell a machine and you confirm it by counting.**
+2. **Where possible, push the measurement down to a deterministic layer.** The guard benchmark is definitive at n=1 because hooks live outside the model. `harness-check-claims` is a script rather than a skill instruction for the same reason — **tell the model to be careful and you can only confirm it with an A/B; tell a machine and you confirm it by counting.**
 
 ### The instruments were wrong nine times — all the same mistake
 
@@ -430,7 +430,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 - ⏳ `harnessctl --scope local` (targeting `settings.local.json`) — the place for permissions you will not commit. No real demand yet.
 - ✅ ~~More language profiles for game and app work~~ — added 2026-08-18. `harness-csharp` (Unity, .NET), `harness-cpp` (Unreal, native), `harness-lua` (Roblox, love2d), `harness-swift` (iOS, macOS) and `harness-kotlin` (Android), one manifest each over the official LSP plugins. Answers §2's *game and app code gets no symbol layer* row. **The list this row used to name was wrong** — `go`, `rust` and `java`, none of them asked for, while the languages behind a stated goal went unlisted. Those three are still available the same way, on the same terms: when actually used.
 - ⏳ **Flutter has no route yet, and it is the one gap in the row above.** Dart has no plugin on the official marketplace, so unlike the other five there is nothing to depend on. A profile would have to ship its own `.lsp.json` naming `dart language-server`, which is supported but is a different shape from every language profile so far — and it could not be verified on the machine that would have written it, since neither `dart` nor `flutter` was installed. React Native needs nothing new: `harness-typescript` already covers it.
-- ⏳ **`harness-paper`** — the publication half of research. `harness-research` stops at *what is established now* (`FINDINGS.md`) and *which run produced it* (`ARTIFACTS.md`), and nothing crosses from there into a manuscript. Answers §2's *an established result has no path to a manuscript* row. **Copy `results-deck` rather than invent**: it already performs this transform for a talk, and its traceability check (`check-claims.sh`) is the part a manuscript needs most. Unlike every other profile so far there is nothing external to compose from — the official marketplace carries no paper, LaTeX or citation plugin — so this one is built, not depended on. [ADR-0001](adr/0001-harness-scope.md) named a LaTeX build as excluded and was corrected on 2026-08-18; the exclusion governs `core`, not profiles.
+- ⏳ **`harness-paper`** — the publication half of research. `harness-research` stops at *what is established now* (`FINDINGS.md`) and *which run produced it* (`ARTIFACTS.md`), and nothing crosses from there into a manuscript. Answers §2's *an established result has no path to a manuscript* row. **Copy `results-deck` rather than invent**: it already performs this transform for a talk, and its traceability check (`harness-check-claims`) is the part a manuscript needs most. Unlike every other profile so far there is nothing external to compose from — the official marketplace carries no paper, LaTeX or citation plugin — so this one is built, not depended on. [ADR-0001](adr/0001-harness-scope.md) named a LaTeX build as excluded and was corrected on 2026-08-18; the exclusion governs `core`, not profiles.
 - ✅ ~~A `harness-frontend` profile~~ — opened 2026-08-18 on `ui-ux-pro-max` (§3b). What moved was not the candidate list but **the owner stating a need**, which is the basis §2's site-dependent rows and `claude-video` already run on. `taste-skill` remains the other candidate and is not installed; if the profile ever needs a second asset, survey that family rather than the one name. **The one risk it carried was measured before merge and did not materialise**: the dependency ships a skill called `slides` and one called `design`, and a paired run with and without it returned the same 6/6 negatives and the same 10/18 positives (§4b). The row below still stands — one competitor is not a load test.
 - ⏳ Session hand-off on the development side — the `handoff` family exists and the research side is already covered by the five-document set. `mattpocock/skills` (§3b) adds two concrete shapes for the seat: a `handoff` that compacts the conversation for another agent, and `to-tickets` / `wayfinder`, which plan multi-session work as a ticket map with blocking edges. Neither is a reason to install that suite — it competes with Superpowers at the same stage — but they are the design to copy if this row ever moves. When real demand appears twice on the development side.
 - ⏳ An agent-layer security scan — ECC's **AgentShield** names a guard-lane seat we have empty: scanning the agent configuration itself (hooks, skills, permissions) rather than the code it guards. Its body has not been read; read it before any verdict. Zero occurrences here.
@@ -468,6 +468,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   │   ├── scripts/{_verify-lib,verify-*}.sh
 │   │   ├── bin/harnessctl              # init, doctor, uninstall
 │   │   ├── bin/harness-log             # session history → self-contained HTML
+│   │   ├── bin/harness-check-{claims,provenance}   # claim traceability, any profile
 │   │   └── declarative/                # what a plugin cannot carry
 │   │       ├── settings-fragment.json  # permissions + scalars (no hooks)
 │   │       ├── CLAUDE.md               # template
@@ -475,7 +476,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   │       └── rules/{core,dev,research}/*.md
 │   ├── harness-dev/            # skills/pr-review + deps: core, superpowers
 │   ├── harness-research/       # skills/{research-notes,repro-checklist} + deps: core
-│   ├── harness-slides/         # deps: core — the results-deck skill + check-claims.sh
+│   ├── harness-slides/         # deps: core — results-deck + manuscript-audit skills
 │   ├── harness-frontend/       # deps: core, ui-ux-pro-max — one manifest, no files
 │   ├── harness-python/         # deps: core, pyright-lsp
 │   ├── harness-typescript/     # deps: core, typescript-lsp

@@ -1,0 +1,23 @@
+# gh-account — the GitHub account this repository expects to act as.
+#
+# You probably do not need this file.
+#
+# When the owner of `origin` is itself one of the accounts you are logged in to
+# `gh` with, gh-account-guard already knows what to expect and this file stays
+# empty. github.com/<you>/thing is guarded with nothing written here.
+#
+# Fill it in for the two cases inference cannot decide:
+#
+#   - `origin` is owned by an organisation, so the owner matches no account
+#   - `origin` is your namespace, but the expectation is a different account
+#
+# One login, on its own line. Blank lines and #-comments are ignored, and ONLY
+# THE FIRST real line is read — so edit this file rather than appending to it.
+# A second `echo login >> gh-account.txt` changes nothing and is confusing.
+#
+#   chpark-ML
+#
+# A one-off push as another account, without editing this file:
+#   HARNESS_GH_ACCOUNT=<login> git push
+#
+# See docs/hooks/gh-account-guard.md

@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify-check-provenance.sh — cases for check-provenance.sh.
+# verify-harness-check-provenance — cases for harness-check-provenance.
 #
 # The failure this script has to avoid is calling a correct block wrong: a
 # provenance check that reports blocks which *are* marked gets switched off, and
@@ -11,7 +11,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHECK="$HERE/check-provenance.sh"
+CHECK="$HERE/../bin/harness-check-provenance"
 BASH_BIN="${BASH:-bash}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -127,7 +127,7 @@ printf '%s\n' "$TBL" > "$WORK/doc.tex"
 # --- the two checks partition the document ------------------------------------
 # check-claims skips exactly the blocks this one covers. If the two ever
 # disagree, a number is either counted twice or by neither.
-CLAIMS="$HERE/check-claims.sh"
+CLAIMS="$HERE/../bin/harness-check-claims"
 printf '%s\n' "\\begin{document}
 Prose says 12.5 here.
 $TBL

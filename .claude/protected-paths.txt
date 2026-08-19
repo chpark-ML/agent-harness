@@ -1,0 +1,18 @@
+# protected-paths — absolute path prefixes the agent must not touch.
+#
+# One prefix per line. Blank lines and # comments are ignored. While this file
+# has no meaningful lines the protected-paths hook stays disabled, which is the
+# right state for a project that only ever works inside its own tree.
+#
+# Matching is on the literal prefix: `/data` covers `/data` and `/data/...` but
+# not `/database`. A blocked call names this file in its error message.
+#
+# Typical entries — delete these comments and add your own:
+#   /mnt/shared          another team's export
+#   /var/lib/production  live data
+#   /Volumes/Backup      a mounted backup no agent should write to
+#
+# Carve-outs go in .claude/allowed-paths.txt. Per-shell overrides, both
+# colon-separated like PATH:
+#   HARNESS_PROTECTED_PATHS="/a:/b"   replaces this file
+#   HARNESS_ALLOWED_PATHS="/a/ok:/b"  unions with allowed-paths.txt
