@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-827-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-826-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -292,7 +292,7 @@ make context-budget          # always-on token cost per scope and profile
 | inventory figures | **39** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **22** |
-| document references | **67** files + **19** own cases |
+| document references | **66** files + **21** own cases |
 | documented commands exist | **45** + selftest **12** |
 | frontmatter | **13** + selftest **7** |
 | plugin and marketplace manifests | **13** |
