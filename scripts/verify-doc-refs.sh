@@ -165,6 +165,49 @@ def check_paths(path, read):
     return problems
 
 
+# ---- the real run -----------------------------------------------------------
+# '*.md' at the root, not a list: README.ko.md, CONTRIBUTING.md and SECURITY.md
+# were added and none of them were checked, because a hardcoded list is exactly
+# how a new document becomes invisible to its own checker.
+DOCS = ['*.md', 'docs/**/*.md', 'plugins/**/*.md',
+        '.claude/**/*.md', 'evals/*.md']
+# Frozen copies of documents that used to live elsewhere, kept as bench-claims
+# input and marked DO NOT EDIT. Their links were relative to the originals, so
+# they are historical text, not references this tree is supposed to satisfy.
+# `.claude/rules/` is what `harnessctl init` writes when this repository is
+# installed onto itself. Same reasoning as the line above — output, not a
+# document this tree wrote — but it matters for a different reason: the scan
+# globs the filesystem rather than asking git, so an untracked install artefact
+# is counted on a developer's machine and absent in CI. That made the published
+# check total differ by three between the two, and it was rediscovered on all
+# six republishes in one session before anyone traced it.
+EXCLUDE = ['evals/prose-corpus.md', '.claude/rules/**/*.md']
+# Instruction files: their bodies are executed, so a dead path there is a step
+# that never runs.
+INSTRUCTIONS = ['plugins/*/skills/*/SKILL.md', 'plugins/*/declarative/rules/*/*.md',
+                'plugins/*/commands/*.md', '.claude/commands/*.md', '.claude/agents/*.md']
+
+
+def expand(patterns, exclude=None):
+    out = set()
+    for pat in patterns:
+        out.update(glob.glob(os.path.join(repo, pat), recursive=True))
+    # normpath both sides before comparing. os.path.join(repo, 'evals/x.md')
+    # keeps the forward slash the pattern was written with while glob returns
+    # the platform separator, so on Windows the two spellings of the same file
+    # never matched and EXCLUDE excluded nothing — 6 failures from the one file
+    # this list exists to keep out.
+    # EXCLUDE entries go through glob too, so a pattern works as well as a
+    # literal path. Comparing them as literals only is how '.claude/rules/**'
+    # was added and silently excluded nothing — the same shape as the Windows
+    # bug the comment above describes, and found the same way: by the count
+    # not moving.
+    skip = set()
+    for e in (EXCLUDE if exclude is None else exclude):
+        skip.update(os.path.normpath(x) for x in glob.glob(os.path.join(repo, e), recursive=True))
+    return sorted(p for p in out if os.path.isfile(p) and os.path.normpath(p) not in skip)
+
+
 # ---- selftest ---------------------------------------------------------------
 # Three kinds, as docs/agent-layer.md §4 requires: no-op (must stay quiet),
 # block (must fire), boundary (resembles a failure and must stay quiet).
@@ -227,37 +270,28 @@ if mode == '--selftest':
             failed += 1
             print("  FAIL  %s — expected %d, got %d %s"
                   % (label, expected, len(got), [g[2] for g in got]))
+    # expand()'s exclusion is not reachable through CASES, and it failed
+    # silently once: EXCLUDE entries were compared as literal paths, so a
+    # pattern added to keep install output out of the scan matched nothing and
+    # the count did not move. These run against files that exist in every
+    # environment, so neither can pass by having nothing to find.
+    probe = expand(['docs/adr/*.md'], exclude=[])
+    if not probe:
+        failed += 1; print("  FAIL  expand() found no docs/adr/*.md to test with")
+    else:
+        for label, exclude in (("a literal path", [os.path.relpath(probe[0], repo)]),
+                               ("a glob pattern", ['docs/adr/*.md'])):
+            left = expand(['docs/adr/*.md'], exclude=exclude)
+            want = len(probe) - 1 if 'literal' in label else 0
+            if len(left) == want:
+                passed += 1
+            else:
+                failed += 1
+                print("  FAIL  EXCLUDE accepts %s — expected %d left, got %d"
+                      % (label, want, len(left)))
+
     print("  %d / %d passed" % (passed, passed + failed))
     sys.exit(1 if failed else 0)
-
-# ---- the real run -----------------------------------------------------------
-# '*.md' at the root, not a list: README.ko.md, CONTRIBUTING.md and SECURITY.md
-# were added and none of them were checked, because a hardcoded list is exactly
-# how a new document becomes invisible to its own checker.
-DOCS = ['*.md', 'docs/**/*.md', 'plugins/**/*.md',
-        '.claude/**/*.md', 'evals/*.md']
-# Frozen copies of documents that used to live elsewhere, kept as bench-claims
-# input and marked DO NOT EDIT. Their links were relative to the originals, so
-# they are historical text, not references this tree is supposed to satisfy.
-EXCLUDE = ['evals/prose-corpus.md']
-# Instruction files: their bodies are executed, so a dead path there is a step
-# that never runs.
-INSTRUCTIONS = ['plugins/*/skills/*/SKILL.md', 'plugins/*/declarative/rules/*/*.md',
-                'plugins/*/commands/*.md', '.claude/commands/*.md', '.claude/agents/*.md']
-
-
-def expand(patterns):
-    out = set()
-    for pat in patterns:
-        out.update(glob.glob(os.path.join(repo, pat), recursive=True))
-    # normpath both sides before comparing. os.path.join(repo, 'evals/x.md')
-    # keeps the forward slash the pattern was written with while glob returns
-    # the platform separator, so on Windows the two spellings of the same file
-    # never matched and EXCLUDE excluded nothing — 6 failures from the one file
-    # this list exists to keep out.
-    skip = {os.path.normpath(os.path.join(repo, e)) for e in EXCLUDE}
-    return sorted(p for p in out if os.path.isfile(p) and os.path.normpath(p) not in skip)
-
 
 cache = {}
 

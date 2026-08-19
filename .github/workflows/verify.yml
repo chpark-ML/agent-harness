@@ -70,3 +70,12 @@ jobs:
           done
           claude plugin install superpowers@claude-plugins-official --scope user
       - run: make context-budget-strict
+      # The published check total has the same shape as the ceiling above, and
+      # the same hole was left open. `verify-check-total` wraps `verify` and
+      # reads its output, so without a CLI the plugin-manifest count is 0 and
+      # it *skips* the comparison — "the run total is 813 and cannot be
+      # compared with the published 827". Every republished total was therefore
+      # self-reported, and one of them was wrong by one: it had been measured
+      # on a clone polluted with a stray file. This is the only job that can
+      # check it, exactly as it is the only one that can enforce the ceiling.
+      - run: make verify-all
