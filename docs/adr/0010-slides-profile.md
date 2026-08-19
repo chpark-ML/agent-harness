@@ -17,14 +17,14 @@ There is also a conflict with existing discipline. [ADR-0009](0009-external-depe
 
 1. **The `results-deck` skill** — turns the repository's artefacts (`FINDINGS.md`, `experiment_plan.md`, `ARTIFACTS.md`, or a change history, release notes, benchmark output) into an outline on a six-slide skeleton and hands it to `slides-grab`. The skeleton **requires "how much to believe it" and "what is not established"** — for the same reason `FINDINGS.md` preserves reversals: a talk with no overturned results reads as a talk where they were deleted.
 2. **The trigger conflict is settled by negative routing.** The description sends rendering, design, editing and PDF explicitly to `slides-grab`, and note-writing itself to `research-notes`. In ADR-0009 we could not put negative routing into somebody else's skill and had to pick one; here the **roles genuinely do not overlap** (we produce the input, they render it), so our description alone divides them.
-3. **`check-claims.sh` — traceability enforced by a script, not by a skill instruction.** It mechanically checks that every numeric token in the deck appears in the evidence file, and exits 1 if one does not. Numbers that are not claims (years, ISO dates, versions, list numbers, slide references) are ignored, and exceptions are declared with a `<!-- no-claim -->` on that line.
+3. **`harness-check-claims` — traceability enforced by a script, not by a skill instruction.** It mechanically checks that every numeric token in the deck appears in the evidence file, and exits 1 if one does not. Numbers that are not claims (years, ISO dates, versions, list numbers, slide references) are ignored, and exceptions are declared with a `<!-- no-claim -->` on that line.
 4. **`slides-grab` is not declared as a dependency.** It is an npm package, not a plugin, so `dependencies` cannot point at it. It is treated like an LSP binary — `harnessctl doctor` checks PATH and prints the install command.
 
 ### Why a script — it is also a question of measurability
 
 Put "write numbers traceably" in a skill body alone and it is a guide. Whether a guide is actually followed can only be established by an agent-session A/B, and as [agent-layer §4b](../agent-layer.md) measured, such an A/B needs tens to hundreds of sessions per arm to see an effect below 20%. **Push the same rule down into a script and it is settled by 21 cases.** The principle that what can be a guard should not be left a guide is not only a safety principle; it is a measurability principle.
 
-`check-claims.sh` is a **command**, not a hook. It blocks no tool call — a draft deck is a document, not a tool call, and there is no point to block at. Instead the skill's Step 3 runs it, and a draft that does not pass is not handed to the renderer.
+`harness-check-claims` is a **command**, not a hook. It blocks no tool call — a draft deck is a document, not a tool call, and there is no point to block at. Instead the skill's Step 3 runs it, and a draft that does not pass is not handed to the renderer.
 
 ### What the check deliberately does not do
 
@@ -33,7 +33,7 @@ It does not check whether a number is used **correctly**. Attach a number that e
 ## Consequences
 
 - A request for a deck no longer goes straight to a rendering tool; it passes through evidence collection first. Gathering the numbers before writing the deck reverses the order in which you would otherwise look for numbers that fit the narrative.
-- On a project with no `ARTIFACTS.md`, `check-claims.sh` exits 2 (an operational failure). That is intended — passing without an evidence file makes the check a pretence. The skill's Step 1 has that table built first.
+- On a project with no `ARTIFACTS.md`, `harness-check-claims` exits 2 (an operational failure). That is intended — passing without an evidence file makes the check a pretence. The skill's Step 1 has that table built first.
 - The false-positive risk remains. The list of not-a-claim shapes was built from observation, so a shape can be missing, which is why 7 of the verifier's 21 cases are things that must pass. When a new false-positive shape appears, the case comes first.
 - Without `slides-grab`, this profile stops at the outline. That alone is worth having, but unless doctor says so the user experiences it as something cut off.
 

@@ -23,7 +23,7 @@
 # `  PASS  <name>` / `  FAIL  <name>` are the same shape the hook verifiers
 # print, which is what lets one parser read every transcript.
 #
-# The exception that stays duplicated: harness-slides' verify-check-claims.sh
+# The exception that stays duplicated: harness-core's verify-harness-check-claims.sh
 # re-rolls these helpers and must keep doing so — plugin caches are separate
 # and ../ references between them are forbidden, so it cannot reach either
 # lib. That copy is the platform's tax, not debt.

@@ -1,7 +1,12 @@
 #!/bin/bash
-# check-claims.sh — every number in a results document must be traceable.
+# harness-check-claims — every number in a results document must be traceable.
 #
-#   check-claims.sh <document> [artifacts.md]
+#   harness-check-claims <document> [artifacts.md]
+#
+# catches:  a number in a document that appears nowhere in the artifact map.
+# scope:    the two files named on the command line. Reads, never writes.
+# bypass:   don't run it, or mark the line no-claim (the marker per format is
+#           in the failure message).
 #
 # The document may be Markdown (a results deck) or LaTeX (a manuscript). The
 # format is taken from the extension — `.tex` and `.ltx` are LaTeX, anything
@@ -63,7 +68,7 @@ if [ -z "$ART" ]; then
   done
 fi
 [ -n "$ART" ] && [ -f "$ART" ] || {
-  printf '!  no artifacts file found. Pass one:  check-claims.sh %s <artifacts.md>\n' "$DECK" >&2
+  printf '!  no artifacts file found. Pass one:  harness-check-claims %s <artifacts.md>\n' "$DECK" >&2
   exit 2
 }
 

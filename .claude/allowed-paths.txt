@@ -1,0 +1,12 @@
+# allowed-paths — carve-outs inside the prefixes listed in protected-paths.txt.
+#
+# One prefix per line. Blank lines and # comments are ignored. An entry here
+# only matters if it falls under something protected; listing a path that was
+# never protected has no effect.
+#
+# Example — protect a whole shared mount, then open this project's corner:
+#   .claude/protected-paths.txt   /mnt/shared
+#   .claude/allowed-paths.txt     /mnt/shared/projects/this-one
+#
+# Note that the project directory is not implicitly allowed. If the project
+# itself lives under a protected prefix, list it here explicitly.

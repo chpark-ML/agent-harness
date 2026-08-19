@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify-check-claims.sh — behavioural verification of the claim traceability check.
+# verify-harness-check-claims — behavioural verification of the claim traceability check.
 #
 # The check turns a convention ("a number that cannot be traced is not a
 # result") into something a machine enforces, so it earns the same treatment as
@@ -7,11 +7,11 @@
 # between them. The let-through cases matter more — a checker that flags slide
 # numbers and years gets bypassed within a day.
 #
-# Run:  bash plugins/harness-slides/scripts/verify-check-claims.sh
+# Run:  bash plugins/harness-core/scripts/verify-harness-check-claims.sh
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHECK="$HERE/check-claims.sh"
+CHECK="$HERE/../bin/harness-check-claims"
 BASH_BIN="${BASH:-bash}"
 [ -f "$CHECK" ] || { echo "verify-check-claims: $CHECK not found" >&2; exit 1; }
 

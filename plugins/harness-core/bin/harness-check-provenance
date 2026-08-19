@@ -1,14 +1,19 @@
 #!/bin/bash
-# check-provenance.sh — every table and figure must name the run that made it.
+# harness-check-provenance — every table and figure must name the run that made it.
 #
-#   check-provenance.sh <document> [artifacts.md] [--strict]
+#   harness-check-provenance <document> [artifacts.md] [--strict]
 #
-# The sibling of check-claims.sh, and deliberately a different check. That one
+# catches:  a block whose source comment names a run absent from the artifact
+#           map; with --strict, also a block carrying no source comment.
+# scope:    the two files named on the command line. Reads, never writes.
+# bypass:   don't run it, or drop --strict to make unmarked blocks a report.
+#
+# The sibling of harness-check-claims, and deliberately a different check. That one
 # asks whether a *number* appears in the artifacts file, which works for prose
 # and for a deck that quotes a handful of figures. It does not work for a table:
 # measured on a real 574-line manuscript, 493 of its numeric tokens sat inside
 # 12 table and figure blocks, and requiring every cell to be transcribed into
-# ARTIFACTS.md is a demand nobody meets. check-claims.sh therefore skips those
+# ARTIFACTS.md is a demand nobody meets. harness-check-claims therefore skips those
 # blocks and counts them. This is what they need instead — one question per
 # block rather than one per cell:
 #
@@ -25,7 +30,7 @@
 #
 # It goes on the line before the block opens, or anywhere inside it. Its text
 # must appear somewhere in the artifacts file; the comparison is a substring,
-# the same deliberately-dumb matching check-claims.sh uses. A marker naming a
+# the same deliberately-dumb matching harness-check-claims uses. A marker naming a
 # run nobody recorded is the failure this catches.
 #
 # Exit codes — the two findings are NOT the same severity, and collapsing them
@@ -70,7 +75,7 @@ if [ -z "$ART" ]; then
   done
 fi
 [ -n "$ART" ] && [ -f "$ART" ] || {
-  printf '!  no artifacts file found. Pass one:  check-provenance.sh %s <artifacts.md>\n' "$DOC" >&2
+  printf '!  no artifacts file found. Pass one:  harness-check-provenance %s <artifacts.md>\n' "$DOC" >&2
   exit 2
 }
 

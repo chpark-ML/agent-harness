@@ -1,0 +1,116 @@
+{
+  "harness": "agent-harness",
+  "scope": "project",
+  "modules": [
+    "dev",
+    "research"
+  ],
+  "files": {
+    "managed": [
+      ".claude/rules/harness/dev/review.md",
+      ".claude/rules/harness/research/notes.md",
+      ".claude/rules/harness/workflow.md"
+    ],
+    "template": [
+      ".claude/allowed-paths.txt",
+      ".claude/gh-account.txt",
+      ".claude/protected-paths.txt",
+      "CLAUDE.md"
+    ]
+  },
+  "settings": {
+    "permissions_added": {
+      "allow": [
+        "Read",
+        "Edit",
+        "Write",
+        "Glob",
+        "Grep",
+        "NotebookEdit",
+        "Bash(ls:*)",
+        "Bash(cat:*)",
+        "Bash(head:*)",
+        "Bash(tail:*)",
+        "Bash(wc:*)",
+        "Bash(file:*)",
+        "Bash(stat:*)",
+        "Bash(find:*)",
+        "Bash(grep:*)",
+        "Bash(rg:*)",
+        "Bash(sort:*)",
+        "Bash(uniq:*)",
+        "Bash(diff:*)",
+        "Bash(jq:*)",
+        "Bash(mkdir:*)",
+        "Bash(touch:*)",
+        "Bash(cp:*)",
+        "Bash(mv:*)",
+        "Bash(make:*)",
+        "Bash(pytest:*)",
+        "Bash(python3 -m pytest:*)",
+        "Bash(npm test:*)",
+        "Bash(cargo test:*)",
+        "Bash(go test:*)",
+        "Bash(git status)",
+        "Bash(git status:*)",
+        "Bash(git diff:*)",
+        "Bash(git log:*)",
+        "Bash(git show:*)",
+        "Bash(git branch:*)",
+        "Bash(git fetch:*)",
+        "Bash(git add:*)",
+        "Bash(git commit:*)",
+        "Bash(git stash:*)",
+        "Bash(git restore:*)",
+        "Bash(git switch:*)",
+        "Bash(git checkout:*)",
+        "Bash(gh pr:*)",
+        "Bash(gh issue:*)",
+        "Bash(gh repo view:*)",
+        "Bash(gh auth status:*)"
+      ],
+      "ask": [
+        "Bash(git push:*)",
+        "Bash(git rebase:*)",
+        "Bash(git merge:*)"
+      ],
+      "deny": [
+        "Bash(rm -rf:*)",
+        "Bash(git push --force:*)",
+        "Bash(git push -f:*)",
+        "Bash(git reset --hard:*)",
+        "Bash(git clean -fd:*)",
+        "Read(./.env*)",
+        "Read(./secrets/**)",
+        "Read(./**/.credentials*)"
+      ]
+    },
+    "scalars_added": {
+      "includeCoAuthoredBy": false,
+      "terminalProgressBarEnabled": true
+    },
+    "created_paths": [
+      [
+        "permissions"
+      ],
+      [
+        "permissions",
+        "allow"
+      ],
+      [
+        "permissions",
+        "ask"
+      ],
+      [
+        "permissions",
+        "deny"
+      ]
+    ],
+    "file_created": true
+  },
+  "gitignore_added": [
+    ".claude/settings.json.bak-*",
+    ".claude/settings.local.json"
+  ],
+  "gitignore_created": false
+}

@@ -1,7 +1,7 @@
 #!/bin/bash
 # bench-claims.sh — what does the claim checker do to prose it has never seen?
 #
-# `verify-check-claims.sh` proves the checker does what I meant it to do. It
+# `verify-harness-check-claims.sh` proves the checker does what I meant it to do. It
 # cannot prove the *filter list is complete*, because I wrote the cases and the
 # regexes in the same sitting — every "shape that is never a claim" in that file
 # is one I had already thought of.
@@ -43,7 +43,7 @@
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-CHECK="$REPO/plugins/harness-slides/scripts/check-claims.sh"
+CHECK="$REPO/plugins/harness-core/bin/harness-check-claims"
 # Last commit before plugins/harness-slides existed.
 CORPUS="$REPO/evals/prose-corpus.md"
 
