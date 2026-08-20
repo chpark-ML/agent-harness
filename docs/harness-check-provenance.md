@@ -89,7 +89,14 @@ this does not do it.
 
 ## Verification
 
-`plugins/harness-core/scripts/verify-harness-check-provenance.sh` — 22 cases,
-run by `make verify`. Most of them are boundary work, because the failure to
-avoid is calling a correct block wrong: nesting, where the marker may sit, and
-whether one block's marker can leak into the next.
+`plugins/harness-core/scripts/verify-harness-check-provenance.sh`, run by
+`make verify`. **The case count is deliberately not repeated here** — it is
+published in the check table in both READMEs and in `docs/agent-layer.md` §4,
+where `verify-check-total.sh` checks it against what the suite actually printed.
+A sixth copy in this file is a copy nothing scans, and it went stale within one
+commit of being written.
+
+Most of the cases are boundary work, because the failure to avoid is calling a
+correct block wrong: nesting, where the marker may sit, whether one block's
+marker can leak into the next, and — since the anchoring fix — prose that
+merely contains the word `source:`.
