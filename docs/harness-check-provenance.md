@@ -35,9 +35,26 @@ in the built output — no macro to define, no package to load.
 <!-- source: make eval-main -->              Markdown
 ```
 
-It goes on the line above the block or anywhere inside it. Its text must appear
-somewhere in the artifact map; the comparison is a substring, the same
-deliberately dumb matching its sibling uses.
+It goes on the line above the block or anywhere inside it, and a trailing
+comment on a content line counts — `\includegraphics{f.pdf} % source: make fig`
+is a marker. Its text must appear somewhere in the artifact map; the comparison
+is a substring, the same deliberately dumb matching its sibling uses.
+
+**The comment opener has to sit immediately before `source:`**, with nothing but
+whitespace between. Recognising the word anywhere on the line was the first
+version, and the first real figure it was pointed at broke it: the LaTeX comment
+
+```
+% A module is a trapezoid, as in the source: encoder widens
+```
+
+is ordinary English, and it displaced a correct marker sitting on the line above
+the block — so a right figure was reported as claiming a run nobody recorded.
+That is the false-positive failure mode [ADR-0003](adr/0003-verification-mandate.md)
+names as the way a check earns being switched off, and four cases in
+`verify-harness-check-provenance.sh` hold the anchor in place. If you need the
+word in prose, any wording that does not put a `%` or `<!--` directly in front
+of it is fine.
 
 Blocks recognised: `table`, `tabular`, `figure`, `tikzpicture`, `axis` in LaTeX
 — outermost only, so a `tabular` inside a `table` is one block, not two — and a
@@ -72,7 +89,14 @@ this does not do it.
 
 ## Verification
 
-`plugins/harness-core/scripts/verify-harness-check-provenance.sh` — 22 cases,
-run by `make verify`. Most of them are boundary work, because the failure to
-avoid is calling a correct block wrong: nesting, where the marker may sit, and
-whether one block's marker can leak into the next.
+`plugins/harness-core/scripts/verify-harness-check-provenance.sh`, run by
+`make verify`. **The case count is deliberately not repeated here** — it is
+published in the check table in both READMEs and in `docs/agent-layer.md` §4,
+where `verify-check-total.sh` checks it against what the suite actually printed.
+A sixth copy in this file is a copy nothing scans, and it went stale within one
+commit of being written.
+
+Most of the cases are boundary work, because the failure to avoid is calling a
+correct block wrong: nesting, where the marker may sit, whether one block's
+marker can leak into the next, and — since the anchoring fix — prose that
+merely contains the word `source:`.
