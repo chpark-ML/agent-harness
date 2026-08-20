@@ -119,12 +119,22 @@ while IFS= read -r line || [ -n "$line" ]; do
   # because the natural place to write it is the line above \begin.
   case "$line" in
     *"source:"*)
-      m="${line#*source:}"
-      m="${m%%-->*}"                                   # markdown comment close
-      m="$(printf '%s' "$m" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
-      if [ -n "$m" ]; then
-        if [ "$depth" -gt 0 ] || [ "$in_table" -eq 1 ]; then marker="$m"; else pending="$m"; fi
-      fi ;;
+      # The comment opener has to sit immediately before `source:`, with nothing
+      # but whitespace between. Unanchored, this matched any prose containing the
+      # word — `% as in the source: encoder widens` is ordinary English in a
+      # LaTeX comment, and it overwrote the real marker on the line above the
+      # block. Found on the first real figure this was pointed at.
+      before="${line%%source:*}"
+      before="$(printf '%s' "$before" | sed -E 's/[[:space:]]+$//')"
+      case "$before" in
+        *'%'|*'<!--')
+          m="${line#*source:}"
+          m="${m%%-->*}"                               # markdown comment close
+          m="$(printf '%s' "$m" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+          if [ -n "$m" ]; then
+            if [ "$depth" -gt 0 ] || [ "$in_table" -eq 1 ]; then marker="$m"; else pending="$m"; fi
+          fi ;;
+      esac ;;
   esac
 
   if [ "$FMT" = latex ]; then

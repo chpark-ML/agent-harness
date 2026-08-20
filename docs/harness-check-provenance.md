@@ -35,9 +35,26 @@ in the built output — no macro to define, no package to load.
 <!-- source: make eval-main -->              Markdown
 ```
 
-It goes on the line above the block or anywhere inside it. Its text must appear
-somewhere in the artifact map; the comparison is a substring, the same
-deliberately dumb matching its sibling uses.
+It goes on the line above the block or anywhere inside it, and a trailing
+comment on a content line counts — `\includegraphics{f.pdf} % source: make fig`
+is a marker. Its text must appear somewhere in the artifact map; the comparison
+is a substring, the same deliberately dumb matching its sibling uses.
+
+**The comment opener has to sit immediately before `source:`**, with nothing but
+whitespace between. Recognising the word anywhere on the line was the first
+version, and the first real figure it was pointed at broke it: the LaTeX comment
+
+```
+% A module is a trapezoid, as in the source: encoder widens
+```
+
+is ordinary English, and it displaced a correct marker sitting on the line above
+the block — so a right figure was reported as claiming a run nobody recorded.
+That is the false-positive failure mode [ADR-0003](adr/0003-verification-mandate.md)
+names as the way a check earns being switched off, and four cases in
+`verify-harness-check-provenance.sh` hold the anchor in place. If you need the
+word in prose, any wording that does not put a `%` or `<!--` directly in front
+of it is fine.
 
 Blocks recognised: `table`, `tabular`, `figure`, `tikzpicture`, `axis` in LaTeX
 — outermost only, so a `tabular` inside a `table` is one block, not two — and a

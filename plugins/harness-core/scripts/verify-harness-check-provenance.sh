@@ -76,6 +76,61 @@ case_ "marker inside the block → found" 0 tex "\\begin{table}
 \\begin{tabular}{l} 1 \\\\ \\end{tabular}
 \\end{table}"
 
+# --- prose is not a marker ----------------------------------------------------
+# The regression. `*"source:"*` was unanchored, so any comment containing the
+# word claimed the block. The line that found it is ordinary English in a LaTeX
+# comment — `% A module is a trapezoid, as in the source: encoder widens` — and
+# it overwrote a correct marker sitting on the line above the block. The figure
+# was right and the checker called it wrong, which §4 names as the way a check
+# earns being switched off.
+case_ "prose containing the word is not a marker" 0 tex "% as in the source: encoder widens
+$TBL"
+# Exit code alone cannot tell these apart — unanchored, the prose becomes a
+# marker naming nothing, which also exits 1. The summary line is what separates
+# "the block has no source" from "the block claims a source that is missing",
+# so that is what this asserts.
+says "prose leaves the block unsourced, not falsely sourced" "0 traced, 1 unsourced, 0 naming" tex "% as in the source: encoder widens
+$TBL"
+says "prose does not displace a real marker above the block" "1 traced, 0 unsourced" tex "% source: make eval-main
+% as in the source: encoder widens
+$TBL"
+says "markdown prose outside a comment is not a marker" "0 traced, 1 unsourced, 0 naming" md "See the source: notes.md for details
+
+| a | b |
+|---|---|
+| 1 | 2 |"
+
+# The other direction, and the reason the anchor is "comment opener adjacent"
+# rather than "line starts with the comment opener": a trailing comment is
+# ordinary LaTeX style and must keep working.
+# Exit 0 is what an unsourced block gives too, so this asserts the summary.
+says "a trailing comment on a content line is a marker" "1 traced, 0 unsourced" tex "\\begin{figure}
+\\includegraphics{f.pdf} % source: make eval-main
+\\end{figure}"
+
+# --- the writer and the reader are pinned to each other -----------------------
+# F2 of docs/superpowers/plans/2026-08-20-paper-figures.md: the marker a figure
+# skill emits must be the marker this checker accepts, by construction rather
+# than because the same person wrote both on the same afternoon.
+#
+# The checker already prints the form it wants, in its own "no source" hint. So
+# take that printed string, put it in a document, and require it to resolve. If
+# anyone changes the accepted syntax, the hint and this case disagree and the
+# suite says so — no second copy of the template to keep in step.
+printf '%s\n' "$TBL" > "$WORK/doc.tex"
+"$BASH_BIN" "$CHECK" "$WORK/doc.tex" "$WORK/ARTIFACTS.md" >"$WORK/out" 2>&1
+HINT="$(sed -n 's/^  \(%[[:space:]]*source:.*\)$/\1/p' "$WORK/out" | head -1)"
+if [ -n "$HINT" ]; then
+  ok "the checker prints a LaTeX marker template in its hint"
+  printf '%s\n%s\n' "$HINT" "$TBL" > "$WORK/doc.tex"
+  "$BASH_BIN" "$CHECK" "$WORK/doc.tex" "$WORK/ARTIFACTS.md" --strict >/dev/null 2>&1
+  [ $? -eq 0 ] && ok "the template it prints is a template it accepts" \
+                || bad "the template it prints is a template it accepts" "hint was: $HINT"
+else
+  bad "the checker prints a LaTeX marker template in its hint" "no '  % source: ...' line in the hint"
+  bad "the template it prints is a template it accepts" "no template to test"
+fi
+
 # --- boundaries that decide whether this is usable ----------------------------
 says "a tabular nested in a table is ONE block" "^1 table/figure blocks" tex "$TBL"
 says "two blocks are counted as two" "^2 table/figure blocks" tex "$TBL
