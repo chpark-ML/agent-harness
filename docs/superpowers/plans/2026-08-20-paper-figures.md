@@ -25,7 +25,7 @@ A survey of twelve external repositories on 2026-08-20. Four were read in full: 
 **F2 is the load-bearing one.** The other three are ordinary bundle discipline.
 
 - [ ] **F1 — zero config is silence.** A project that draws no figures must not notice this skill exists. It is a skill, not a hook, so this is nearly free — but the skill must not instruct anyone to create `ARTIFACTS.md` in a repository that has no notes.
-- [ ] **F2 — the writer and the reader agree by construction.** The exact marker string this skill emits must be accepted by `harness-check-provenance` in both LaTeX (`% source: <command>`) and Markdown (`<!-- source: <command> -->`), **pinned by a case in `verify-check-provenance.sh` that quotes the skill's own template.** Two halves of one convention that agree only because the same author wrote both on the same day is how they drift on the third edit.
+- [ ] **F2 — the writer and the reader agree by construction.** The exact marker string this skill emits must be accepted by `harness-check-provenance` in both LaTeX (`% source: <command>`) and Markdown (`<!-- source: <command> -->`), **pinned by a case in `plugins/harness-core/scripts/verify-harness-check-provenance.sh` that quotes the skill's own template.** Two halves of one convention that agree only because the same author wrote both on the same day is how they drift on the third edit.
 - [ ] **F3 — routing survives the additions.** Measure before shipping, not after. Two distinct risks: our new description entering a trigger space that already holds Superpowers' 14, and — if §5 proceeds — the dependency's `paper-review` sitting next to our `pr-review` under near-identical names.
 - [ ] **F4 — the ceiling holds, measured in CI.** Headroom is roughly 700 tok (badge: 8.3k against the 9,000 gate; `README.md:203` records ~7,927 from a CI run). The new description is ~180 tok with its Korean triggers. §5's dependency adds two descriptions totalling 1,337 characters, ~334 tok. Together ~514 against ~700 — it fits on paper, and `context-budget` reads the *installed* plugin, so **only CI produces the real number.** Budget the round trip that §2d of `CLAUDE.md` describes.
 
@@ -99,13 +99,13 @@ The single most valuable thing in the survey is not a skill. It is one CI job in
 - It compares against `git merge-base`, not the base branch tip, so a PR does not start failing when `main` moves.
 - It compares the version **value** parsed from JSON, not the diff line, because a line that moves without changing would otherwise pass.
 
-- [ ] Write our own, covering `plugins/*/skills/`, `plugins/*/hooks/` and `plugins/*/bin/` against that plugin's `.claude-plugin/plugin.json`. Structural change, its own PR (§6 of `CLAUDE.md`).
+- [ ] Write our own, covering **any** changed file under `plugins/<name>/` against that plugin's `.claude-plugin/plugin.json` — not an enumerated subset. `commands/` and `declarative/` reach the consumer from the same cached plugin as `skills/` and `hooks/`, and a list of watched directories is a list somebody forgets to extend. Structural change, its own PR (§6 of `CLAUDE.md`).
 
 ## 7. Sequence
 
 1. - [ ] **`[version-bump-guard]`** — §6. Independent of everything else, and it protects every later step in this plan from the failure mode where the work merges and reaches nobody.
 2. - [ ] **`[ecosystem-figures]`** — §3b rows in `docs/agent-layer.md` for the eleven candidates, with the Basis column carrying what was actually checked: license file present or absent, `claude plugin validate --strict` result, test run result, always-on bytes. Documents only.
-3. - [ ] **F2 first, before the skill body.** Fix the marker template and add the case to `verify-check-provenance.sh` that quotes it. If the writer and the reader cannot be pinned to each other mechanically, the rest of §3a is decoration.
+3. - [ ] **F2 first, before the skill body.** Fix the marker template and add the case to `plugins/harness-core/scripts/verify-harness-check-provenance.sh` that quotes it. If the writer and the reader cannot be pinned to each other mechanically, the rest of §3a is decoration.
 4. - [ ] **F3** — the trigger measurement, for both the new skill's description and §5's dependency. Record in §4b. This decides whether step 6 happens at all.
 5. - [ ] **§3a and §3b** — the skill and the templates, with the full bundle. Then the CI round trip for F4 and the republished check total: a new `SKILL.md` is **+3** on the published total (`verify-doc-refs` scans it as a document and as an instruction file, `verify-frontmatter` once), and `make verify-all` fails until all five published copies agree.
 6. - [ ] **`[depend-awskills]`** — only if step 4 says routing survives.
@@ -117,3 +117,40 @@ The single most valuable thing in the survey is not a skill. It is one CI job in
 - **Whether the two halves want one skill or two.** Making a figure and registering it are one workflow for an author and two concerns for a reviewer. Shipping one skill risks a body that does two things; shipping two risks a second description in a trigger space with ~700 tok of headroom. **Decide after step 3**, when the marker template exists and its cost is known.
 - **Whether `paper-figure` closes the 2026-08-18 plan's §3a.** That plan left its config's shape undecided because both checkers take paths as arguments and need no config. If this skill also needs none, then §3a is answered by deletion rather than by design — which would be the right answer and should be recorded as one.
 - **The Beamer collision is still open** and this plan does not touch it. A TikZ figure makes a Beamer deck natural, and `harness-slides` renders HTML through `slides-grab`. Unchanged from §7 of the 2026-08-18 plan: it needs a demand basis and there is none yet.
+
+
+---
+
+## Spike result (2026-08-20) — the cap earned its number, and the loop is not monotonic
+
+The question the spike had to answer was not "can TikZ draw this" but **can the loop in §3a reach a figure an author would paste into a paper**. It was run against the three reference SVGs the user supplied, of which one — a method figure for a patch-level prediction and position-gating architecture — is the class this skill targets. The other two are slide diagrams with third-party logo bitmaps and are the negative-routing case, not the target.
+
+**What was built.** A data-panel renderer (matplotlib → PDF, seeded) plus a `standalone` TikZ figure that composes it, compiled with pdfLaTeX to a **333.6 × 77.1 pt vector PDF** — 4.63 × 1.07 in, a single column. Every constant was read off the reference rather than invented: the palette (`#1C5A94` structural, `#DABDBD` encoder, `#FAF09D` classifier, `#CAE9F2` gate, `#C6E7CD` position, `#DCDADA`/`#C4C4C4` volumes, `#575757` rules) and the stroke ladder.
+
+**The stroke ladder is the one constant that had to be transformed, not copied.** The reference quantises stroke width to exactly four values — 3, 5, 10, 15 — but the export is 14067 px wide for a figure that prints at roughly 7 in, so those numbers carry the export scale and not the design. The **ratio** 1 : 1.67 : 3.33 : 5 is the design, and it maps onto 0.2 / 0.35 / 0.7 / 1.05 pt. A skill that copies absolute units out of an SVG will produce hairlines or slabs depending on what the exporter happened to choose.
+
+### The measured defect sequence
+
+| Render | Found at 300 dpi, print size |
+|---|---|
+| 1 | **3** — the dashed group edge ran through the group heading; the input label overlapped the box corner and escaped the frame; both trapezoids widened vertically instead of along the flow |
+| 2 | **2** — the shape labels collided with the volume stack and clipped their accents; the module captions had been pushed *outside* the box **by cycle 1's own padding fix** |
+| 3 (the cap) | **1** — visible only at 900 dpi: the `\hat{}` accent on one label was erased by the opaque white background placed behind the heading **in cycle 1** |
+
+**§3a's two-cycle cap was argued from someone else's README. It now has a reason of its own: the loop is not monotonic.** Cycle 1's fix for the heading collision caused the clipped accent found in cycle 3, and cycle 1's padding change caused a caption regression found in cycle 2. Two of the three later defects were *introduced by earlier fixes*. Iterating past the cap trades one defect for another, so what the cap produces is not a finished figure — it is a figure plus **one named remaining defect**, handed back. That is a different deliverable from "done" and the skill body has to say so.
+
+### Three things this settles
+
+- **§8's first open decision closes: one skill.** The data panel and the schematic are two *stages*, not two concerns — one `.tex` composes both, and the composition is where the print-size defects appear. There is no seam to split on.
+- **§3a step 2 must name its renderer, and the name is `pdftoppm` on the compiled PDF.** The reference SVGs rendered through Inkscape showed every embedded logo clipped — `erdock`, `ckerdoc`, a ghosted wordmark — and QuickLook rendered the same files correctly. The cause is Figma's `patternContentUnits="objectBoundingBox"` with a `<use transform="matrix(…)">` and `preserveAspectRatio="none"`, which Inkscape mis-scales. **An inspection renderer that disagrees with the publication renderer makes the loop chase defects that do not exist**, and it nearly did here — the clipping was read as a defect in the user's figure before a second engine cleared it.
+- **The boundary between the two stages is a rendering, not a drawing.** The reference contains an MRI volume and heatmap cubes. Those are renderings of arrays and TikZ cannot draw them, so they are produced from data, under a fixed seed, and placed with `\includegraphics`. This is also what makes the provenance marker natural rather than bolted on: the panel already has a command behind it.
+
+### What the compiled figure gains over the reference
+
+Not a style argument — these are properties of the artifact. The math is real LaTeX, so `\hat{\mathbf{X}}\in\mathbb{R}^{w\times h\times d\times f}` sets in the document's own font at the document's own size instead of being frozen paths; the text is selectable and searchable, where the reference export contains **zero `<text>` elements**; the file is 102 KB against 1.9 MB; and changing a symbol is an edit and a recompile.
+
+### Still not measured
+
+- **The skill body.** The spike proves the pipeline is reachable *by hand*. Whether the written procedure gets a model there is what §3a's "run the body end to end once" is for, and it is the step no eval covers.
+- **Freehand organic shapes.** The reference's brain silhouette and the slide diagrams' mascot logos are not TikZ work, and the plan should say which figure kinds it declines rather than discover it mid-loop.
+- **Who reads the fix.** Judging the remaining defect at the cap requires knowing TikZ. The skill mechanises the loop; it does not remove that.

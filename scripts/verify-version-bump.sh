@@ -54,9 +54,16 @@ check_range() {  # <base> <head> -> 0 clean, 1 a plugin moved without a bump
     return 1
   fi
 
+  # --no-renames is load-bearing. With detection on, moving a hook from one
+  # plugin to another emits only the DESTINATION path, so the plugin that LOST
+  # the file is never inspected — and it is the one whose consumers need a new
+  # version for their cache to drop it. Reproduced: a cross-plugin move with a
+  # destination-only bump exited 0. Renames split into a delete and an add here,
+  # which is exactly the pair a path-collection scan wants.
+  #
   # A path directly under plugins/ (plugins/README.md) has no second slash and
   # so names no plugin — the `[^/]*/` is what excludes it.
-  touched="$(git diff --name-only "$mb" "$head" -- 'plugins' 2>/dev/null \
+  touched="$(git diff --no-renames --name-only "$mb" "$head" -- 'plugins' 2>/dev/null \
              | sed -n 's|^plugins/\([^/]*\)/.*|\1|p' | sort -u)"
 
   if [ -z "$touched" ]; then
@@ -68,15 +75,29 @@ check_range() {  # <base> <head> -> 0 clean, 1 a plugin moved without a bump
   for p in $touched; do
     manifest="plugins/$p/.claude-plugin/plugin.json"
     was="$(read_version "$mb" "$manifest")"
+    tip="$(read_version "$base" "$manifest")"
     now="$(read_version "$head" "$manifest")"
 
-    if [ "$was" != "$now" ]; then
-      echo "  ok    $p  ${was:-(absent)} -> ${now:-(absent)}"
-    else
+    # Two comparisons, and they answer different questions. The merge base asks
+    # "did this branch move it"; the base tip asks "is the result a version
+    # consumers might already have". They differ only when the base moved the
+    # same plugin after the branch point — and there the branch can pick the
+    # same new number, clear the merge base, and still ship content under a
+    # version already in someone's cache. When the base did not touch the
+    # plugin, tip and merge base are the same string and this is one comparison.
+    if [ "$now" = "$was" ]; then
       rc=1
       echo "  FAIL  $p  changed with version still '${now:-(unset)}'"
       echo "        The plugin cache is keyed on that string, so this change"
       echo "        reaches nobody. Bump \"version\" in $manifest."
+    elif [ "$now" = "$tip" ]; then
+      rc=1
+      echo "  FAIL  $p  bumped to '$now', but $base is already at '$tip'"
+      echo "        The base moved this plugin after the branch point and both"
+      echo "        picked the same number, so consumers may already cache it."
+      echo "        Pick the next version above '$tip' in $manifest."
+    else
+      echo "  ok    $p  ${was:-(absent)} -> ${now:-(absent)}"
     fi
   done
   return $rc
@@ -254,6 +275,74 @@ selftest() {
   git commit -qam "main moved on"
   git checkout -q work
   case_is "a base tip that moved after branching passes" 0
+
+  # 14. Cross-plugin rename. Both sides of the move must be inspected: the
+  #     destination gained a file and the SOURCE lost one, and the source's
+  #     consumers need a new version for their cache to drop it. With rename
+  #     detection on, `--name-only` emits the destination only and this passed.
+  #     The body has to be long enough for git to score it as a rename at all,
+  #     or the fixture silently tests the delete+add path instead.
+  fixture boundary-rename >/dev/null
+  git checkout -qb work
+  mkdir -p plugins/harness-dev/hooks
+  i=0; : > plugins/harness-core/hooks/moved.sh
+  while [ "$i" -lt 40 ]; do echo "# line $i of a hook long enough to score as a rename" \
+    >> plugins/harness-core/hooks/moved.sh; i=$((i + 1)); done
+  git add -A && git commit -qm "add the hook to core"
+  bump harness-core 1.0.1
+  git commit -qam "bump core for the added hook"
+  git checkout -q main
+  git merge -q --no-edit work >/dev/null 2>&1 || true
+  git checkout -q work
+  git mv plugins/harness-core/hooks/moved.sh plugins/harness-dev/hooks/moved.sh
+  bump harness-dev 1.0.1
+  git commit -qam "move the hook to dev, bump dev only"
+  case_is "a cross-plugin move without bumping the source fails" 1
+  if printf '%s' "$LAST_OUT" | grep -q 'FAIL  harness-core'; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    echo "  FAIL  the plugin that LOST the file must be the one named"
+    printf '%s\n' "$LAST_OUT" | sed 's/^/          /'
+  fi
+
+  # 15. The base moved the same plugin after the branch point and both picked
+  #     the same number. The merge base is cleared (1.0.0 -> 1.0.1) so the
+  #     first comparison passes, but the base tip is already 1.0.1, so the
+  #     content would ship under a version consumers may already cache.
+  fixture boundary-parallel-bump >/dev/null
+  git checkout -qb work
+  echo edited >> plugins/harness-core/skills/s/SKILL.md
+  bump harness-core 1.0.1
+  git commit -qam "work: edit and bump to 1.0.1"
+  git checkout -q main
+  echo other >> plugins/harness-core/hooks/h.sh
+  bump harness-core 1.0.1
+  git commit -qam "main: edit and bump to 1.0.1 too"
+  git checkout -q work
+  case_is "the same version as the base tip fails" 1
+  if printf '%s' "$LAST_OUT" | grep -q "already at '1.0.1'"; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    echo "  FAIL  the message must say the base tip already holds that version"
+    printf '%s\n' "$LAST_OUT" | sed 's/^/          /'
+  fi
+
+  # 16. The same shape, but the branch picked a number the base does not hold.
+  #     This is the boundary that stops case 15's fix from failing every branch
+  #     whose base also moved.
+  fixture boundary-parallel-distinct >/dev/null
+  git checkout -qb work
+  echo edited >> plugins/harness-core/skills/s/SKILL.md
+  bump harness-core 1.0.2
+  git commit -qam "work: edit and bump to 1.0.2"
+  git checkout -q main
+  echo other >> plugins/harness-core/hooks/h.sh
+  bump harness-core 1.0.1
+  git commit -qam "main: edit and bump to 1.0.1"
+  git checkout -q work
+  case_is "a distinct version above a moved base tip passes" 0
 
   # 13. A plugin that did not exist at the base has no old version to differ
   #     from. Absent-to-present is a move, and treating "no manifest at base"
