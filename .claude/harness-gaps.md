@@ -1892,3 +1892,32 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   `— N cases,` 패턴을 금지하거나(사본 자체를 막는 쪽) 스캔에 넣는다.
   **금지가 스캔보다 낫다** — 사본을 검사하는 것은 사본을 유지하는 비용을 계속 낸다.
 - **회차**: 5 (뿌리 기준)
+
+## 2026-08-20 — 스택 PR 에서 base 브랜치를 지우면 자식 PR 이 닫힌다
+
+- **어디**: `.claude/rules/harness/workflow.md` R1 (PR 절차) 와
+  `plugins/harness-core/skills/pr-create/SKILL.md` — 둘 다 **단일 PR** 을 전제한다.
+  스택에 대한 언급이 없다.
+- **무슨 일**: PR #81 을 `gh pr merge --squash --delete-branch` 로 넣었다.
+  #82 의 base 가 그 지워진 브랜치였고, GitHub 이 **#82 를 CLOSED 로 만들었다.**
+  `gh pr reopen` 은 base 브랜치가 없어서 거부되고, `gh pr edit --base main` 도
+  *"Cannot change the base branch of a closed pull request"* 로 거부된다.
+  복구: 지워진 브랜치를 그 커밋에 다시 push → reopen → base 를 main 으로 → 다시 삭제.
+  리뷰 스레드(Codex 지적 2건 + 내 답변)를 잃지 않으려고 이 경로를 택했다.
+  새 PR 을 열면 스레드가 사라진다.
+- **왜 규약 문제인가**: 순서가 정해져 있는데 어디에도 안 적혀 있다 —
+  **자식 PR 의 base 를 먼저 옮기고, 그다음에 브랜치를 지운다.** #82 를 넣을 때는
+  이걸 알고 있었으므로 `--delete-branch` 를 빼고 `gh pr edit 83 --base main` 을
+  먼저 돌린 뒤 지웠고, #83 은 열린 채로 남았다. 같은 세션에서 한 번 틀리고
+  한 번 맞았다.
+- **곁가지로 확인된 것**: force push 가 `deny` 티어라 스택을 rebase 할 수 없다.
+  그래서 `git merge origin/main` 으로 올려야 하고, squash 머지된 부모와는
+  **매번 충돌이 난다** (오늘 6개 파일). 그중 `.claude/harness-gaps.md` 는
+  append-only 라서 `--ours`/`--theirs` 로 고르면 항목을 잃는다 — 합집합이 필요하다.
+  이것도 어디에도 안 적혀 있다.
+- **제안** (승인 대기): `workflow.md` 에 R1.1 을 추가한다. 세 줄이면 된다.
+  (1) 스택을 머지할 때는 자식의 base 를 먼저 `main` 으로 옮기고 나서 부모 브랜치를
+  지운다. (2) 스택 브랜치는 rebase 가 아니라 `git merge origin/main` 으로 올린다
+  (force push 는 deny). (3) 그 머지에서 `.claude/harness-gaps.md` 충돌은
+  **합집합으로 해소한다** — append-only 기록에서 한쪽을 고르는 것은 삭제다.
+- **회차**: 1
