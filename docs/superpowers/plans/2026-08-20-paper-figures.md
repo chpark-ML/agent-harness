@@ -25,7 +25,7 @@ A survey of twelve external repositories on 2026-08-20. Four were read in full: 
 **F2 is the load-bearing one.** The other three are ordinary bundle discipline.
 
 - [ ] **F1 — zero config is silence.** A project that draws no figures must not notice this skill exists. It is a skill, not a hook, so this is nearly free — but the skill must not instruct anyone to create `ARTIFACTS.md` in a repository that has no notes.
-- [ ] **F2 — the writer and the reader agree by construction.** The exact marker string this skill emits must be accepted by `harness-check-provenance` in both LaTeX (`% source: <command>`) and Markdown (`<!-- source: <command> -->`), **pinned by a case in `verify-check-provenance.sh` that quotes the skill's own template.** Two halves of one convention that agree only because the same author wrote both on the same day is how they drift on the third edit.
+- [ ] **F2 — the writer and the reader agree by construction.** The exact marker string this skill emits must be accepted by `harness-check-provenance` in both LaTeX (`% source: <command>`) and Markdown (`<!-- source: <command> -->`), **pinned by a case in `plugins/harness-core/scripts/verify-harness-check-provenance.sh` that quotes the skill's own template.** Two halves of one convention that agree only because the same author wrote both on the same day is how they drift on the third edit.
 - [ ] **F3 — routing survives the additions.** Measure before shipping, not after. Two distinct risks: our new description entering a trigger space that already holds Superpowers' 14, and — if §5 proceeds — the dependency's `paper-review` sitting next to our `pr-review` under near-identical names.
 - [ ] **F4 — the ceiling holds, measured in CI.** Headroom is roughly 700 tok (badge: 8.3k against the 9,000 gate; `README.md:203` records ~7,927 from a CI run). The new description is ~180 tok with its Korean triggers. §5's dependency adds two descriptions totalling 1,337 characters, ~334 tok. Together ~514 against ~700 — it fits on paper, and `context-budget` reads the *installed* plugin, so **only CI produces the real number.** Budget the round trip that §2d of `CLAUDE.md` describes.
 
@@ -99,13 +99,13 @@ The single most valuable thing in the survey is not a skill. It is one CI job in
 - It compares against `git merge-base`, not the base branch tip, so a PR does not start failing when `main` moves.
 - It compares the version **value** parsed from JSON, not the diff line, because a line that moves without changing would otherwise pass.
 
-- [ ] Write our own, covering `plugins/*/skills/`, `plugins/*/hooks/` and `plugins/*/bin/` against that plugin's `.claude-plugin/plugin.json`. Structural change, its own PR (§6 of `CLAUDE.md`).
+- [ ] Write our own, covering **any** changed file under `plugins/<name>/` against that plugin's `.claude-plugin/plugin.json` — not an enumerated subset. `commands/` and `declarative/` reach the consumer from the same cached plugin as `skills/` and `hooks/`, and a list of watched directories is a list somebody forgets to extend. Structural change, its own PR (§6 of `CLAUDE.md`).
 
 ## 7. Sequence
 
 1. - [ ] **`[version-bump-guard]`** — §6. Independent of everything else, and it protects every later step in this plan from the failure mode where the work merges and reaches nobody.
 2. - [ ] **`[ecosystem-figures]`** — §3b rows in `docs/agent-layer.md` for the eleven candidates, with the Basis column carrying what was actually checked: license file present or absent, `claude plugin validate --strict` result, test run result, always-on bytes. Documents only.
-3. - [ ] **F2 first, before the skill body.** Fix the marker template and add the case to `verify-check-provenance.sh` that quotes it. If the writer and the reader cannot be pinned to each other mechanically, the rest of §3a is decoration.
+3. - [ ] **F2 first, before the skill body.** Fix the marker template and add the case to `plugins/harness-core/scripts/verify-harness-check-provenance.sh` that quotes it. If the writer and the reader cannot be pinned to each other mechanically, the rest of §3a is decoration.
 4. - [ ] **F3** — the trigger measurement, for both the new skill's description and §5's dependency. Record in §4b. This decides whether step 6 happens at all.
 5. - [ ] **§3a and §3b** — the skill and the templates, with the full bundle. Then the CI round trip for F4 and the republished check total: a new `SKILL.md` is **+3** on the published total (`verify-doc-refs` scans it as a document and as an instruction file, `verify-frontmatter` once), and `make verify-all` fails until all five published copies agree.
 6. - [ ] **`[depend-awskills]`** — only if step 4 says routing survives.
