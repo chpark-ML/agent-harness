@@ -33,6 +33,27 @@ jobs:
           git --version
       - run: make verify BASH=/bin/bash
 
+  version-bump:
+    # PR-only, because the check reads a commit range and a push to main has no
+    # range to read. The logic is in scripts/verify-version-bump.sh and its 13
+    # cases run in `make verify` everywhere — CLAUDE.md §4's rule that a line
+    # which executes in only one environment is unverified, and verify-check-total
+    # is the entry in the ledger that earned it.
+    #
+    # fetch-depth: 0 because merge-base needs both histories. A shallow clone
+    # gives `git merge-base` nothing and the check would fail every PR with
+    # "no merge base" — which reads like a broken guard, not a missing fetch.
+    name: version bump
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: a plugin change must move that plugin's version
+        run: |
+          make version-bump-range BASE='${{ github.event.pull_request.base.sha }}'
+
   plugins:
     # The only job that needs the Claude CLI. It is separate so that a CLI or
     # registry problem reads as a plugin-manifest failure rather than taking the

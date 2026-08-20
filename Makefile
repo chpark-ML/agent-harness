@@ -6,6 +6,10 @@
 
 BASH ?= bash
 
+# The base a pre-PR version-bump check measures against. The CI job overrides
+# it with the pull request's own base SHA.
+BASE ?= main
+
 TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
@@ -15,7 +19,7 @@ CONV_TRIALS  ?= 6
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands version-bump version-bump-range context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -27,6 +31,8 @@ help:
 	@echo "make context-budget-strict  the same, but a partial measurement fails"
 	@echo "make verify-context-budget  the budget gate's own failure paths"
 	@echo "make verify-inventory  hook, permission and assertion counts against the artifacts"
+	@echo "make version-bump     the version-bump gate's own failure paths"
+	@echo "make version-bump-range  a plugin change in BASE..HEAD moved that plugin's version"
 	@echo "make verify-all       verify, then confirm the published check total matches"
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
@@ -41,7 +47,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs doc-commands context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs doc-commands version-bump context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -92,6 +98,25 @@ doc-refs:
 doc-commands:
 	@$(BASH) scripts/verify-doc-commands.sh --selftest
 	@$(BASH) scripts/verify-doc-commands.sh
+
+# The plugin cache is keyed on the version string, so a component change that
+# ships without a bump reaches nobody — CLAUDE.md §2 states that and then leaves
+# it to discipline, which this repository cannot delegate to its own hooks
+# because it cannot install onto itself.
+#
+# `verify` runs the SELFTEST only, deliberately. The live check reads a commit
+# range, so wiring it into `verify` would make a green run depend on which
+# branch you are standing on — and the ledger already carries one afternoon lost
+# to measuring a reproduction on the wrong branch. The range check has its own
+# target below and a pull_request-gated CI job; `make verify` stays a property
+# of the tree.
+version-bump:
+	@$(BASH) scripts/verify-version-bump.sh --selftest
+
+# The live check. `make version-bump-range BASE=<ref>` before opening a PR, or
+# let the CI job do it.
+version-bump-range:
+	@$(BASH) scripts/verify-version-bump.sh $(BASE) HEAD
 
 # Every skill and rule is a per-session tax on the consumer, forever. The old
 # cost table counted skills only and was wrong by 3.6x, which is how "62 more
