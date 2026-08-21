@@ -99,12 +99,12 @@ The single most valuable thing in the survey is not a skill. It is one CI job in
 - It compares against `git merge-base`, not the base branch tip, so a PR does not start failing when `main` moves.
 - It compares the version **value** parsed from JSON, not the diff line, because a line that moves without changing would otherwise pass.
 
-- [ ] Write our own, covering **any** changed file under `plugins/<name>/` against that plugin's `.claude-plugin/plugin.json` — not an enumerated subset. `commands/` and `declarative/` reach the consumer from the same cached plugin as `skills/` and `hooks/`, and a list of watched directories is a list somebody forgets to extend. Structural change, its own PR (§6 of `CLAUDE.md`).
+- [x] Write our own, covering **any** changed file under `plugins/<name>/` against that plugin's `.claude-plugin/plugin.json` — not an enumerated subset. `commands/` and `declarative/` reach the consumer from the same cached plugin as `skills/` and `hooks/`, and a list of watched directories is a list somebody forgets to extend. Structural change, its own PR (§6 of `CLAUDE.md`).
 
 ## 7. Sequence
 
-1. - [ ] **`[version-bump-guard]`** — §6. Independent of everything else, and it protects every later step in this plan from the failure mode where the work merges and reaches nobody.
-2. - [ ] **`[ecosystem-figures]`** — §3b rows in `docs/agent-layer.md` for the eleven candidates, with the Basis column carrying what was actually checked: license file present or absent, `claude plugin validate --strict` result, test run result, always-on bytes. Documents only.
+1. - [x] **`[version-bump-guard]`** — §6. Independent of everything else, and it protects every later step in this plan from the failure mode where the work merges and reaches nobody.
+2. - [x] **`[ecosystem-figures]`** — §3b rows in `docs/agent-layer.md` for the eleven candidates, with the Basis column carrying what was actually checked: license file present or absent, `claude plugin validate --strict` result, test run result, always-on bytes. Documents only.
 3. - [ ] **F2 first, before the skill body.** Fix the marker template and add the case to `plugins/harness-core/scripts/verify-harness-check-provenance.sh` that quotes it. If the writer and the reader cannot be pinned to each other mechanically, the rest of §3a is decoration.
 4. - [ ] **F3** — the trigger measurement, for both the new skill's description and §5's dependency. Record in §4b. This decides whether step 6 happens at all.
 5. - [ ] **§3a and §3b** — the skill and the templates, with the full bundle. Then the CI round trip for F4 and the republished check total: a new `SKILL.md` is **+3** on the published total (`verify-doc-refs` scans it as a document and as an instruction file, `verify-frontmatter` once), and `make verify-all` fails until all five published copies agree.
