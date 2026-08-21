@@ -13,10 +13,19 @@ very first tool call. The proxy is not equivalent, so this measures the real
 thing: run the prompt against the session as the user actually has it
 configured, watch the stream, and record the first tool call.
 
-Three false-negative traps this avoids, all of which print as a clean "0.0":
+Four false-negative traps this avoids, all of which print as a clean "0.0":
   - a timeout is not a non-trigger — we record it as `timeout`, separately
   - an installed skill cannot be measured through a stand-in
   - "first tool call is Bash" is not a non-trigger either; we record what it was
+  - a room that cannot reach the API is not a non-trigger. An unauthenticated
+    config still emits SessionStart hooks and a well-formed stream, then closes
+    its `result` event with `is_error` and `terminal_reason=api_error` having
+    spent zero tokens. That line used to score as `no tool call`, so all twelve
+    trials missed: 0/6 on the positives and a tidy 6/6 on the negatives, because
+    a room where nothing fires passes every negative trivially. It reads exactly
+    like a real measurement with a description problem. Measured against a
+    scratch CLAUDE_CONFIG_DIR with no credentials — which is how one gets built.
+    It now aborts instead of scoring.
 
 For a boundary case the interesting question is not "did our skill stay quiet"
 but "did the work go where we said it would". A negative that routes to the
@@ -59,6 +68,10 @@ import time
 from pathlib import Path
 
 
+class BenchEnvironmentError(RuntimeError):
+    """The room cannot be measured — not a trial result. Aborts the run."""
+
+
 def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[str | None, str]:
     """Run one prompt and return (tool_name, raw_input_json) for the first tool
     call, or (None, reason). Kills the agent as soon as it has an answer — we
@@ -74,6 +87,11 @@ def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[
         "--verbose", "--include-partial-messages",
     ]
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+    # stderr stays discarded. In stream-json mode an unreachable API never says so
+    # there — it says so in the `result` event below, which is the only signal, so
+    # capturing stderr would buy a second net that catches nothing. It also costs:
+    # a pipe nobody drains blocks the child once it fills, and the timeout below
+    # is only checked when a line arrives, so the trial would hang, not time out.
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, text=True, cwd=cwd
     )
@@ -105,9 +123,23 @@ def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[
                 elif st == "message_stop" and pending is None:
                     return None, "no tool call"
             elif ev.get("type") == "result":
+                # A dead room announces itself right here, and this line used
+                # to score it (the docstring's fourth trap). This is the only
+                # place it announces itself: nothing parsed above ever carries
+                # "Not logged in", which is why the check belongs on the event
+                # and not on stderr.
+                if ev.get("is_error") or ev.get("terminal_reason") == "api_error":
+                    raise BenchEnvironmentError(
+                        f"terminal_reason={ev.get('terminal_reason') or 'unknown'}, "
+                        f"api_ms={ev.get('duration_api_ms')}, "
+                        f"cost={ev.get('total_cost_usd')}"
+                    )
                 return None, "no tool call"
         return None, "stream ended"
     finally:
+        # Nothing may raise from here. An exception in `finally` replaces the
+        # return value being propagated, so an abort raised on this path would
+        # discard a trial that had already recorded its tool call.
         if proc.poll() is None:
             proc.kill()
             proc.wait()
@@ -186,7 +218,20 @@ def main() -> int:
     for c in cases:
         hits, opens = 0, []
         for _ in range(a.runs):
-            name, payload = first_tool_call(c["query"], a.timeout, a.cwd)
+            try:
+                name, payload = first_tool_call(c["query"], a.timeout, a.cwd)
+            except BenchEnvironmentError as e:
+                # Abort, do not score. Every trial in an unauthenticated config
+                # returns "no tool call", which prints 0/6 on the positives and a
+                # clean 6/6 on the negatives — a number that looks like a finding
+                # about the description and is a finding about the config.
+                print(f"\nbench-trigger: ABORTED — the room cannot be measured.\n"
+                      f"  claude said: {e}\n"
+                      f"  CLAUDE_CONFIG_DIR={os.environ.get('CLAUDE_CONFIG_DIR', '(default)')}\n"
+                      f"  A config that cannot authenticate scores every trial as\n"
+                      f"  'no tool call'. Nothing was measured, so nothing is reported.",
+                      file=sys.stderr)
+                return 2
             if name is None and payload == "timeout":
                 timeouts += 1
                 opens.append("TIMEOUT")
