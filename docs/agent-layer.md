@@ -367,9 +367,9 @@ Two rules from this become measurement discipline.
 1. **An A/B whose samples are agent sessions does not claim an effect below 20%.** At realistic n, anything under that is indistinguishable from noise.
 2. **Where possible, push the measurement down to a deterministic layer.** The guard benchmark is definitive at n=1 because hooks live outside the model. `harness-check-claims` is a script rather than a skill instruction for the same reason — **tell the model to be careful and you can only confirm it with an A/B; tell a machine and you confirm it by counting.**
 
-### The instruments were wrong nine times — all the same mistake
+### The instruments were wrong ten times — all the same mistake
 
-This may have been worth more than the measurements. All nine **looked identical on screen — "0.0 / failed"** — and most made the harness look unfairly bad.
+This may have been worth more than the measurements. All ten **looked identical on screen — "0.0 / failed"** — and most made the harness look unfairly bad.
 
 | # | Where | What killed the instrument |
 |---|---|---|
@@ -382,10 +382,11 @@ This may have been worth more than the measurements. All nine **looked identical
 | 7 | Conventions (R6) | `harnessctl` was found in the **installed cache**, so it installed the released payload rather than the rule just written. The new rule is not in that payload, so the effect is structurally zero |
 | 8 | Conventions (R6) | The fixture's verification command was `./check.sh`, and **the allow tier's only runner was `make`, so it was refused.** 0/3 on both arms was the shadow of permissions, not of the rule |
 | 9 | Tiers | **The grader counted a correct answer wrong.** `scripts/verify-doc-refs.sh` is the same answer as `verify-doc-refs.sh` but the directory prefix made it a MISS, and `tr` died with `Illegal byte sequence` on a Korean response, skipping normalisation entirely. Three tiers appearing side by side at 90% was **each tier hitting the grader once** |
+| 10 | Triggers | **A room that cannot reach the API is not a non-trigger either.** An unauthenticated config still emits its `SessionStart` hooks and a well-formed stream, then closes the `result` event with `is_error` and `terminal_reason=api_error` having spent nothing. Every trial scored `no tool call` — 0/6 on the positives and a trivial 6/6 on the negatives, because a room where nothing fires passes every negative. `bench-trigger.py` now aborts on that event instead of scoring it |
 
 **7 and 8 stab the same spot from two directions**: is the rule you are measuring *in the payload*, and is the behaviour the rule mandates *permitted*. Both appear on screen as "the rule earned nothing". So `bench-convention` now looks for the working tree's `harnessctl` first and **prints which copy it used**, and 8 went into the ledger as a permissions gap — changing the fixture to `make check` fitted the instrument to an allowed runner; it did not fix the gap.
 
-**Rule: when you get a negative result, check whether the conditions for the mechanism to fire were met before concluding anything.** Run a positive control alongside any trigger measurement — an uninstalled skill that must certainly fire. Traps 2, 3 and 4 would all have been caught by that one control. And **one run per query is not a measurement**: measured once, `results-deck` is 4/6 both before and after the fix, with different members.
+**Rule: when you get a negative result, check whether the conditions for the mechanism to fire were met before concluding anything.** Run a positive control alongside any trigger measurement — an uninstalled skill that must certainly fire. Traps 2, 3, 4 and 10 would all have been caught by that one control. And **one run per query is not a measurement**: measured once, `results-deck` is 4/6 both before and after the fix, with different members.
 
 ### Not yet measured
 
