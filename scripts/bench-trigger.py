@@ -25,7 +25,9 @@ Four false-negative traps this avoids, all of which print as a clean "0.0":
     a room where nothing fires passes every negative trivially. It reads exactly
     like a real measurement with a description problem. Measured against a
     scratch CLAUDE_CONFIG_DIR with no credentials — which is how one gets built.
-    It now aborts instead of scoring.
+    It now aborts instead of scoring, and so does any other errored result: a
+    trial that failed is not a trial that stayed quiet. Only the unreachable-API
+    case says so, because only it makes credentials the thing to go and check.
 
 For a boundary case the interesting question is not "did our skill stay quiet"
 but "did the work go where we said it would". A negative that routes to the
@@ -69,7 +71,17 @@ from pathlib import Path
 
 
 class BenchEnvironmentError(RuntimeError):
-    """The room cannot be measured — not a trial result. Aborts the run."""
+    """The trial produced no measurement. Aborts the run rather than scoring it.
+
+    `unreachable` separates the two causes: the config could not talk to the API
+    at all (every trial will fail the same way, and credentials are the thing to
+    check), or this one trial failed for some other reason. Conflating them tells
+    an operator to go fix credentials that are fine.
+    """
+
+    def __init__(self, detail: str, unreachable: bool):
+        super().__init__(detail)
+        self.unreachable = unreachable
 
 
 def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[str | None, str]:
@@ -131,8 +143,10 @@ def first_tool_call(prompt: str, timeout: int, cwd: str | None = None) -> tuple[
                 if ev.get("is_error") or ev.get("terminal_reason") == "api_error":
                     raise BenchEnvironmentError(
                         f"terminal_reason={ev.get('terminal_reason') or 'unknown'}, "
+                        f"subtype={ev.get('subtype') or 'unknown'}, "
                         f"api_ms={ev.get('duration_api_ms')}, "
-                        f"cost={ev.get('total_cost_usd')}"
+                        f"cost={ev.get('total_cost_usd')}",
+                        unreachable=ev.get("terminal_reason") == "api_error",
                     )
                 return None, "no tool call"
         return None, "stream ended"
@@ -221,16 +235,21 @@ def main() -> int:
             try:
                 name, payload = first_tool_call(c["query"], a.timeout, a.cwd)
             except BenchEnvironmentError as e:
-                # Abort, do not score. Every trial in an unauthenticated config
-                # returns "no tool call", which prints 0/6 on the positives and a
-                # clean 6/6 on the negatives — a number that looks like a finding
-                # about the description and is a finding about the config.
-                print(f"\nbench-trigger: ABORTED — the room cannot be measured.\n"
-                      f"  claude said: {e}\n"
-                      f"  CLAUDE_CONFIG_DIR={os.environ.get('CLAUDE_CONFIG_DIR', '(default)')}\n"
-                      f"  A config that cannot authenticate scores every trial as\n"
-                      f"  'no tool call'. Nothing was measured, so nothing is reported.",
-                      file=sys.stderr)
+                # Abort, do not score. A trial that errored is not a non-trigger,
+                # and scoring it prints 0/6 on the positives with a clean 6/6 on
+                # the negatives — a number that looks like a finding about the
+                # description and is a finding about the run.
+                print(f"\nbench-trigger: ABORTED — this trial produced no measurement.\n"
+                      f"  claude said: {e}", file=sys.stderr)
+                if e.unreachable:
+                    # Only say this when the event said the API was unreachable.
+                    # Saying it for every error sends the operator after
+                    # credentials that are not the problem.
+                    print(f"  CLAUDE_CONFIG_DIR={os.environ.get('CLAUDE_CONFIG_DIR', '(default)')}\n"
+                          f"  A config that cannot reach the API scores every trial as\n"
+                          f"  'no tool call', so every set would print the same zeros.",
+                          file=sys.stderr)
+                print("  Nothing was measured, so nothing is reported.", file=sys.stderr)
                 return 2
             if name is None and payload == "timeout":
                 timeouts += 1
