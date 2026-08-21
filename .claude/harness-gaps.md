@@ -1987,3 +1987,38 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   자리는 `verify-frontmatter` 와 같은 `--selftest` 이며, 스텁 세 모드가 그대로 케이스가
   된다. 1회차라 지금은 적어만 둔다.
 - **회차**: 1 (§4b 의 아홉을 뿌리로 보면 13회차)
+
+## 2026-08-21 — user 스코프 설치는 규칙을 옮기지 않는데, 그게 실패처럼 읽힌다
+
+- **어디**: `install.sh` 의 `harnessctl init` 단계 · `~/.claude/harness-manifest.json`
+  의 `files.managed`
+- **무슨 일**: `install.sh --profile core,dev,research,slides,python` 을 user 스코프로
+  돌린 뒤 `~/.claude/rules/harness/` 를 열었다. **없다.** 매니페스트를 보니
+  `files.managed` 가 `[]` 이고 `template` 만 넷(`CLAUDE.md`, `allowed-paths.txt`,
+  `gh-account.txt`, `protected-paths.txt`). 설치가 반쯤 실패한 것으로 잠깐 읽었다.
+- **실제로는 설계다**: `docs/agent-layer.md` 의 레벨 테스트가 경로 범위 규칙을
+  *팀* 쪽으로 배정한다 — 규칙은 클론과 함께 도착해야 하므로 프로젝트 스코프다.
+  맞는 설계이고, 문제는 그것을 **어디서도 말하지 않는다**는 것이다. 설치기 출력도,
+  `doctor` 도, 매니페스트 자체도 "user 스코프에는 규칙이 없는 것이 정상" 을 말하지
+  않는다. 빈 목록은 설계와 실패가 같은 모양으로 보이는 자리다.
+- **제안** (승인 대기): `harnessctl init` 요약이나 `doctor` 에 한 줄 —
+  *"user scope carries CLAUDE.md and permissions; path-scoped rules are
+  project scope by design"*. 문서가 아니라 **출력**에 있어야 한다. 이 오독은
+  매니페스트를 열어본 사람에게 생기고, 그 사람은 이미 문서를 안 읽고 있다.
+- **회차**: 1
+
+## 2026-08-21 — PR 본문의 상대 링크는 풀리지 않는다 (파일 안에서는 정답인데)
+
+- **어디**: `.claude/rules/harness/workflow.md` R1 (PR 본문 규정) ·
+  `plugins/harness-core/skills/pr-create/SKILL.md`
+- **무슨 일**: PR #86 본문에 계획서와 ADR 을 `../blob/main/docs/...` 로 적었다.
+  PR·이슈 본문에서 상대 경로는 안정적으로 해석되지 않아 절대 URL 로 고쳤다.
+- **왜 헷갈리는가**: **두 규칙이 정반대인데 어디에도 나란히 적혀 있지 않다.**
+  저장소 *파일* 안에서는 상대 경로가 정답이고 `verify-doc-refs` 가 그것을 검사한다.
+  PR *본문* 에서는 절대 URL 이 정답이고 검사하는 것이 아무것도 없다 — 링크가 깨져도
+  CI 는 초록이고, 깨진 것은 리뷰어가 누를 때 드러난다.
+- **제안** (승인 대기): R1 의 *"PR body runs motivation → changes → verification
+  → notes"* 옆에 한 줄 — *"links in a PR body are absolute URLs; relative paths
+  are for files, where `verify-doc-refs` checks them"*. `pr-create` 스킬 본문에도
+  같은 한 줄.
+- **회차**: 1
