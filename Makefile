@@ -14,7 +14,7 @@ TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
 # Always-on context the harness costs a consumer, worst case (project scope,
-# every profile). Measured at 8364 in CI (8783 on macOS, same version and checkout — the estimator varies); the gap is deliberate headroom, not spare
+# every profile). Measured at 8389 in CI (8808 on macOS, same version and checkout — the estimator varies); the gap is deliberate headroom, not spare
 # room to fill. Raising this number is a decision to make explicitly and say why
 # — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000

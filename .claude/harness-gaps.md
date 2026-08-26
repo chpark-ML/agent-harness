@@ -2098,3 +2098,25 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **왜 지금 안 만드나**: 이번 PR 은 콘텐츠 추가(output style)다. 구조 변경과 콘텐츠
   추가는 다른 PR 이다 (`CLAUDE.md` §6). 2회차이므로 PR 본문 `## Notes` 에 올린다.
 - **회차**: 2 — 제안함, 승인 대기
+
+## 2026-08-26 — 계기를 하나 늘리면 그것과 동등하다고 적어둔 문장이 거짓이 된다
+
+- **어디**: `docs/agent-layer.md` §4 Context budget 행 · `plugins/harness-core/bin/harnessctl`
+  의 `always-on context` 복합 절
+- **무슨 일**: output style 을 `context-budget.sh` 가 바이트로 재도록 고쳤다. 같은 표
+  칸에는 *"`harnessctl doctor` 의 복합 절이 이 표와 **같은 계기**로 모든 활성 플러그인의
+  값을 매긴다"* 가 이미 적혀 있었다. `doctor` 는 `claude plugin details` 만 읽는데 그것은
+  output style 을 세지 않는다. 그래서 **한 칸 안에서 문장 두 개가 서로를 부정하는 상태**가
+  되었고, 동시에 `doctor` 의 총계는 이 기계의 매 세션을 스타일 크기만큼 적게 보고하게
+  되었다. PR 머지 뒤 교차 리뷰가 잡았다.
+- **왜 아무 검사도 못 잡나**: 두 문장은 각각 참인 문서 문장이고, 모순은 **의미 수준**에
+  있다. `verify-doc-refs` 는 참조가 실재하는지만 보고, `verify-inventory` 는 숫자만 본다.
+  그리고 `doctor` 의 복합 절은 **Claude CLI 가 있을 때만 실행되는데 verify-install 을
+  돌리는 CI 잡 두 개에는 CLI 가 없다** — 케이스를 붙여도 개발자 기계에서만 도는 줄이 된다
+  (`CLAUDE.md` §4 가 이름 붙인 바로 그 안티패턴). 그래서 이번엔 케이스 대신 양방향으로
+  **직접 돌려서** 확인했다.
+- **일반화**: *계기가 둘 이상인데 한쪽만 고치면, 둘이 같다고 적어둔 문장이 조용히 거짓이
+  된다.* 이 저장소에는 항상-on 비용을 재는 자리가 셋이다 — `context-budget.sh`(게이트),
+  `doctor`(소비자 기계), `claude plugin details`(플랫폼). 셋의 관계를 적은 문장은 셋 중
+  하나가 바뀔 때마다 재검토 대상이다.
+- **회차**: 1

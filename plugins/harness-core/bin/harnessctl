@@ -377,6 +377,12 @@ if [ "$CMD" = doctor ]; then
         say "  --    no enabled plugins recorded in $USER_SETTINGS"
       else
         say "        total ~$comp_total tok added to every session on this machine"
+        # `claude plugin details` does not count output styles — they are absent
+        # from its component inventory and from its Always-on figure. The total
+        # above is therefore a floor, not a total, whenever a style is active,
+        # and a reader who is not told that will treat it as the whole cost.
+        [ -n "$(jq -r '.outputStyle // empty' "$USER_SETTINGS" 2>/dev/null)" ] \
+          && say "  --    excludes the active output style — claude plugin details does not count one"
         [ -n "$comp_unmeasured" ] && say "  --    no Always-on figure from claude plugin details:$comp_unmeasured"
       fi
     else

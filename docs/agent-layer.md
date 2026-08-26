@@ -180,7 +180,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Output tools | `plugins/harness-core/scripts/verify-harness-log.sh` — 44 cases. The same three kinds as a hook, but centred on **must-not-appear**: if tool output, a subagent transcript, a skill injection or a compaction summary leaked onto the page, then in a repository running `secret-scrubber` whatever a command printed would survive in a file ([harness-log](harness-log.md)) |
 | Document references | `scripts/verify-doc-refs.sh` — does the file a link points at exist, does `#anchor` resolve to a heading, and does the first segment of a path an instruction file calls exist. Runs its own 19 cases first (false positives being this checker's only failure mode) |
 | Check total | `scripts/verify-check-total.sh` — do the three published totals (the README badge, the README table, §4 of this document) agree with each other **and with what the run actually produced**. `make verify-all` runs verify and then reads its output |
-| Context budget | `scripts/context-budget.sh` — sums the always-on footprint **of what this harness ships** (declarative plus our plugins) per scope × profile and fails past `CONTEXT_CEILING`. Third-party plugins the user installs are deliberately outside the gate — a consumer's install must not turn our CI red — and are reported informationally by `harnessctl doctor`, whose composite section prices every enabled plugin with the same instrument as this table (added after two third-party installs pushed a real session past the ceiling while the gate printed green, 2026-08-13). The file list is a glob, so a new rule cannot become quietly free. **Output styles are measured by bytes here rather than taken from `claude plugin details`**, because that command's component inventory and its `Always-on` figure both omit them — verified on this tree, where `harness-core` reports the same number with and without a style in its directory. Only the **largest** style counts, not the sum: Claude Code holds exactly one active at a time |
+| Context budget | `scripts/context-budget.sh` — sums the always-on footprint **of what this harness ships** (declarative plus our plugins) per scope × profile and fails past `CONTEXT_CEILING`. Third-party plugins the user installs are deliberately outside the gate — a consumer's install must not turn our CI red — and are reported informationally by `harnessctl doctor`, whose composite section prices every enabled plugin with `claude plugin details` (added after two third-party installs pushed a real session past the ceiling while the gate printed green, 2026-08-13). **That is no longer the same instrument as this table**, and the gap is stated in `doctor`'s own output rather than left for a reader to derive: `claude plugin details` omits output styles, so `doctor`'s composite under-reports by the size of whichever style is active — 298 tok for ours, and unknown for a third-party plugin shipping one. Teaching `doctor` to price a style is the thorough fix and is more machinery than one occurrence earns. The file list is a glob, so a new rule cannot become quietly free. **Output styles are measured by bytes here rather than taken from `claude plugin details`**, because that command's component inventory and its `Always-on` figure both omit them — verified on this tree, where `harness-core` reports the same number with and without a style in its directory. Only the **largest** style counts, not the sum: Claude Code holds exactly one active at a time |
 | Manifests | `claude plugin validate --strict` — its own CI job. Everything else runs without the CLI |
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
@@ -199,14 +199,14 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `rules/core/workflow.md` | **~1,539** | project only |
 | `rules/dev/review.md` | **~1,029** | project only, `--with dev` |
 | `rules/research/notes.md` | **~1,165** | project only, `--with research` |
-| `output-styles/report.md` | **~298** | always, while it is the selected style |
+| `output-styles/report.md` | **~323** | always, while it is the selected style |
 | `harness-core` | ~159 | always |
 | `harness-dev` + `superpowers` | ~239 + ~584 | `dev` |
 | `harness-research` | ~245 | `research` |
 | `harness-slides` | ~373 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~8,364 tok / session** — measured in CI, and ~7,648 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
-| Every profile at user scope | ~4,631 | no rules there |
+| **worst case** (project, every profile) | **~8,389 tok / session** — measured in CI, and ~7,673 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
+| Every profile at user scope | ~4,656 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
 **This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
@@ -218,7 +218,7 @@ So instead of pinning numbers into a document, they moved into **a script that r
 
 **Hooks and LSPs are still zero** (`plugin details` classifies them as "harness-only — no model context cost"). What changed is that the conclusion *only skills cost anything* was wrong — **rules cost more than skills.** Our per-skill unit cost is high (Superpowers: 688 across 14, so ~49 each, against our ~240) because ours carry English and Korean triggers plus negative routing together, and whether that convention earns its cost is measured in §4b. We observed external skills attaching to Korean prompts **on an English description alone**, so this stays an open question.
 
-**Adding is not addition, it is a trade.** There is ~640 tok of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
+**Adding is not addition, it is a trade.** There is ~610 tok of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
 
 **We also learned there is a second axis.** `skill-creator` is 112 always-on and 10.9k when called — a short description over a huge body. We have built the opposite way. Which is right is decided by call frequency: a frequently triggered skill needs a cheap body, and a rarely used tool needs a cheap description. Design on always-on cost alone and this axis is invisible.
 
