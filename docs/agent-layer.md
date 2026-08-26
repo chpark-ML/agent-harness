@@ -51,6 +51,7 @@ Problems no project should have to solve from scratch. Each row is owned by **on
 | PR and commit conventions drift per project | Every time | `rules/harness/workflow.md` |
 | Work piles up on the default branch and the review unit tangles | Common | `check-uncommitted` |
 | Repo state is re-discovered with tool calls at the start of every session | Every session | `session-brief` |
+| A report is written for someone who watched the work, and is unreadable to anyone who did not | Every time | The [`Report` output style](output-styles.md) + `CLAUDE.md` §6 |
 | Review criteria get explained out loud again each time | Every time | The `dev` module |
 | Experiment results cannot be reproduced later | It is the default | The `research` module |
 | Records scatter and a new session cannot pick them up | Common | The `research` module |
@@ -71,6 +72,7 @@ Eight categories. **The adoption order is the axis of progress** — guardrails 
 | Phase | Category | Location | Now |
 |---|---|---|---|
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
+| **0** | Output styles | `plugins/*/output-styles/*.md`, selected by the `outputStyle` scalar | ✅ core 1 ([`Report`](output-styles.md)) — the only layer that reaches the *system prompt* |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 2 + research 2 + slides 2, with Superpowers 14 on top — and `ui-ux-pro-max` 7 more when `frontend` is installed |
@@ -178,12 +180,12 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Output tools | `plugins/harness-core/scripts/verify-harness-log.sh` — 44 cases. The same three kinds as a hook, but centred on **must-not-appear**: if tool output, a subagent transcript, a skill injection or a compaction summary leaked onto the page, then in a repository running `secret-scrubber` whatever a command printed would survive in a file ([harness-log](harness-log.md)) |
 | Document references | `scripts/verify-doc-refs.sh` — does the file a link points at exist, does `#anchor` resolve to a heading, and does the first segment of a path an instruction file calls exist. Runs its own 19 cases first (false positives being this checker's only failure mode) |
 | Check total | `scripts/verify-check-total.sh` — do the three published totals (the README badge, the README table, §4 of this document) agree with each other **and with what the run actually produced**. `make verify-all` runs verify and then reads its output |
-| Context budget | `scripts/context-budget.sh` — sums the always-on footprint **of what this harness ships** (declarative plus our plugins) per scope × profile and fails past `CONTEXT_CEILING`. Third-party plugins the user installs are deliberately outside the gate — a consumer's install must not turn our CI red — and are reported informationally by `harnessctl doctor`, whose composite section prices every enabled plugin with the same instrument as this table (added after two third-party installs pushed a real session past the ceiling while the gate printed green, 2026-08-13). The file list is a glob, so a new rule cannot become quietly free |
+| Context budget | `scripts/context-budget.sh` — sums the always-on footprint **of what this harness ships** (declarative plus our plugins) per scope × profile and fails past `CONTEXT_CEILING`. Third-party plugins the user installs are deliberately outside the gate — a consumer's install must not turn our CI red — and are reported informationally by `harnessctl doctor`, whose composite section prices every enabled plugin with the same instrument as this table (added after two third-party installs pushed a real session past the ceiling while the gate printed green, 2026-08-13). The file list is a glob, so a new rule cannot become quietly free. **Output styles are measured by bytes here rather than taken from `claude plugin details`**, because that command's component inventory and its `Always-on` figure both omit them — verified on this tree, where `harness-core` reports the same number with and without a style in its directory. Only the **largest** style counts, not the sum: Claude Code holds exactly one active at a time |
 | Manifests | `claude plugin validate --strict` — its own CI job. Everything else runs without the CLI |
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 200 assertions, context-budget gate 14, inventory figures 40 + selftest 7, frontmatter 13 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 14, document references 69 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 860. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 204 assertions, context-budget gate 14, inventory figures 40 + selftest 7, frontmatter 14 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 14, document references 71 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 867. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -248,7 +250,7 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
-| **Installer** | Does uninstall restore the original? | 200 assertions | An invariant, not an A/B subject |
+| **Installer** | Does uninstall restore the original? | 204 assertions | An invariant, not an A/B subject |
 
 **Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
@@ -400,7 +402,8 @@ This may have been worth more than the measurements. All ten **looked identical 
 
 - **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
 - **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
-- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 200 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 204 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The [`Report` output style](output-styles.md), on both of its claims.** It shipped measured on cost (298 tok, counted by `context-budget.sh` because `claude plugin details` does not see output styles) and unmeasured on effect. Two questions, and the instrument for both already exists — the offline reviewer built for the 2026-08-08 report-quality run, which scores real reports from a session transcript and costs nothing per turn. **Does the style change report quality?** A paired run, same corpus, style on and off. **Does it collide with `CLAUDE.md` §6?** The style governs length and the section governs content, which is why they were written not to overlap; whether brevity nonetheless eats the plain-meaning-first sentence §6 asks for is a different question from whether the two texts contradict. Until both are run, the style is a considered guess, and this row is the honest label on it.
 
 ## 5. Guide vs Guard
 
@@ -429,6 +432,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 **Held, waiting for the second occurrence** (there is a corresponding row in §2, and it has happened once or not at all):
 
 - ✅ ~~Worktree helper~~ — decided against building one. Superpowers' `using-git-worktrees` solves it upstream. The most direct gain from adopting an external dependency, and code we did not write is the gain itself.
+- ✅ **How the harness reports to the user** — answered in two parts. `CLAUDE.md` §6 took the *content* half on 2026-08-08, after an offline reviewer measured a `Stop`-hook gate at 31 of 40 reports flagged with 18 of those false positives on the reader's own section numbers; the gate was not shipped and the three findings that survived became §6. The *length and provenance* half is the [`Report` output style](output-styles.md), added 2026-08-26. **The mechanism was the part that had been missed**: that 2026-08-08 decision weighed a convention against a blocking gate and never considered output styles, which sit between the two — in the system prompt, with a per-turn reminder, and costing nothing per turn because they never call the model. Two things to know about the row. §7's two-occurrence rule does **not** back it: report quality stands at occurrence 1, and the scope was chosen anyway with that stated. And its effect is unmeasured — see §4b, which names the instrument.
 - ⏳ Measuring the Korean *negative-routing* sentences. ADR-0011's pilot varied the `한국어 트리거` clause only; the 198 characters of `… 이 스킬 말고 X 로.` that every description also carries were never an arm. Same instrument, one more arm — but it is a paid bench, so it waits for a reason to spend.
 - ⏳ A trigger-space **load test**. Every routing number in §4b — the 59/60 included — was measured in a 19-skill room (our 5 plus Superpowers' 14), and a consumer's room is bigger. **`harness-frontend` makes this concrete**: installing it adds seven descriptions, two of which (`slides`, `design`) name seats we or the platform already hold. The 2026-08-13 partial run (2 of 5 sets with 25 third-party skills added: 11/12 and 11/12, both misses opening with `Bash`, all 12 negatives holding their named seats) saw no seat-stealing, but was stopped as wrongly framed — it measured one competitor, not load. The right instrument is synthetic distractor descriptions laid down at stepped densities (19 → 30 → 45), not a real third-party install. A paid bench, so it too waits for a reason to spend.
 - ⏳ Release / changelog skill — a `dev` module candidate. Release conventions differ too much per project for a common core to be visible yet.
@@ -478,6 +482,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   │   ├── bin/harnessctl              # init, doctor, uninstall
 │   │   ├── bin/harness-log             # session history → self-contained HTML
 │   │   ├── bin/harness-check-{claims,provenance}   # claim traceability, any profile
+│   │   ├── output-styles/report.md     # system-prompt voice, selected by a scalar
 │   │   └── declarative/                # what a plugin cannot carry
 │   │       ├── settings-fragment.json  # permissions + scalars (no hooks)
 │   │       ├── CLAUDE.md               # template
@@ -496,5 +501,5 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 ├── Makefile · CLAUDE.md · .claude/     # developing this repository itself
 ├── AGENTS.md                           # the same conventions, summarised for other agents
 ├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin manifests
-└── docs/ (agent-layer.md · engineering-axes.md · harness-log.md · adr/0001..0013 · hooks/*.md · superpowers/{specs,plans}/ — dated design records)
+└── docs/ (agent-layer.md · engineering-axes.md · harness-log.md · output-styles.md · adr/0001..0013 · hooks/*.md · superpowers/{specs,plans}/ — dated design records)
 ```

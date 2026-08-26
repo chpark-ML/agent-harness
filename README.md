@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-860-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-867-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -172,7 +172,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 200 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 204 assertions hold that line.
 
 ### Requirements
 
@@ -230,7 +230,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 200 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 204 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -287,19 +287,19 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **260** |
 | session-log renderer | **46** |
-| installer round trip | **200** assertions |
+| installer round trip | **204** assertions |
 | context-budget gate | **14** |
 | inventory figures | **40** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
-| document references | **69** files + **21** own cases |
+| document references | **71** files + **21** own cases |
 | documented commands exist | **45** + selftest **12** |
-| frontmatter | **13** + selftest **7** |
+| frontmatter | **14** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **860** |
+| **Total** | **867** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

@@ -39,6 +39,19 @@ Six artifacts, all four `<name>`s identical. That naming is what makes this audi
 - **Profile plugin** — `plugins/harness-<name>/.claude-plugin/plugin.json` with `harness-core` in `dependencies`; a cross-marketplace dependency requires that marketplace in `allowCrossMarketplaceDependenciesOn`; the marketplace catalog lists it; `docs/agent-layer.md` inventory updated.
 - **Any new file** — is it genuinely project-agnostic? Anything assuming a domain, language or framework does not belong in this repo. Say so plainly.
 
+## Checklist C — an output style
+
+`plugins/*/output-styles/<name>.md`. Six artifacts (`CLAUDE.md` §2e). This kind fails differently from the others: a style **replaces part of the system prompt** rather than adding to context, so its defects subtract behaviour instead of failing to add it. Check the two subtractive ones first.
+
+1. **`keep-coding-instructions` stated explicitly.** The default is `false`, which strips Claude Code's built-in software-engineering instructions. A missing key is the finding, whatever value was intended. `scripts/verify-frontmatter.sh` catches it; flag it if the key is absent.
+2. **The `outputStyle` scalar exists** in `plugins/harness-core/declarative/settings-fragment.json`, and its value is namespaced `<plugin>:<style name>`. A bare name does not resolve, and a style with no scalar ships switched off. Both are findings.
+3. **`force-for-plugin` is absent** unless the contribution argues for it in writing. It overrides the consumer's own `outputStyle` for as long as the plugin is enabled.
+4. **`description` quoted**, same reason as a skill's.
+5. **Instruments updated** — a glob in `scripts/verify-frontmatter.sh`, accounting in `scripts/context-budget.sh` (a style is invisible to `claude plugin details`, so an unaccounted one reads as free), and cases in `scripts/verify-install.sh` proving a consumer's own style survives install *and* uninstall.
+6. **`docs/output-styles.md`**, `docs/agent-layer.md` updated, `version` bumped.
+
+**Read the body against `CLAUDE.md` §6.** The two layers are meant to be disjoint — §6 governs report content, a style governs length and shape. Overlapping text in both is a finding, because they have different precedence and no longer reason about each other.
+
 ## Run order
 
 1. `git status --short` / `git diff --stat HEAD` to scope the audit.

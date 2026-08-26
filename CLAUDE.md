@@ -23,6 +23,7 @@ There are two delivery paths, and the fork is **whether a plugin can carry it** 
 | A skill only one profile gets | `plugins/harness-<profile>/skills/` |
 | A verification script | `plugins/harness-core/scripts/` |
 | An executable | `plugins/harness-core/bin/` — added to the Bash tool's PATH automatically |
+| An output style | `plugins/harness-core/output-styles/<name>.md` + the `outputStyle` scalar that selects it |
 | Permissions and scalars | `plugins/harness-core/declarative/settings-fragment.json` |
 | `CLAUDE.md`, rules, consumer config templates | `plugins/harness-core/declarative/` |
 | A dependency on an external plugin | That profile's `dependencies` |
@@ -89,6 +90,25 @@ The three lists above say what to write. This says what writing it breaks, and i
 - **The always-on worst case.** Only CI can measure it. `context-budget` reads the *installed* plugin, and a developer machine has the released version from GitHub, not the tree — it will say `measuring the OLD one` and refuse to gate. So **the first CI run on the PR produces the real number, and a second commit republishes it** in `README.md`, `README.ko.md`, `docs/agent-layer.md` and the `Makefile`. Plan for the round trip rather than discovering it.
 
 Do not hand-edit either figure to what you expect. Both are generated, and the last time one was typed it was wrong by 3.6×.
+
+## 2e. An output style is a bundle too — and it is the only one in the system prompt
+
+Different from the three lists in §2, §2b and §2c in one way that decides everything else: an output style is not appended to context, it **replaces part of the system prompt**. That is why it outranks `CLAUDE.md`, and why getting it wrong is not a missing feature but a subtracted one.
+
+1. `plugins/harness-core/output-styles/<name>.md` — `name`, a **quoted** `description`, and `keep-coding-instructions` stated explicitly
+2. The `outputStyle` scalar in `declarative/settings-fragment.json`. **Shipping the file selects nothing.** And the name is namespaced `<plugin>:<style name>`; a bare name does not resolve
+3. `docs/output-styles.md` — not `docs/hooks/`, same reason as §2c
+4. A glob in `scripts/verify-frontmatter.sh` and accounting in `scripts/context-budget.sh`
+5. Cases in `scripts/verify-install.sh` — the scalar is written, **and a consumer's own style survives install and uninstall**
+6. `docs/agent-layer.md` updated, `version` bumped
+
+**Item 1's third field is the one that bites.** `keep-coding-instructions` defaults to **false**, and that default strips Claude Code's built-in software-engineering instructions — how to scope a change, when to comment, how to verify work. A style that omits the key therefore guts the harness while looking like it only changed the tone. `verify-frontmatter` requires the key to be *present*, not to be true: replacing those instructions is a legitimate thing to write, and arriving at it by omission is not.
+
+**Item 5 is where the real risk lives, and it is not ours.** Only one output style is active at a time, so writing `outputStyle` over a consumer's choice does not add to their setup, it takes theirs away. `harnessctl` already gets this right — a scalar is written only when the key is absent — which is why the frontmatter field `force-for-plugin: true` is **not** used: it overrides the user's setting for as long as the plugin is enabled, and `harness-core` is enabled in every profile.
+
+**What no instrument covers**: whether the prose works. Same hole as §2b item 5 — a style body is prose, and nothing executes prose. Select it and do one real piece of work before merging.
+
+**§2d applies to this list as well.** A style file plus its document move the check total, and its always-on cost is only measurable in CI.
 
 ## 3. The hook contract
 
