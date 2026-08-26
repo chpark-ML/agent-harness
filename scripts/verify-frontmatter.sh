@@ -158,6 +158,26 @@ def check(path, kind, required):
         problems.append((rel, "missing field(s): %s" % ", ".join(missing)))
         return
 
+    if kind == 'output-style':
+        # `keep-coding-instructions` defaults to FALSE, and that default strips
+        # Claude Code's built-in software-engineering instructions — how to
+        # scope a change, when to comment, how to verify. A style that omits
+        # the key therefore guts the harness without saying so anywhere.
+        #
+        # The key is required to be PRESENT, not to be true: a style that
+        # genuinely replaces the coding instructions is a legitimate thing to
+        # write, and a check that forbade it would be a false positive. What is
+        # not legitimate is arriving at either behaviour by default. It cannot
+        # go in `required` above, because that test is `not data.get(f)` and a
+        # deliberate `false` would read as missing.
+        if 'keep-coding-instructions' not in data:
+            failed += 1
+            problems.append((rel, "no keep-coding-instructions — the default "
+                                  "(false) drops the built-in coding instructions"))
+            return
+        passed += 1
+        return
+
     if kind == 'skill':
         name = data['name']
         dirname = os.path.basename(os.path.dirname(path))
@@ -201,6 +221,8 @@ for p in sorted(glob.glob(os.path.join(repo, '.claude/agents/*.md'))):
     check(p, 'agent', ['name', 'description'])
 for p in sorted(glob.glob(os.path.join(repo, 'plugins/*/declarative/rules/*/*.md'))):
     check(p, 'rule', ['description', 'paths'])
+for p in sorted(glob.glob(os.path.join(repo, 'plugins/*/output-styles/*.md'))):
+    check(p, 'output-style', ['name', 'description'])
 for p in sorted(glob.glob(os.path.join(repo, 'plugins/*/commands/*.md'))
                 + glob.glob(os.path.join(repo, '.claude/commands/*.md'))):
     check(p, 'command', ['description'])

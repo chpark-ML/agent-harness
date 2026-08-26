@@ -92,6 +92,40 @@ for f in "$PAYLOAD"/rules/*/*.md; do
   esac
 done
 
+# ---- output styles ----------------------------------------------------------
+# These live inside a plugin but `claude plugin details` does not see them: its
+# component inventory lists skills, agents, hooks, MCP and LSP servers, and its
+# Always-on figure is the sum of the skills alone. Verified on this tree —
+# harness-core reports the same ~tok with and without a style in the directory.
+# So a style shipped in the plugin half would be counted as zero, which is the
+# failure this script's own header names: a file that costs real tokens and
+# reports none. Measured here, by bytes, on the declarative side of the ledger.
+#
+# The MAXIMUM, not the sum. Claude Code holds exactly one output style active at
+# a time, so the worst case a consumer can be in is the largest single style,
+# never the total of every style we ship. Summing would overstate the moment a
+# second one exists. Globbed, so a new style cannot arrive costing nothing.
+STYLE_TOK=0
+STYLE_ANY=0
+for f in "$REPO"/plugins/*/output-styles/*.md; do
+  [ -f "$f" ] || continue
+  STYLE_ANY=1
+  break
+done
+if [ "$STYLE_ANY" -eq 1 ]; then
+  echo
+  echo "output styles — always-on when selected (only one can be active)"
+  printf "  %-38s %7s %10s  %s\n" "file" "bytes" "~tok" "plugin"
+  for f in "$REPO"/plugins/*/output-styles/*.md; do
+    [ -f "$f" ] || continue
+    plug="$(basename "$(dirname "$(dirname "$f")")")"
+    rel="output-styles/$(basename "$f")"
+    b="$(bytes "$f")"; t="$(est "$b")"
+    printf "  %-38s %7s %10s  %s\n" "$rel" "$b" "$t" "$plug"
+    [ "$t" -gt "$STYLE_TOK" ] && STYLE_TOK="$t"
+  done
+fi
+
 # ---- plugins ----------------------------------------------------------------
 # Additive, like verify-plugins: without the CLI the declarative half is still
 # reported and the gate still runs on what it can see, saying so.
@@ -163,12 +197,12 @@ report() { # scope, label, total
   [ "$3" -gt "$WORST" ] && WORST="$3"
   return 0
 }
-U_CORE=$((CLAUDE_TOK + CORE_P))
+U_CORE=$((CLAUDE_TOK + STYLE_TOK + CORE_P))
 report user    "core"                      "$U_CORE"
 report user    "core,dev"                  "$((U_CORE + DEV_P))"
 report user    "core,dev,research,slides"  "$((U_CORE + DEV_P + RESEARCH_P + SLIDES_P))"
 report user    "core,dev,research,slides,frontend" "$((U_CORE + DEV_P + RESEARCH_P + SLIDES_P + FRONTEND_P))"
-P_CORE=$((CLAUDE_TOK + CORE_RULE_TOK + CORE_P))
+P_CORE=$((CLAUDE_TOK + STYLE_TOK + CORE_RULE_TOK + CORE_P))
 report project "core"                      "$P_CORE"
 report project "core,dev"                  "$((P_CORE + DEV_RULE_TOK + DEV_P))"
 report project "core,dev,research,slides"  "$((P_CORE + DEV_RULE_TOK + DEV_P + RESEARCH_RULE_TOK + RESEARCH_P + SLIDES_P))"

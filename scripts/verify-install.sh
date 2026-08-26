@@ -203,6 +203,11 @@ check_rc "no harness hook registration was added" \
   "$(jq -e '[.. | objects | select(has("command")) | .command | select(contains("harness"))] | length == 0' "$S" >/dev/null 2>&1 && echo 0 || echo 1)"
 check_rc "includeCoAuthoredBy set to false" \
   "$([ "$(jq -r '.includeCoAuthoredBy' "$S")" = "false" ] && echo 0 || echo 1)"
+# The style ships in the plugin half; this scalar is the only thing that selects
+# it. Shipping the file without the key would install a style nobody turns on.
+check_rc "outputStyle selects the harness report style" \
+  "$([ "$(jq -r '.outputStyle' "$S")" = "harness-core:Report" ] && echo 0 || echo 1)" \
+  "$(jq -r '.outputStyle' "$S")"
 check_rc "ask tier created" "$([ "$(jq '.permissions.ask | length' "$S")" -gt 0 ] && echo 0 || echo 1)"
 check_rc ".gitignore keeps its existing entries" \
   "$(grep -qxF 'node_modules/' "$C/.gitignore" && echo 0 || echo 1)"
@@ -214,18 +219,32 @@ check_rc ".gitignore gained settings.local.json" \
 # The docs promised a warning when the consumer already set one of our scalars,
 # and the code silently did nothing — leaving includeCoAuthoredBy true defeats
 # the guard the harness exists to provide.
+#
+# outputStyle rides the same path and is the one where it matters most: a
+# consumer who has chosen how Claude talks to them has made a deliberate
+# choice, and only one output style can be active at a time, so overwriting it
+# would silently take theirs away rather than add to it.
 CW="$WORK/cwarn"
 new_consumer "$CW" bare
-printf '{"includeCoAuthoredBy": true}' > "$CW/.claude/settings.json"
+printf '{"includeCoAuthoredBy": true, "outputStyle": "Concise"}' > "$CW/.claude/settings.json"
 out="$(run_install "$CW" 2>&1)"
 check_rc "a conflicting scalar draws a warning" \
   "$(printf '%s' "$out" | grep -q 'includeCoAuthoredBy' && echo 0 || echo 1)" \
   "$(printf '%s' "$out" | tail -3)"
+check_rc "a conflicting outputStyle draws a warning" \
+  "$(printf '%s' "$out" | grep -q 'outputStyle' && echo 0 || echo 1)" \
+  "$(printf '%s' "$out" | tail -3)"
 check_rc "...and the consumer's value is left alone" \
   "$([ "$(jq -r '.includeCoAuthoredBy' "$CW/.claude/settings.json")" = "true" ] && echo 0 || echo 1)"
+check_rc "...and the consumer keeps the output style they chose" \
+  "$([ "$(jq -r '.outputStyle' "$CW/.claude/settings.json")" = "Concise" ] && echo 0 || echo 1)" \
+  "$(jq -r '.outputStyle' "$CW/.claude/settings.json")"
 run_uninst "$CW" >/dev/null 2>&1
 check_rc "...and uninstall does not take a scalar it never set" \
   "$([ "$(jq -r '.includeCoAuthoredBy' "$CW/.claude/settings.json")" = "true" ] && echo 0 || echo 1)"
+check_rc "...and uninstall does not take the output style it never set" \
+  "$([ "$(jq -r '.outputStyle' "$CW/.claude/settings.json")" = "Concise" ] && echo 0 || echo 1)" \
+  "$(jq -r '.outputStyle' "$CW/.claude/settings.json")"
 
 # A committed manifest can be corrupted by a merge conflict. Both commands used
 # to die with raw jq errors and no stated way out.
