@@ -25,6 +25,14 @@ This style covers what §6 does not: **length and shape**, and **provenance**. T
 two do not overlap, deliberately — the same rule written into two layers with
 different precedence is a rule you can no longer reason about.
 
+**One line is shared on purpose.** Both open on *the reader did not watch you
+work*, because each has to stand on its own: §6 is absent from any consumer whose
+`CLAUDE.md` predates it, and the style has to make sense in a system prompt with
+no §6 in sight. The **rules** are disjoint; only the premise they are derived
+from is stated twice. Checklist C in `harness-reviewer` says overlapping text is
+a finding — this is the exception, and it is written here so an audit does not
+reopen it every time.
+
 Three things it asks for:
 
 - **The result opens the report.** Method, background, and the list of steps taken
@@ -120,7 +128,10 @@ Add `plugins/<plugin>/output-styles/<name>.md`. Two rules the verifiers enforce:
 
 - **Subagents do not get it.** A subagent runs its own system prompt, so the
   style reaches the main conversation only. A fork is the exception — it inherits
-  the parent's system prompt whole.
+  the parent's system prompt whole. **Read from the platform documentation, not
+  measured here** ([output styles](https://code.claude.com/docs/en/output-styles),
+  *How output styles work*); the namespaced-name claim above carries a probe and
+  this one does not, which is the difference the style itself asks you to state.
 - **One at a time.** There is no layering. Anything a consumer needs alongside
   this belongs in `CLAUDE.md`, which is always read regardless of style.
 - **Not measured.** Whether this style actually changes report quality, and

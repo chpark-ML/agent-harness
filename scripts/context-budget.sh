@@ -105,6 +105,12 @@ done
 # a time, so the worst case a consumer can be in is the largest single style,
 # never the total of every style we ship. Summing would overstate the moment a
 # second one exists. Globbed, so a new style cannot arrive costing nothing.
+#
+# Known limit: the maximum is taken across every plugin and charged to the CORE
+# rows, so a style shipped by a PROFILE plugin would be billed to a core-only
+# install that never loads it. The rules loop above buckets by module for exactly
+# that reason. Correct while harness-core is the only plugin shipping one — bucket
+# it the same way the rules are bucketed if that stops being true.
 STYLE_TOK=0
 STYLE_ANY=0
 for f in "$REPO"/plugins/*/output-styles/*.md; do
