@@ -199,14 +199,14 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `rules/core/workflow.md` | **~1,539** | project only |
 | `rules/dev/review.md` | **~1,029** | project only, `--with dev` |
 | `rules/research/notes.md` | **~1,165** | project only, `--with research` |
-| `output-styles/report.md` | **~298** | always, while it is the selected style |
+| `output-styles/report.md` | **~323** | always, while it is the selected style |
 | `harness-core` | ~159 | always |
 | `harness-dev` + `superpowers` | ~239 + ~584 | `dev` |
 | `harness-research` | ~245 | `research` |
 | `harness-slides` | ~373 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~8,364 tok / session** — measured in CI, and ~7,648 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
-| Every profile at user scope | ~4,631 | no rules there |
+| **worst case** (project, every profile) | **~8,389 tok / session** — measured in CI, and ~7,673 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
+| Every profile at user scope | ~4,656 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
 **This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
@@ -218,7 +218,7 @@ So instead of pinning numbers into a document, they moved into **a script that r
 
 **Hooks and LSPs are still zero** (`plugin details` classifies them as "harness-only — no model context cost"). What changed is that the conclusion *only skills cost anything* was wrong — **rules cost more than skills.** Our per-skill unit cost is high (Superpowers: 688 across 14, so ~49 each, against our ~240) because ours carry English and Korean triggers plus negative routing together, and whether that convention earns its cost is measured in §4b. We observed external skills attaching to Korean prompts **on an English description alone**, so this stays an open question.
 
-**Adding is not addition, it is a trade.** There is ~640 tok of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
+**Adding is not addition, it is a trade.** There is ~610 tok of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
 
 **We also learned there is a second axis.** `skill-creator` is 112 always-on and 10.9k when called — a short description over a huge body. We have built the opposite way. Which is right is decided by call frequency: a frequently triggered skill needs a cheap body, and a rarely used tool needs a cheap description. Design on always-on cost alone and this axis is invisible.
 
