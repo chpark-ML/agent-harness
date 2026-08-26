@@ -140,6 +140,17 @@ def check(path, kind, required):
                 failed += 1
                 problems.append((rel, "unquoted value contains a colon-space: %s" % k))
                 return
+        # Without PyYAML the kind-specific checks below cannot run, and for most
+        # kinds that is an acceptable degradation — a skill missing its routing
+        # clause is caught by review. An output style is the exception: omitting
+        # keep-coding-instructions SUBTRACTS the built-in coding instructions,
+        # and it does so silently. Presence is a substring test, so the degraded
+        # path can still hold that one line.
+        if kind == 'output-style' and 'keep-coding-instructions' not in body:
+            failed += 1
+            problems.append((rel, "no keep-coding-instructions — the default "
+                                  "(false) drops the built-in coding instructions"))
+            return
         passed += 1
         return
 

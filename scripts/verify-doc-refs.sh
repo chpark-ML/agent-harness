@@ -185,7 +185,8 @@ EXCLUDE = ['evals/prose-corpus.md', '.claude/rules/**/*.md']
 # Instruction files: their bodies are executed, so a dead path there is a step
 # that never runs.
 INSTRUCTIONS = ['plugins/*/skills/*/SKILL.md', 'plugins/*/declarative/rules/*/*.md',
-                'plugins/*/commands/*.md', '.claude/commands/*.md', '.claude/agents/*.md']
+                'plugins/*/commands/*.md', '.claude/commands/*.md', '.claude/agents/*.md',
+                'plugins/*/output-styles/*.md']
 
 
 def expand(patterns, exclude=None):

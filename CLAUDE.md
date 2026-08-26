@@ -96,7 +96,7 @@ Do not hand-edit either figure to what you expect. Both are generated, and the l
 Different from the three lists in §2, §2b and §2c in one way that decides everything else: an output style is not appended to context, it **replaces part of the system prompt**. That is why it outranks `CLAUDE.md`, and why getting it wrong is not a missing feature but a subtracted one.
 
 1. `plugins/harness-core/output-styles/<name>.md` — `name`, a **quoted** `description`, and `keep-coding-instructions` stated explicitly
-2. The `outputStyle` scalar in `declarative/settings-fragment.json`. **Shipping the file selects nothing.** And the name is namespaced `<plugin>:<style name>`; a bare name does not resolve
+2. The `outputStyle` scalar in `declarative/settings-fragment.json`. **Shipping the file selects nothing.** And the name is namespaced `<plugin>:<style name>`; a bare name does not resolve. The verifier **derives** that value from the style's own `name:` — never repeat it as a literal, or a rename leaves every check green while the style stops loading
 3. `docs/output-styles.md` — not `docs/hooks/`, same reason as §2c
 4. A glob in `scripts/verify-frontmatter.sh` and accounting in `scripts/context-budget.sh`
 5. Cases in `scripts/verify-install.sh` — the scalar is written, **and a consumer's own style survives install and uninstall**

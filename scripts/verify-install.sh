@@ -205,9 +205,29 @@ check_rc "includeCoAuthoredBy set to false" \
   "$([ "$(jq -r '.includeCoAuthoredBy' "$S")" = "false" ] && echo 0 || echo 1)"
 # The style ships in the plugin half; this scalar is the only thing that selects
 # it. Shipping the file without the key would install a style nobody turns on.
+#
+# The expected value is DERIVED, never written here as a literal. A plugin's
+# output style registers as `<plugin>:<frontmatter name>`, and a wrong value
+# does not fail — it evaporates, and the session runs on the default with
+# nothing said. Four things have to agree (the style's filename, its `name:`,
+# the scalar, and this check), so a literal here would keep every one of them
+# green while the style silently stopped loading. Glob the directory rather
+# than name the file, for the same reason context-budget globs it.
+STYLE_MD=""
+for f in "$HARNESS"/plugins/harness-core/output-styles/*.md; do
+  [ -f "$f" ] || continue
+  STYLE_MD="$f"; break
+done
+check_rc "harness-core ships exactly one output style to select" \
+  "$([ -n "$STYLE_MD" ] && echo 0 || echo 1)"
+STYLE_NAME="$(sed -n 's/^name:[[:space:]]*//p' "$STYLE_MD" 2>/dev/null | head -1 | tr -d '"'"'"'')"
+EXPECT_STYLE="harness-core:$STYLE_NAME"
+check_rc "the fragment's outputStyle matches the style's own name" \
+  "$([ "$(jq -r '.scalars.outputStyle' "$HARNESS/plugins/harness-core/declarative/settings-fragment.json")" = "$EXPECT_STYLE" ] && echo 0 || echo 1)" \
+  "fragment=$(jq -r '.scalars.outputStyle' "$HARNESS/plugins/harness-core/declarative/settings-fragment.json")  derived=$EXPECT_STYLE"
 check_rc "outputStyle selects the harness report style" \
-  "$([ "$(jq -r '.outputStyle' "$S")" = "harness-core:Report" ] && echo 0 || echo 1)" \
-  "$(jq -r '.outputStyle' "$S")"
+  "$([ "$(jq -r '.outputStyle' "$S")" = "$EXPECT_STYLE" ] && echo 0 || echo 1)" \
+  "installed=$(jq -r '.outputStyle' "$S")  expected=$EXPECT_STYLE"
 check_rc "ask tier created" "$([ "$(jq '.permissions.ask | length' "$S")" -gt 0 ] && echo 0 || echo 1)"
 check_rc ".gitignore keeps its existing entries" \
   "$(grep -qxF 'node_modules/' "$C/.gitignore" && echo 0 || echo 1)"
