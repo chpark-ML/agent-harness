@@ -2022,3 +2022,79 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   are for files, where `verify-doc-refs` checks them"*. `pr-create` 스킬 본문에도
   같은 한 줄.
 - **회차**: 1
+
+## 2026-08-26 — 템플릿이 갱신돼도 이미 설치된 사본은 조용히 옛날 것으로 남는다
+
+- **어디**: `plugins/harness-core/bin/harnessctl` `install_template()` (513–516행) ·
+  `harnessctl doctor` · `~/.claude/harness-manifest.json` 의 `files.template`
+- **무슨 일**: 이 세션에서 사용자의 `~/.claude/CLAUDE.md` 를 열어 보니 §1~§5 까지만
+  있고 **§6 (Report What Changed) 이 없다**. 저장소가 배포하는
+  `plugins/harness-core/declarative/CLAUDE.md` 에는 §6 이 있다. 즉 2026-08-08 에
+  측정까지 해서 넣은 보고 규약이 **정작 이 기계의 user 스코프 설치에는 도달한 적이
+  없다**. `~/projects/CLAUDE.md` (프로젝트 스코프, 더 나중에 설치됨) 에는 §6 이 있어서
+  같은 기계 안에서 두 사본이 갈라져 있다.
+- **왜 아무도 못 잡나**: `install_template()` 은 대상이 존재하면
+  `= <rel> (kept as it was — template)` 만 찍고 **내용을 비교하지 않는다**. 이것은
+  의도된 설계이고(사용자 편집을 덮지 않는다) 그 자체는 맞다. 문제는 **드리프트를
+  알리는 자리가 어디에도 없다는 것** — `doctor` 도 템플릿을 존재 여부로만 본다.
+  그래서 "덮어쓰지 않았다" 와 "새 절이 생긴 줄 모른다" 가 같은 한 줄로 보인다.
+  `verify-check-total` 처럼 공표 수치가 어긋나면 CI 가 잡는 것과 대조적이다 —
+  템플릿은 배포되고 나면 검사 대상이 아니다.
+- **범위가 넓어진다**: `CLAUDE.md` 만의 문제가 아니다. `protected-paths.txt`,
+  `allowed-paths.txt`, `gh-account.txt` 도 같은 경로를 탄다. 2026-08-11 의
+  gh-account `>>` 사건에서 템플릿 문구를 고쳤는데, **그 수정도 이미 설치된 사본에는
+  가지 않았다.** 같은 구조의 두 번째 사례로 보이지만 그때는 이 각도로 기록되지 않았다.
+- **제안** (승인 대기): `doctor` 에 템플릿 드리프트 한 줄. 매니페스트에 설치 시점의
+  템플릿 해시를 적어두고, `doctor` 가 현재 플러그인 캐시의 템플릿과 비교해
+  `drift  CLAUDE.md  (shipped template changed since install — diff and merge by hand)`
+  를 찍는다. **자동 병합은 하지 않는다** — 사용자 편집을 덮지 않는다는 설계가 옳고,
+  고칠 것은 침묵이지 정책이 아니다.
+- **회차**: 1
+
+## 2026-08-26 — `CLAUDE.md` 의 절 번호는 동결된 문서가 고정해서, 뒤에 붙이는 것만 가능하다
+
+- **어디**: `CLAUDE.md` §2·§2b·§2c·§2d·§2e · `docs/superpowers/plans/2026-08-20-paper-figures.md:30`
+  (동결됨) · `docs/agent-layer.md:132` · `AGENTS.md:15`
+- **무슨 일**: 네 번째 산출물 묶음(output style) 목록을 §2c 다음에 넣으려 했다. 자연스러운
+  번호는 §2d 인데 그 자리에는 이미 *"모든 묶음이 공표 수치를 움직인다"* 가 있다. §2d 를
+  §2e 로 밀면 되지만, **동결된 superpowers 계획서가 §2d 를 인용한다.** `CLAUDE.md` §1 은
+  그 계획서를 *"frozen once its work merges"* 로 규정하므로 고칠 수 없다. 결과적으로 새
+  목록은 §2e 가 되어 §2d 뒤에 놓였고, **네 개의 묶음 목록이 §2·§2b·§2c … §2e 로 갈라졌다**
+  — 가운데 §2d 는 그 넷 전부에 적용되는 주석이다. 읽는 순서와 번호 순서가 어긋난다.
+- **왜 이게 구조적인가**: 절 번호가 **문서 간 상호참조의 주소**로 쓰이는데, 주소를 인용하는
+  쪽 중 일부는 정의상 수정 불가다. 그러면 번호 공간은 **append-only** 가 된다. 이번에는
+  wart 하나로 끝났지만, 다음 삽입은 §2f 가 되어 §2d 뒤에 또 붙고, 목록의 논리적 묶음과
+  번호 순서의 괴리가 누적된다.
+- **후보 해법** (2회차 대기, 어느 쪽도 지금 하지 않는다):
+  ① 인용을 번호가 아니라 **앵커 제목**으로 한다 — `CLAUDE.md` 의 *"every bundle moves the
+  published numbers"*. 제목은 리네임되면 깨지지만 `verify-doc-refs` 가 잡을 수 있는 대상이고,
+  번호는 조용히 다른 절을 가리키게 된다 (더 나쁜 실패다).
+  ② 묶음 목록들을 번호 없는 하위 절로 §2 안에 접어 넣고, 상호참조는 §2 하나로 유지한다.
+- **1회차인 이유**: 이번이 번호 공간이 실제로 막힌 첫 사례다. 그 전까지는 항상 끝에
+  붙이기만 했으므로 제약이 보이지 않았다.
+- **회차**: 1
+
+## 2026-08-26 — 공표 수치의 *구성요소* 행은 아무것도 지키지 않는다 (2회차)
+
+- **어디**: `README.md:295,297` · `README.ko.md:453,457` ·
+  `scripts/verify-check-total.sh` · `scripts/verify-inventory.sh`
+- **무슨 일**: 이번 변경으로 `verify-frontmatter` 가 보는 파일이 13 → 14,
+  `verify-doc-refs` 가 69 → 71 로 움직였다. `verify-check-total` 은 **초록이었다** —
+  다섯 곳의 *합계* 867 이 서로 맞고 실행 결과와도 맞았기 때문이다. 그런데 두 README
+  의 검증 표에는 구성요소가 행별로 다시 적혀 있고, 그 네 칸은 여전히 13 과 69 였다.
+  **합계는 맞고 그 합계를 이루는 항목은 틀린 상태**로 통과한다. 손으로 찾아 고쳤다.
+- **왜 1회차가 아닌가**: 위쪽 *"§5 를 잘못 읽었다 — 훅 개수가 최소 10곳에 중복"*
+  항목과 **같은 축의 두 번째 발생**이다. 그때 나온 제안이 `verify-inventory.sh` 가 되어
+  훅 개수·권한·assertion 수를 지킨다. 그 셋은 anchor 단어(`guards`·`blocking`·
+  `informational`·`assertions`·`가드`·`차단`·`정보`)로 스캔되는데, **`files` 와
+  `frontmatter` 는 anchor 가 아니다.** 그래서 이 네 칸은 `verify-inventory` 의
+  스캔과 `verify-check-total` 의 합계 검사 **사이로 빠진다**.
+- **제안** (승인 대기): `verify-check-total.sh` 가 이미 transcript 를 읽으므로, 합계만
+  뽑는 대신 **`<검증기> → N` 쌍을 뽑아** 그것을 적은 모든 문서와 대조한다. 계기는
+  새로 만들 필요가 없고, 이미 읽고 있는 입력에서 한 단계 더 뽑는 일이다. 대안으로
+  `verify-inventory` 의 anchor 목록에 `files`·`frontmatter` 를 더하는 방법이 있는데,
+  그쪽은 **관계없는 숫자를 쓸어올 위험이 크다** — 그 스크립트가 anchor 를 좁게 고른
+  이유가 정확히 그것이다.
+- **왜 지금 안 만드나**: 이번 PR 은 콘텐츠 추가(output style)다. 구조 변경과 콘텐츠
+  추가는 다른 PR 이다 (`CLAUDE.md` §6). 2회차이므로 PR 본문 `## Notes` 에 올린다.
+- **회차**: 2 — 제안함, 승인 대기

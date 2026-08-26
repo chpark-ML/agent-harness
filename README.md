@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-860-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-870-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.3k%2F9k-informational">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.4k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -93,7 +93,7 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 ### Taking less than everything
 
-**You do not have to choose a profile.** Everything is ~8,000 tokens of always-on
+**You do not have to choose a profile.** Everything is ~8,400 tokens of always-on
 context against a ceiling of 9,000, so the default is all of it. `--profile`
 exists for taking *less* — the whole content set costs about 2,900 tokens per
 session more than development alone, which is worth declining only if you know
@@ -172,7 +172,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 200 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 206 assertions hold that line.
 
 ### Requirements
 
@@ -200,7 +200,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
 | **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~1,736) and `rules/` — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~3,919; project scope with everything is **~7,927 tok per session** — measured in CI (ubuntu, Claude Code 2.1.227), and it is ~7,211 if you drop `frontend`. The estimator varies by environment: the same checkout measured ~7,934 on a macOS workstation under the identical version before `cross-model-review` was added, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~2,017), `rules/`, and the `Report` output style (~298) — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~4,631; project scope with everything is **~8,364 tok per session** — measured in CI (ubuntu, Claude Code 2.1.246), and it is ~7,648 if you drop `frontend`. The estimator varies by environment: the same checkout and the same version measured ~8,783 on a macOS workstation, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -230,7 +230,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 200 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 206 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -266,7 +266,7 @@ See [ADR-0008](docs/adr/0008-plugin-declarative-split.md). `harnessctl` ships in
 |---|---|---|
 | 1 | `.claude/rules/harness/**` | **managed** — overwritten on reinstall. Fix these upstream. Not installed at user scope |
 | 2 | `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` | **templates** — copied only when absent, yours afterwards |
-| 3 | `settings.json` | parsed and **re-serialised**, never replaced. Only missing permission strings and two scalars — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true` |
+| 3 | `settings.json` | parsed and **re-serialised**, never replaced. Only missing permission strings and three scalars — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true`, `outputStyle: harness-core:Report` |
 | 4 | `settings.json.bak-<ts>` | a snapshot, only when settings actually change |
 | 5 | `.gitignore` | two lines, project scope only |
 | 6 | `harness-manifest.json` | the receipt for all of the above. Uninstall reverts only this |
@@ -287,19 +287,19 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **260** |
 | session-log renderer | **46** |
-| installer round trip | **200** assertions |
+| installer round trip | **206** assertions |
 | context-budget gate | **14** |
 | inventory figures | **40** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
-| document references | **69** files + **21** own cases |
+| document references | **72** files + **21** own cases |
 | documented commands exist | **45** + selftest **12** |
-| frontmatter | **13** + selftest **7** |
+| frontmatter | **14** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |
 | benchmark health | **14** |
 | context-budget ceiling | **1** |
-| **Total** | **860** |
+| **Total** | **870** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
