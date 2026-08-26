@@ -1,7 +1,8 @@
 {
   "scalars": {
     "includeCoAuthoredBy": false,
-    "terminalProgressBarEnabled": true
+    "terminalProgressBarEnabled": true,
+    "outputStyle": "harness-core:Report"
   },
   "permissions": {
     "allow": [
