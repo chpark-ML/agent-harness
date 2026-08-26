@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-867-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-870-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~1,736)와 `rules/`(~1,696 + 모듈별)를 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~3,919 이고, 프로젝트 스코프 전 프로파일은 **~7,927 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.227). `frontend` 를 빼면 ~7,211 이다. 추정기는 환경을 탄다: `cross-model-review` 추가 전 같은 체크아웃이 macOS 워크스테이션에서는 동일 버전으로 ~7,934 가 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~298)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~4,631 이고, 프로젝트 스코프 전 프로파일은 **~8,364 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.246). `frontend` 를 빼면 ~7,648 이다. 추정기는 환경을 탄다: 같은 체크아웃이 같은 버전으로 macOS 워크스테이션에서는 ~8,783 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 204 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 206 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -390,7 +390,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 |---|---|---|
 | 1 | `.claude/rules/harness/**` | **관리 파일** — 덮어쓴다. 고칠 것은 하네스 저장소에서 고친다. `--scope user` 에서는 설치 안 함 |
 | 2 | `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` | **템플릿** — 없을 때만 복사. 이후 프로젝트 소유 |
-| 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 스칼라 두 개 — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true` |
+| 3 | `settings.json` | 파싱 후 **재직렬화** (통째 교체 아님). 없는 permission 문자열과 스칼라 세 개 — `includeCoAuthoredBy: false`, `terminalProgressBarEnabled: true`, `outputStyle: harness-core:Report` |
 | 4 | `settings.json.bak-<ts>` | 설정이 실제로 바뀔 때만 남기는 직전 스냅샷 |
 | 5 | `.gitignore` | 두 줄 (프로젝트 스코프에서만) |
 | 6 | `harness-manifest.json` | 위 전부의 영수증. 제거는 이 영수증만 되돌린다 |
@@ -445,7 +445,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **260** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
-| 설치기 왕복 | **204** assertion |
+| 설치기 왕복 | **206** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
@@ -454,10 +454,10 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 버전 bump 게이트 (`verify-version-bump`) | selftest **19** |
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **14** |
-| 문서 내부 참조 (`verify-doc-refs`) | **71** 파일 + 자체 **21** |
+| 문서 내부 참조 (`verify-doc-refs`) | **72** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **867** |
+| **합계** | **870** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

@@ -1,13 +1,21 @@
-# `Report` — the output style `harness-core` ships
+# Output styles
 
 An output style changes how Claude talks to you. It is not a rule file and not a
 skill: Claude Code puts it in the **system prompt**, so it applies to every
 response and cannot be forgotten halfway through a session.
 
-`harness-core` ships one, `output-styles/report.md`, and `harnessctl` selects it
-by writing `outputStyle` into your `settings.json`.
+This document covers the styles this harness ships and how to write another.
+**Only one output style is active at a time**, which is why there is exactly one
+here — a second would compete with the first rather than add to it, so the bar
+for adding one is that it replaces `Report` for some consumer, not that it is
+also useful.
 
-## Why it exists
+## `Report`
+
+`harness-core` ships `output-styles/report.md`, and `harnessctl` selects it by
+writing `outputStyle` into your `settings.json`.
+
+### Why it exists
 
 `CLAUDE.md` §6 already says what a report must not do — a number with no
 referent, a name used as if the reader knows it, a pointer to an earlier turn.
@@ -35,7 +43,7 @@ And it carries a stop: *brevity stops where correctness starts*. Failing output,
 security warnings and confirmations for destructive actions keep their full
 content. A style that shortens an error message is worse than no style.
 
-## How it is selected
+### How it is selected
 
 `plugins/harness-core/declarative/settings-fragment.json` carries the scalar:
 
@@ -74,7 +82,7 @@ overrides whatever you chose. `harness-core` is installed in every profile, so
 using it would take every consumer's voice with no way out short of disabling
 the plugin.
 
-## Turning it off
+### Turning it off
 
 Set `outputStyle` to something else, or delete the key:
 
@@ -82,9 +90,13 @@ Set `outputStyle` to something else, or delete the key:
 # pick another style, including a built-in one
 /config          # → Output style
 
-# or edit the file harnessctl wrote
-jq 'del(.outputStyle)' ~/.claude/settings.json
+# or edit the file harnessctl wrote — jq prints, so write the result back
+tmp=$(mktemp) && jq 'del(.outputStyle)' ~/.claude/settings.json > "$tmp" \
+  && mv "$tmp" ~/.claude/settings.json
 ```
+
+Or run `harnessctl uninstall`, which removes the key along with everything else
+the manifest records — it never removes a value you set yourself.
 
 **The change applies on the next session.** Output style is part of the system
 prompt, which Claude Code reads once at startup; editing the setting mid-session

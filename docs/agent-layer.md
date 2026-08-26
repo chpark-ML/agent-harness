@@ -67,7 +67,7 @@ When adding an item to the §7 backlog, **say which row of this table it answers
 
 ## 3. Categories and the adoption ladder
 
-Eight categories. **The adoption order is the axis of progress** — guardrails → guides → automation → delegation → external connections. Go in reverse and automation amplifies the accidents.
+Nine categories. **The adoption order is the axis of progress** — guardrails → guides → automation → delegation → external connections. Go in reverse and automation amplifies the accidents.
 
 | Phase | Category | Location | Now |
 |---|---|---|---|
@@ -185,27 +185,28 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 204 assertions, context-budget gate 14, inventory figures 40 + selftest 7, frontmatter 14 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 14, document references 71 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 867. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
+**Now**: 7 hook verifiers / 260 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 206 assertions, context-budget gate 14, inventory figures 40 + selftest 7, frontmatter 14 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 14, document references 72 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 870. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
 **And it produced three false positives first.** The frozen corpus (`evals/prose-corpus.md`) is a copy of past documents, so its links are relative to the original location, and the relative links in the `declarative/` payload are correct relative to their *post-install* location. All three were removed by fixing the checker — going the other way would have made correct things wrong. The last one especially: the ledger was *quoting a broken link as evidence*, and because inline code was not stripped, the quotation was counted as a real link. **The discipline of adding the opposite-direction case when widening a guard applies here too.**
 
-**Context cost is counted by `make context-budget`.** Below is the 2026-08-08 output, and **do not edit the table by hand** — re-run the script.
+**Context cost is counted by `make context-budget`.** Below is the 2026-08-26 CI output, and **do not edit the table by hand** — re-run the script. CI is the only place it can be read honestly: `claude plugin details` reports nothing where the plugins are not installed, so a developer machine counts every plugin as 0.
 
 | What | Always loaded | When |
 |---|---|---|
-| `CLAUDE.md` | **~1,736 tok** | both user and project |
-| `rules/core/workflow.md` | **~1,696** | project only |
-| `rules/dev/review.md` | **~1,132** | project only, `--with dev` |
-| `rules/research/notes.md` | **~1,279** | project only, `--with research` |
-| `harness-core` | ~329 | always |
-| `harness-dev` + `superpowers` | ~240 + ~688 | `dev` |
-| `harness-research` | ~480 | `research` |
-| `harness-slides` | ~446 | `slides` |
+| `CLAUDE.md` | **~2,017 tok** | both user and project |
+| `rules/core/workflow.md` | **~1,539** | project only |
+| `rules/dev/review.md` | **~1,029** | project only, `--with dev` |
+| `rules/research/notes.md` | **~1,165** | project only, `--with research` |
+| `output-styles/report.md` | **~298** | always, while it is the selected style |
+| `harness-core` | ~159 | always |
+| `harness-dev` + `superpowers` | ~239 + ~584 | `dev` |
+| `harness-research` | ~245 | `research` |
+| `harness-slides` | ~373 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~7,927 tok / session** — measured in CI, and ~7,211 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
-| Every profile at user scope | ~3,919 | no rules there |
+| **worst case** (project, every profile) | **~8,364 tok / session** — measured in CI, and ~7,648 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
+| Every profile at user scope | ~4,631 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
 **This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
@@ -217,7 +218,7 @@ So instead of pinning numbers into a document, they moved into **a script that r
 
 **Hooks and LSPs are still zero** (`plugin details` classifies them as "harness-only — no model context cost"). What changed is that the conclusion *only skills cost anything* was wrong — **rules cost more than skills.** Our per-skill unit cost is high (Superpowers: 688 across 14, so ~49 each, against our ~240) because ours carry English and Korean triggers plus negative routing together, and whether that convention earns its cost is measured in §4b. We observed external skills attaching to Korean prompts **on an English description alone**, so this stays an open question.
 
-**Adding is not addition, it is a trade.** There is ~1k of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
+**Adding is not addition, it is a trade.** There is ~640 tok of headroom under the ceiling, and it is there for the next one thing, not to be filled. To go past it, either say what comes out in the same change, or raise `CONTEXT_CEILING` in the Makefile with a reason.
 
 **We also learned there is a second axis.** `skill-creator` is 112 always-on and 10.9k when called — a short description over a huge body. We have built the opposite way. Which is right is decided by call frequency: a frequently triggered skill needs a cheap body, and a rarely used tool needs a cheap description. Design on always-on cost alone and this axis is invisible.
 
@@ -250,7 +251,7 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 | **Skill routing** | Does work reach the skill we said it would? | **59/60** | Descriptive. The 6/6 negatives confirmed across three runs each |
 | **Deck number traceability** | Does the filter have holes? | 41 flagged of 143 tokens in the frozen corpus, **0 new unclassified shapes** | Deterministic |
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
-| **Installer** | Does uninstall restore the original? | 204 assertions | An invariant, not an A/B subject |
+| **Installer** | Does uninstall restore the original? | 206 assertions | An invariant, not an A/B subject |
 
 **Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
@@ -402,7 +403,7 @@ This may have been worth more than the measurements. All ten **looked identical 
 
 - **The two PR-stage conventions.** Impossible locally for the two reasons above. A throwaway repository on a real forge would do it.
 - **The rest of `CLAUDE.md`'s principles.** The branch convention was measured, but whether "Simplicity First" actually makes code simpler is hard to write a grading criterion for. `skill-creator`'s grader subagent is the candidate for that seat — and `ponytail` (§3b) has already run this exact measurement, so the design is there to copy.
-- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 204 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
+- **The installer is not an A/B subject in principle.** "Uninstall restores the original" is an invariant, not a claim with a comparison group, and `scripts/verify-install.sh`'s 206 assertions pin it (particularly that `settings.json` is canonically identical after uninstall).
 - **The [`Report` output style](output-styles.md), on both of its claims.** It shipped measured on cost (298 tok, counted by `context-budget.sh` because `claude plugin details` does not see output styles) and unmeasured on effect. Two questions, and the instrument for both already exists — the offline reviewer built for the 2026-08-08 report-quality run, which scores real reports from a session transcript and costs nothing per turn. **Does the style change report quality?** A paired run, same corpus, style on and off. **Does it collide with `CLAUDE.md` §6?** The style governs length and the section governs content, which is why they were written not to overlap; whether brevity nonetheless eats the plain-meaning-first sentence §6 asks for is a different question from whether the two texts contradict. Until both are run, the style is a considered guess, and this row is the honest label on it.
 
 ## 5. Guide vs Guard
