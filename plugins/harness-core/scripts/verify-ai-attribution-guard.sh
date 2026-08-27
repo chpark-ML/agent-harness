@@ -108,6 +108,38 @@ run_case "git merge -m with the trailer → block" 2 \
 run_case "git notes add -m with the trailer → block" 2 \
   '{"tool_name":"Bash","tool_input":{"command":"git notes add -m \"Co-Authored-By: Claude <noreply@anthropic.com>\" HEAD"}}'
 
+# --- boundary: a search for these marks is not a write of them ----------------
+# The single-command case above (`grep -rn ... .`) never reaches the gate. These
+# are the shape that did: the search shares a command with a write, so the gate
+# fires on the write and the scan used to match on the search string. Both are
+# real commands from 2026-08-27.
+
+run_case "pre-PR self-check, then the PR it checks → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git log --format=%B origin/main..HEAD | grep -ciE \"co-authored-by:.*claude\"\ngh pr create --title t --body \"clean body\""}}'
+
+run_case "rg form of the same check, then a commit → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"git log -1 | rg -i \"generated with claude\"\ngit commit -m \"Add parser\""}}'
+
+run_case "heredoc writing this hook, alongside a gated command → allow" 0 \
+  '{"tool_name":"Bash","tool_input":{"command":"cat > guard.sh <<EOF\n# gate covers gh pr create and git commit\nprintf %s \"$lc\" | grep -Eq \"co-authored-by:.*(claude|noreply@anthropic)\" && block\nEOF"}}'
+
+# --- block: the strip must not hide a mark that is actually being written -----
+# Opposite-direction cases for the narrowing above (CONTRIBUTING, rule 1). A
+# line carrying a gated command is never stripped, and the removal is per line,
+# so neither functioning shape can hide behind a search.
+
+run_case "trailer on its own line, a search elsewhere in the message → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"Add parser\n\ngrep the logs for the retry marker\n\nCo-Authored-By: Claude <noreply@anthropic.com>\""}}'
+
+run_case "footer inside --body on a line that also pipes to grep → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"gh pr create --title t --body \"see notes | grep foo Generated with Claude Code\""}}'
+
+run_case "search and write chained on ONE line → block (known limitation)" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git log | grep -i \"co-authored-by: claude\" && gh pr create --title t --body ok"}}'
+
+run_case "a message that merely starts a line with the word grep → block" 2 \
+  '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"x\" -m \"grep is used here\nCo-Authored-By: Claude <noreply@anthropic.com>\""}}'
+
 # --- the gate needs a word boundary ------------------------------------------
 # Without one, `git +commit` matched the `git commit` inside `legit commit`.
 

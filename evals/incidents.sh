@@ -49,6 +49,12 @@ inc block attribution "gh pr create --title t --body 'changes
 🤖 Generated with [Claude Code](https://claude.com/claude-code)'"
 inc block attribution "git commit -m x -m 'Generated with Claude Code'"
 inc block attribution "git merge -m 'Co-Authored-By: Claude <noreply@anthropic.com>' feat-x"
+# Searching for the marks is not writing them: the pre-PR self-check the workflow
+# rules ask for shares a command with the PR it checks. Blocked until 2026-08-27.
+inc allow attribution "git log --format=%B origin/main..HEAD | grep -ciE 'co-authored-by:.*claude'
+gh pr create --title t --body 'clean body'"
+inc allow attribution "git log -1 | rg -i 'generated with claude'
+git commit -m 'Add parser'"
 inc block attribution "gh issue create --title t --body 'Co-Authored-By: Claude <noreply@anthropic.com>'"
 
 # ---- protected paths ---------------------------------------------------------
