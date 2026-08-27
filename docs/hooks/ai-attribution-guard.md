@@ -14,7 +14,11 @@ Registered on `PreToolUse`, matcher `Bash` ([`hooks.json`](../../plugins/harness
    ```
 
    The part that allows global options between `git` and the subcommand is the point. The earlier, simpler `git +commit` match let `git -C <repo> commit ...` through untouched. Because `$lc` is lowercased, `-C` arrives as `-c`, so the single `-c +[^ ]+` covers both `-C <path>` and `-c <name>=<value>`. `git tag` is in scope because annotated tags carry messages; `comment` and `release` are there because, like `create`, they publish prose to GitHub. A wide gate is harmless — a command with no attribution passes it and exits 0 anyway.
-3. Check three shapes in order. On a match, name what was caught on stderr and exit 2.
+3. Remove **read-only inspector segments** from the copies that get scanned. `grep`, `rg` and
+   the read-only git subcommands never author a message, so a command that *searches* for these
+   marks no longer arms the guard just because it shares a command with a write. See
+   [Searching is not writing](#searching-is-not-writing).
+4. Check three shapes in order. On a match, name what was caught on stderr and exit 2.
 
 `includeCoAuthoredBy: false` in `settings.json` disables Claude Code's built-in trailer. This hook covers the remaining path: a message the model wrote by hand. It reacts to **the command itself**, so it still applies when `--no-verify` skips commit-msg hooks.
 
@@ -32,6 +36,32 @@ The first two read the lowercased copy and are therefore case-insensitive (`CO-A
 
 The trailer rule looking for `noreply@anthropic` rather than `anthropic` alone is the load-bearing detail. A human colleague with an `@anthropic.com` address is a genuine co-author and that trailer has to survive. Only the bot address is targeted.
 
+## Searching is not writing
+
+A command that searches for these marks necessarily contains them, and *not* being blocked for that
+is a property this document already promised. It held only while the search stood alone. Piped into
+the same command as a write — the shape of the pre-PR self-check the workflow rules ask for — the
+gate fired on the write and the scan then matched the search string. It happened twice on
+2026-08-27: once on that self-check, once on a heredoc writing this hook's own patterns.
+
+So inspector segments are removed before matching:
+
+```
+(^|[|&;`]|[$][(])[[:space:]]*(grep|egrep|fgrep|rg|ack|git[[:space:]]+(log|show|diff|blame|grep))[[:space:]].*
+```
+
+Three properties keep this from hiding a mark that is genuinely being written:
+
+- **A line carrying a gated command is left whole**, so nothing inside a `--body` or a `-m` argument
+  on that line is ever removed.
+- **The removal runs per line**, and both text shapes only function at the start of their own line.
+  A trailer is not a trailer mid-line.
+- **On any `sed` failure the raw command is scanned**, so the failure mode is the old behaviour
+  rather than silence.
+
+The gate itself is unchanged: exactly the same commands are inspected as before. What changed is
+which *text* inside them is read.
+
 ## What passes
 
 A legitimate mention is not attribution. All of these pass deliberately.
@@ -41,6 +71,9 @@ A legitimate mention is not attribution. All of these pass deliberately.
 - **References to the `anthropic` SDK or API backend** — `git commit -m "Pin anthropic to 0.40 for the tool_use fix"`.
 - **A human co-author trailer** — `Co-Authored-By: Jane Doe <jane@example.com>`. What is blocked is AI attribution, not co-authorship.
 - **A human colleague at Anthropic** — `Co-Authored-By: Jane <jane@anthropic.com>` passes. The bot address `noreply@anthropic.com` is what is blocked.
+- **A search sharing a command with a write** — a self-check piped before `gh pr create`, or a
+  heredoc writing this hook's patterns next to a gated command. See
+  [Searching is not writing](#searching-is-not-writing).
 - **Commands that write no message** — `grep -rn "Co-Authored-By: Claude" .` never reaches the gate, and `git tag -l` reaches it with no prose to check and exits 0. The first is a required property: *searching for* trailers this hook blocks must not itself be blocked.
 - **An ordinary commit** — `git commit -m "Add retry to the upload path"`.
 
@@ -57,6 +90,10 @@ The two false positives below are deliberate, and the script header says so.
 - **An unrelated 🤖 is blocked.** `git commit -m "fix the 🤖 emoji rendering bug"` exits 2 even though the emoji is the subject. There is no context judgement. It stays because this rule is **the only one that catches a generated-with footer written without the word "Claude"** — remove it and that shape escapes entirely.
 - **`generated with … claude` in prose is a false positive.** `git commit -m "note that fixtures were generated with the claude api"` is not attribution and is blocked.
 
+- **A search chained to a write on one line is still blocked.** `git log | grep -i '…' && gh pr
+  create …` leaves that line carrying a gated command, so it is not stripped. Put the check on
+  its own line — the verifier asserts the block so this cannot drift.
+
 Remaining gaps:
 
 - **A person named Claude is still blocked.** `Co-Authored-By: Claude Dupont <claude.dupont@example.com>` exits 2. The address-based false positive was fixed; the name-based one cannot be — searching a trailer value for `claude` cannot separate a real name from a model name. It is pinned in the verifier as a **known-limitation case that asserts the block**, so if the behaviour changes the test says so.
@@ -65,7 +102,9 @@ Remaining gaps:
 
 ## Verification
 
-[`plugins/harness-core/scripts/verify-ai-attribution-guard.sh`](../../plugins/harness-core/scripts/verify-ai-attribution-guard.sh) — 33 cases. The four "gate evasion" cases (`git -C`, `git -c`, `git --no-pager`, an uppercase trailer) are the real incidents that gave the gate regex its current shape.
+[`plugins/harness-core/scripts/verify-ai-attribution-guard.sh`](../../plugins/harness-core/scripts/verify-ai-attribution-guard.sh) — 40 cases. Seven of them cover the narrowing in [Searching is not writing](#searching-is-not-writing): three
+that a search must pass, four that a real mark must still be blocked — including the one-line
+chain, asserted as a limitation. The four "gate evasion" cases (`git -C`, `git -c`, `git --no-pager`, an uppercase trailer) are the real incidents that gave the gate regex its current shape.
 
 The trailer boundary is pinned in three directions — an `@anthropic.com` human colleague passes, the bot address `noreply@anthropic` is blocked even without the word "Claude", and a person named Claude is **asserted to be blocked**. The last pins a false positive that cannot be fixed, so the Limits section above cannot drift away from the code.
 
