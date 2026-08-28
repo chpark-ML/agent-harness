@@ -197,8 +197,15 @@ MK
   # took even while runs lasted minutes. SECONDS is bash 3.2 and needs no
   # change to how claude is invoked.
   t0=$SECONDS
-  ( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p $BENCH_CLAUDE_ARGS \
-      --permission-mode acceptEdits >/dev/null 2>&1 )
+  # json, not discarded output: the grading below reads the git tree, so a
+  # session that never ran leaves branch=<none> and no commit and is scored as
+  # a MISS. The `committed at all` line was a human-read mitigation for that
+  # and 0/5 still reads as "the model did not commit". Captured in the parent
+  # shell on purpose — bench_result_or_abort exits, and an exit inside `( )`
+  # would only leave the subshell. The EXIT trap still restores.
+  out="$( cd "$R" && printf '%s' "$PROMPT" | env -u CLAUDECODE claude -p $BENCH_CLAUDE_ARGS \
+      --output-format json --permission-mode acceptEdits 2>/dev/null )"
+  bench_result_or_abort "$out"
   elapsed=$((SECONDS - t0)); total_s=$((total_s + elapsed))
 
   if [ "$TASK" = loop ]; then

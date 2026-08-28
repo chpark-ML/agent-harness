@@ -87,3 +87,51 @@ bench_json_field() { # bench_json_field <json> <jq path> [default]
   v="$(printf '%s' "$1" | jq -r "$2 // empty" 2>/dev/null)"
   [ -n "$v" ] && printf '%s' "$v" || printf '%s' "${3:-0}"
 }
+
+# ---- a dead room is not a measurement ----------------------------------------
+# `claude -p --output-format json` closes with one object, and a room that
+# cannot reach the API closes it with is_error / terminal_reason=api_error
+# having spent nothing. Graded rather than caught, that reads exactly like a
+# real trial in which the model got it wrong: bench-trigger scored 0/6 on the
+# positives and a free 6/6 on the negatives that way (docs/agent-layer.md §4b,
+# instrument failure 10).
+#
+# That fix went into bench-trigger.py and stopped there, so bench-tier graded
+# the empty string from `.result // ""` and bench-convention read a dead
+# session as "did not branch, did not commit" for another week. This function
+# exists so the next bench cannot be added without the guard — the glob in
+# scripts/verify-benches.sh is what enforces that, since the failure class here
+# is omission and §4 says omission is prevented by design, not by cases.
+#
+# THE BOUNDARY IS NOT NEGOTIABLE, and 2026-08-21 settled it: a LIVE room that
+# answered wrong, or answered nothing, is a valid measurement and must still be
+# scored. Only a room that never ran aborts. Widening this to "anything that
+# looks unsuccessful" re-creates the defect the first attempt shipped, where a
+# stray unauthorized line discarded trials that had already produced data.
+#
+# Exits 2 rather than returning, so a caller cannot forget to check. Callers
+# that mutate the machine restore through `trap ... EXIT` and that still runs.
+bench_result_or_abort() { # bench_result_or_abort <json from --output-format json>
+  local json="$1" err reason
+  if ! printf '%s' "$json" | jq -e . >/dev/null 2>&1; then
+    printf '%s: the session emitted no result event, so there is nothing to score.\n' \
+      "${BENCH_NAME:-bench}" >&2
+    printf '  A trial that never ran is not a trial that scored zero. Refusing to grade.\n' >&2
+    exit 2
+  fi
+  err="$(printf '%s' "$json" | jq -r '.is_error // false')"
+  reason="$(printf '%s' "$json" | jq -r '.terminal_reason // ""')"
+  if [ "$err" = true ] || [ "$reason" = api_error ]; then
+    printf '%s: the room is dead, so this is not a measurement.\n' "${BENCH_NAME:-bench}" >&2
+    printf '  terminal_reason=%s subtype=%s api_ms=%s cost=%s\n' \
+      "${reason:-unknown}" \
+      "$(bench_json_field "$json" .subtype unknown)" \
+      "$(bench_json_field "$json" .duration_api_ms 0)" \
+      "$(bench_json_field "$json" .total_cost_usd 0)" >&2
+    if [ "$reason" = api_error ]; then
+      printf '  api_error having spent nothing is usually credentials — check `claude` auth.\n' >&2
+    fi
+    exit 2
+  fi
+  return 0
+}

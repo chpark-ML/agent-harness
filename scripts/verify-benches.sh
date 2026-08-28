@@ -118,6 +118,39 @@ for s in scripts/bench-convention.sh scripts/bench-lsp.sh scripts/bench-tier.sh;
     || bad "$(basename "$s") has no consent gate"
 done
 
+# --- a dead room must never be graded ----------------------------------------
+# Two directions, and they need different instruments.
+#
+# OMISSION is the one that actually happened: bench-trigger.py grew the guard on
+# 2026-08-21 and its three siblings did not, so a dead session kept scoring as a
+# measured miss for another week. §4 says omission is prevented by design, so
+# this is a glob over every bench that starts a session, not a list of the three
+# already fixed. bench-trigger.py is excluded on purpose — it parses a stream
+# rather than one object and carries the equivalent guard inline.
+unguarded=""
+for s in scripts/bench-*.sh; do
+  [ -e "$s" ] || continue
+  grep -q 'claude -p' "$s" || continue            # free benches start no session
+  grep -q 'bench_result_or_abort' "$s" || unguarded="$unguarded $(basename "$s")"
+done
+[ -z "$unguarded" ] \
+  && ok "every bench that starts a session refuses to grade a dead one" \
+  || bad "a bench grades whatever a dead session left behind" "$unguarded"
+
+# FALSE POSITIVE is the direction that costs more, and it is the one 2026-08-21's
+# first attempt shipped: a guard that discarded trials which had already produced
+# data. So the boundary gets a real case, not an inspection.
+. "$(cd "$(dirname "$0")" && pwd)/_bench-lib.sh"
+_guard_rc() { ( bench_result_or_abort "$1" ) >/dev/null 2>&1; printf '%s' "$?"; }
+
+check_eq "a live trial that answered wrong is still graded" \
+  0 "$(_guard_rc '{"is_error":false,"result":"42","total_cost_usd":0.01}')"
+check_eq "a dead room aborts instead of scoring" \
+  2 "$(_guard_rc '{"is_error":true,"subtype":"error_during_execution"}')"
+check_eq "an unreachable API aborts instead of scoring" \
+  2 "$(_guard_rc '{"is_error":false,"terminal_reason":"api_error","total_cost_usd":0}')"
+check_eq "a session that emitted no result event aborts" 2 "$(_guard_rc '')"
+
 # A bench that pins a specific commit will rot the next time history moves --
 # which is precisely how bench-claims died. Counting commits in a scratch repo
 # (`rev-list --count HEAD`) is fine; naming a SHA is not.
