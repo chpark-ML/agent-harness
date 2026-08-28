@@ -1,0 +1,53 @@
+{
+ "skill": "harness-dev:ecosystem-review",
+ "cases": [
+  {
+   "query": "https://github.com/dreambigou/eli5 이 레포 검토해줘. 우리한테 쓸만한 게 있는지 보고 싶어",
+   "should_trigger": true
+  },
+  {
+   "query": "이 플러그인 마켓플레이스에서 봤는데 설치할까 말까 판단 좀 해줘. 우리 스킬이랑 겹치는 것 같기도 하고",
+   "should_trigger": true
+  },
+  {
+   "query": "somebody published a skill collection that overlaps ours. worth adopting, or does it collide with what we already depend on?",
+   "should_trigger": true
+  },
+  {
+   "query": "이 npm 도구 우리 워크플로에 넣을 만한지 봐줘. 상시 비용이 얼마나 되는지도 궁금해",
+   "should_trigger": true
+  },
+  {
+   "query": "we keep hearing about this agent framework. read what it actually ships and tell me whether any of it belongs in our harness",
+   "should_trigger": true
+  },
+  {
+   "query": "외부 저장소 몇 개 훑어서 흡수할 거 있나 정리해줘. 없으면 없다고 해도 되고",
+   "should_trigger": true
+  },
+  {
+   "query": "PR #47 리뷰해줘. 다른 팀이 올린 건데 우리 컨벤션 지켰는지 봐줘",
+   "should_trigger": false
+  },
+  {
+   "query": "머지하기 전에 내 커밋 범위 스스로 검토하고 싶어. 아직 PR 은 안 만들었고 main..HEAD 야",
+   "should_trigger": false
+  },
+  {
+   "query": "지금 작업 트리에 있는 diff 좀 봐줘. 버그나 단순화할 거 없나",
+   "should_trigger": false
+  },
+  {
+   "query": "ChatGPT 한테도 이 변경 리뷰받아줘. 다른 모델 의견도 듣고 싶어",
+   "should_trigger": false
+  },
+  {
+   "query": "리뷰어가 남긴 코멘트 세 개가 있는데 어떻게 대응할지 같이 정리해줘",
+   "should_trigger": false
+  },
+  {
+   "query": "this python library has a retry decorator — show me how to use it in our client code",
+   "should_trigger": false
+  }
+ ]
+}
