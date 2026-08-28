@@ -2142,3 +2142,89 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   남기고, 제거는 줄 단위이며, 두 텍스트 형태는 자기 줄 시작에서만 기능한다.
   반대 방향 케이스 4 개를 붙였다(CONTRIBUTING 1번 규칙).
 - **회차**: 2 — 그래서 제안이 아니라 이 PR 에서 고쳤다.
+
+## 2026-08-28 — 실패한 세션을 측정값으로 채점하는 함정을 계측기 하나에만 고쳤다 (2회차)
+
+- **어디**: `scripts/bench-tier.sh:58` · `scripts/bench-convention.sh:200-201` ·
+  `docs/agent-layer.md` §4b 계측기 실패 표 10번
+- **무슨 일**: 외부 저장소(`dreambigou/eli5`) 리뷰 중 그쪽 eval 러너에서
+  *"`claude` CLI 가 0 이 아닌 코드로 죽으면 빈 문자열을 반환하고, 그 빈 응답이 그대로
+  채점에 들어가 모든 assertion 이 FAIL 로 기록된다"* 를 재현했다. 그 길로 우리 것을
+  확인하니 **다섯 개 유료 벤치 중 둘이 같은 상태**였다.
+  ① `bench-tier.sh:58` — `jq -r '.result // ""'`. 에러 세션은 `ans=""` 가 되고 66행의
+  정규화 비교가 곧바로 `MISS` 를 찍는다. 집계(`$TALLY`)에는 *틀린 답*과 구별되지 않는
+  MISS 로 남는다. `is_error` / `terminal_reason` 를 보는 자리가 없다.
+  ② `bench-convention.sh:200` — 출력을 `>/dev/null 2>&1` 로 버리고 종료코드도 안 본다.
+  세션이 죽으면 저장소가 그대로이므로 `branch=<none>`, 커밋 0 → **MISS 로 채점**된다.
+  256행의 *"커밋 안 한 시행은 어느 쪽 증거도 아니다"* 는 사람이 읽는 완화책일 뿐,
+  `committed 0/5` 는 화면상 *"모델이 커밋을 안 했다"* 로 읽힌다.
+  가드가 있는 쪽은 둘 — `bench-trigger.py:143`(`is_error`/`api_error` 시 중단),
+  `bench-lsp.sh:64`(`jq -e '.usage'` 없으면 skip).
+- **왜 이게 반복인가**: 2026-08-21 항목이 정확히 이 병을 `bench-trigger.py` 에서 잡고
+  거기서 멈췄다. 형제 계측기도 같은지 묻지 않았다. 2026-08-26 항목의 일반화
+  — *"계기가 둘 이상인데 한쪽만 고치면 조용히 거짓이 된다"* — 와 같은 뿌리다.
+  §4b 가 스스로 적어둔 규칙(*"음성 결과가 나오면 기제가 발동할 조건부터 확인하라"*)이
+  계측기 다섯 중 둘에서 코드로 존재하지 않는다.
+- **왜 아무 검사도 못 잡나**: `bench*` 는 `verify` 밖이고(`CLAUDE.md` §3, 의도된 것),
+  `verify-benches.sh` 는 "돈 안 쓰고 실행은 되는가" 만 본다. 실패 세션을 흉내 내는
+  케이스는 어느 쪽에도 없다.
+- **제안 (승인 대기, 별도 PR)**: `_bench-lib.sh` 에 `bench_result_or_abort <json>` 하나를
+  두고 — `.is_error` 이거나 `.terminal_reason == "api_error"` 면 채점하지 않고 종료코드 2 —
+  `bench-tier.sh` 는 그것을 통과시킨 뒤 `.result` 를 읽게, `bench-convention.sh` 는
+  `--output-format json` 으로 바꿔 같은 관문을 지나게 한다. 경계선은 2026-08-21 항목이
+  이미 정해 두었다: **살아 있는 방에서 도구를 안 부른 시행은 유효한 측정이므로 중단하지
+  않는다.** 가짜 `claude` 스텁 세 모드(죽은 방 / 정상 / 미발동)가 그대로 케이스가 된다.
+- **회차**: 2 (2026-08-21 을 뿌리로. "한 계기만 고치고 형제를 안 본다" 로 넓히면 3)
+
+## 2026-08-28 — 독자가 peer 가 아님을 이미 아는 자산이 그걸로 아무것도 안 한다 (2회차)
+
+- **어디**: `plugins/harness-slides/skills/results-deck/SKILL.md:30` (6장 골격의 1번 괄호)
+  · `plugins/harness-core/output-styles/report.md:7` · `declarative/CLAUDE.md` §6
+- **무슨 일**: 외부 저장소(`dreambigou/eli5`)의 *의도* — 독자를 상수가 아니라 파라미터로
+  둔다 — 를 우리 자산에 대보다가 나왔다. `results-deck` 은 description 에서
+  *"a release readout, a **stakeholder** or sprint review, a demo"* 를 명시적으로 판다.
+  즉 **이 스킬은 독자가 peer 가 아닐 수 있음을 이미 알고 있다.** 그런데 본문에서 그
+  사실을 쓰는 곳은 30행의 괄호 하나 — *"(why this work happened — in the audience's
+  language)"* — 가 전부고, 누가 청중일 수 있는지도, 무엇이 달라지는지도 없다.
+  Step 0 은 *"research 냐 development 냐, 섞지 마라"* 로 한 번 갈라지는데 **누가 방에
+  있는가로는 갈라지지 않는다.**
+- **왜 이게 2회차인가**: 2026-08-08 항목이 같은 뿌리의 1회차다. 거기서 40개 보고에
+  리뷰어를 돌려 **31/40 플래그, 그중 18건이 독자 소유 라벨에 대한 오탐**임을 재고,
+  결론을 우리 말로 이렇게 적었다 — *"리뷰어는 독자가 누구인지 모르므로 §4b(독자의 것)와
+  artifact boundary(에이전트가 지어낸 것)를 못 가른다. 만들려면 **독자 컨텍스트를 입력으로
+  받아야 한다** — 측정이 밝힌 유일한 설계 결함이다."* 그 항목은 §6 세 줄만 넣고 게이트를
+  보류하며 닫혔다. **그 뒤에 배포한 두 자산이 독자를 하드코딩했다**: `report.md:7`
+  *"The reader did not watch you work"*, §6 *"Do not explain terms the reader owns."*
+  둘 다 기본값으로는 맞다. 다만 1회차가 열어둔 절반 — *독자가 입력이다* — 은 그대로다.
+- **왜 eli5 자체는 답이 아닌가**: §1 의 두 번째 non-goal — *"we do not build
+  general-purpose working skills"* — 이 오디언스 적응 스킬 이식을 막는다. `harness-dev`
+  가 얇은 것과 같은 근거다. 가져올 것은 스킬이 아니라 **Step 0 을 한 번 더 가르는 축**.
+- **비용 제약이 선택지를 좁힌다**: 천장 9000, 공표 최악 8389 → **여유 611 tok**.
+  `claude plugin details` 의 Always-on 은 **스킬 설명문의 합**이므로 (`context-budget.sh:98`)
+  **스킬 *본문* 수정은 상시 비용 0**이고, `report.md` 수정은 바이트/4 만큼 상시로 붙는다.
+  그래서 값이 있다면 순서는 본문 먼저다.
+- **제안 (승인 대기, 별도 PR)**: `results-deck` Step 0 에 두 번째 분기 —
+  *누가 방에 있는가* — 를 넣는다. 그리고 그것이 이미 다른 것에 매달아 둔다:
+  4번 슬라이드(how much to believe it)와 5번(what is not established)은 stakeholder
+  덱에서 제일 먼저 잘려 나가는 두 장이고, 본문은 이미 *"Do not drop 4 and 5"* 라고
+  적어 두었다 — 지금은 그 지시가 **누구 앞에서든 같다**. 독자를 분기로 만들면 그
+  금지가 왜 존재하는지가 붙는다. `report.md:7` 은 1회차 절반이 열어둔 자리이지만
+  상시 비용이 붙으므로 **이번에는 건드리지 않는다**.
+- **회차**: 2 (2026-08-08 을 뿌리로. 두 번째 *발생*이 아니라 같은 뿌리의 두 번째 *현장*
+  이라는 점은 명시해 둔다 — §7 게이트를 이걸로 통과시킬지는 소유자 판단)
+- **2026-08-28 — 소유자 승인, 넣었다.** Step 0 이 두 번 갈라진다: `**What.**`(기존
+  research/development 분기 그대로)와 `**To whom.**`(peers who will build on it /
+  deciders who will act on it). 4·5 번 슬라이드는 **둘 다에서 유지**되고 형태만 바뀐다 —
+  peer 는 방법의 언어로(sample·variance·무엇이 뒤집혔나), decider 는 결정의 경계로
+  (*"this holds down to 3 trials"* vs *"σ = 0.4, n = 5"*). 그래서 `ADR-0010:18` 의
+  *"The skeleton **requires** 'how much to believe it' and 'what is not established'"*
+  는 그대로 참이고 그 문서는 손대지 않았다. Step 2 의 `Do not drop 4 and 5` 에
+  *"for either reader … Step 0 changes their form, never their presence"* 를 붙여
+  금지의 이유를 Step 0 에 묶었고, 30행 괄호는 `in the audience's language` →
+  `in Step 0's reader's language` 로 바뀌었다.
+  **안 건드린 것**: `report.md:7` — 1회차가 열어둔 자리는 맞지만 상시 비용이 붙고
+  (여유 611 tok), §4b 가 예고한 output style 효과 측정이 아직 안 돌았다. 효과를 모르는
+  스타일을 넓히는 것은 순서가 뒤집힌 것이다. 그래서 이 항목의 나머지 절반은 **열려 있다.**
+  **검증**: description md5 가 편집 전후 동일(`185aa75c…`)이므로
+  `evals/trigger/results-deck.json` 재측정 불필요 — 트리거는 설명문의 함수다.
+  스킬 *본문*이라 상시 비용 0(`context-budget.sh:98`). `harness-slides` 1.6.0 → 1.7.0.

@@ -9,12 +9,21 @@ Turns artefacts into a **narrative**. It does not render — `slides-grab` does 
 
 There is one reason this skill exists. **A results talk is where untraceable numbers get quoted.** The notes may record which run produced a table, but the moment it moves onto a slide the number survives and the evidence falls away. And then the audience quotes that number and decides things with it.
 
-## Step 0 — What is being presented
+## Step 0 — What is being presented, and to whom
 
-One of two. Do not mix them.
+Two forks. Settle both before writing a slide.
+
+**What.** One of two. Do not mix them.
 
 - **Research results** — sourced from `FINDINGS.md` (what came to be believed), `experiment_plan.md` (how it was found out), `ARTIFACTS.md` (where it came from). If the note set does not exist, run `research-notes` first.
 - **Development results** — sourced from the change history, PR bodies, release notes, benchmark output.
+
+**To whom.** Everywhere else in this harness the reader is fixed: someone who did not watch the work and owns the project's vocabulary. A release readout or a stakeholder review is not that reader, and what changes is not the tone.
+
+- **Peers who will build on it** — they own the vocabulary. Slide 4 gives the sample and the variance, slide 5 names what was overturned, in the terms the method is written in.
+- **Deciders who will act on it** — they own the decision, not the vocabulary. The same two slides, stated as a bound on that decision: *"this holds down to 3 trials"* rather than *"σ = 0.4, n = 5"*.
+
+**If nobody said which, ask.** The two failures are not symmetric — a peer deck shown to a decider is merely dense, while a decider deck shown to a peer has already thrown away the evidence they came for. **A room holding both is a peer room**, for that reason: the sprint review this skill is built for usually is one.
 
 ## Step 1 — Collect the evidence first
 
@@ -27,7 +36,7 @@ If `ARTIFACTS.md` exists, that is the list of quotable numbers. If it does not, 
 One claim per slide. The skeleton of a results talk:
 
 ```
-1  what the problem was      (why this work happened — in the audience's language)
+1  what the problem was      (why this work happened — in Step 0's reader's language)
 2  what was done             (the approach, one slide)
 3  what was found            (the core result — the numbers gather here)
 4  how much to believe it    (sample, variance, controls, how to reproduce)
@@ -35,7 +44,7 @@ One claim per slide. The skeleton of a results talk:
 6  next                      (one concrete action)
 ```
 
-Do not drop 4 and 5. **A talk with no overturned results reads as a talk where they were deleted** — the same reason `FINDINGS.md` preserves reversals. A negative result is a result.
+Do not drop 4 and 5, for either reader. **A talk with no overturned results reads as a talk where they were deleted** — the same reason `FINDINGS.md` preserves reversals. A negative result is a result. Step 0 changes their *form*, never their presence.
 
 ## Step 3 — The traceability check
 
