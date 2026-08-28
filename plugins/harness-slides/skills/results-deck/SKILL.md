@@ -23,7 +23,7 @@ Two forks. Settle both before writing a slide.
 - **Peers who will build on it** — they own the vocabulary. Slide 4 gives the sample and the variance, slide 5 names what was overturned, in the terms the method is written in.
 - **Deciders who will act on it** — they own the decision, not the vocabulary. The same two slides, stated as a bound on that decision: *"this holds down to 3 trials"* rather than *"σ = 0.4, n = 5"*.
 
-**If nobody said which, ask.** The two failures are not symmetric — a peer deck shown to a decider is merely dense, while a decider deck shown to a peer has already thrown away the evidence they came for.
+**If nobody said which, ask.** The two failures are not symmetric — a peer deck shown to a decider is merely dense, while a decider deck shown to a peer has already thrown away the evidence they came for. **A room holding both is a peer room**, for that reason: the sprint review this skill is built for usually is one.
 
 ## Step 1 — Collect the evidence first
 
