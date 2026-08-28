@@ -61,6 +61,11 @@ arm() {
     "${BASH:-bash}" "$REPO/evals/fixture-python.sh" "$fx"
     out="$(cd "$fx" && printf '%s' "$PROMPT" \
       | claude -p $BENCH_CLAUDE_ARGS --output-format json --permission-mode acceptEdits 2>/dev/null)"
+    # `continue` was the weaker half of the same defect: every run of a dead
+    # room skips, and the arm table then prints with no data behind it, which
+    # reads as "the LSP changed nothing". Abort first, then keep the skip for a
+    # live run whose result carried no usage block.
+    bench_result_or_abort "$out"
     printf '%s' "$out" | jq -e '.usage' >/dev/null 2>&1 || { echo "    run $n: no usage — skipped"; continue; }
     local t tn e
     t="$(printf '%s' "$out" | jq '[.usage.input_tokens, .usage.cache_creation_input_tokens,

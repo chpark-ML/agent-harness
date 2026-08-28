@@ -55,6 +55,10 @@ ask() { # tier_model tier_effort label kind expected prompt
   local out ans cost secs mark
   out="$(cd "$REPO" && env -u CLAUDECODE claude -p "$prompt" \
          --model "$model" --effort "$effort" --output-format json 2>/dev/null)"
+  # Before .result is read: `.result // ""` turns a dead room into an empty
+  # answer, and the comparison below then records it as a MISS beside genuine
+  # wrong answers in $TALLY.
+  bench_result_or_abort "$out"
   ans="$(printf '%s' "$out" | jq -r '.result // ""' 2>/dev/null)"
   cost="$(bench_json_field "$out" .total_cost_usd)"
   secs="$(bench_json_field "$out" .duration_ms)"
