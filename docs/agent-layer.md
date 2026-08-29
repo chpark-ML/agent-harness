@@ -205,8 +205,8 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `harness-research` | ~245 | `research` |
 | `harness-slides` | ~373 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~8,389 tok / session** — measured in CI, and ~7,673 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
-| Every profile at user scope | ~4,656 | no rules there |
+| **worst case** (project, every profile) | **~8,558 tok / session** — measured in CI, and ~7,838 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
+| Every profile at user scope | ~4,825 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
 
 **This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
