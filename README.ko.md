@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-882-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-885-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~323)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~4,656 이고, 프로젝트 스코프 전 프로파일은 **~8,389 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.246). `frontend` 를 빼면 ~7,673 이다. 추정기는 환경을 탄다: 같은 체크아웃이 같은 버전으로 macOS 워크스테이션에서는 ~8,808 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~323)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~4,825 이고, 프로젝트 스코프 전 프로파일은 **~8,558 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.246). `frontend` 를 빼면 ~7,838 이다. 추정기는 환경을 탄다: 이전 트리에서 CI 가 ~8,389 을 읽을 때 macOS 워크스테이션은 ~8,808 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -450,14 +450,14 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
 | 블록 근거 검사기 (`verify-check-provenance`) | **29** |
-| frontmatter 파싱 | **14** + selftest **7** |
+| frontmatter 파싱 | **15** + selftest **7** |
 | 버전 bump 게이트 (`verify-version-bump`) | selftest **19** |
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **19** |
-| 문서 내부 참조 (`verify-doc-refs`) | **72** 파일 + 자체 **21** |
+| 문서 내부 참조 (`verify-doc-refs`) | **74** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **882** |
+| **합계** | **885** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
