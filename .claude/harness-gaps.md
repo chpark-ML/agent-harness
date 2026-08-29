@@ -2280,7 +2280,13 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
    앞선 열두 타깃의 결과를 볼 수 없었다. exit 0 은 봤지만 공표 총계를 확인하려고
    `make verify-all` 을 따로 돌려야 했다. `Makefile` 도 `docs/agent-layer.md` 도
    **verify 가 얼마나 걸리는지 적어두지 않았다** — 적혀 있었다면 처음부터
-   `run_in_background` 로 돌렸다. 회차: 1
+   `run_in_background` 로 돌렸다.
+   **세션 끝 집계 (2026-08-29 회고)**: `make verify` 계열을 6번 돌렸고 그중 4번이
+   120s 를 넘겼다. 즉 이건 이 세션의 우연이 아니라 **기본 동작**이다. 그래도 1회차로
+   두는 이유는, 고칠 자리가 우리 저장소가 아닐 수 있어서다 — 120s 는 Bash 도구의
+   기본값이고 우리가 정한 값이 아니다. 우리 쪽에서 할 수 있는 것은 소요 시간을
+   `Makefile` 헤더나 `docs/agent-layer.md` §4 에 한 줄 적는 것뿐이며, 그건 고침이
+   아니라 안내다. 회차: 1
 
 2. **`rm -rf` deny 티어가 세션 scratchpad 청소를 막는다.** scratchpad 는 세션 전용
    격리 디렉터리이고 플랫폼이 *"generally be used without permission prompts"* 라고
