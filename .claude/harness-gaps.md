@@ -2401,3 +2401,39 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   것이 있으면 브랜치를 먼저 만든다"*. 규약 파일 수정이라 별도 PR 이다.
 - **회차**: 2 (2026-08-20 이 1회차. 뿌리는 `CLAUDE.md` §6 —
   *"이 저장소는 자기 훅으로 보호되지 않으므로 규율만이 지킨다"*, 그 진술의 두 번째 실측)
+
+## 2026-10-01 — ecosystem-review Step 2 의 "실행" 이 auto mode 에서 막힌다
+
+- **파일**: `plugins/harness-dev/skills/ecosystem-review/SKILL.md` Step 2
+  (*"run whatever tests it has"*)
+- **무슨 일**: archify 조사 중 scratchpad 클론에서 `node bin/archify.mjs doctor` /
+  `demo` 를 돌리려 했고, auto mode 분류기가 `[Code from External]` 로 거부했다.
+  Step 2 는 "판정을 뒤집는 값싼 측정" 을 필수처럼 쓰지만, 외부 코드 실행이 사용자
+  승인 없이는 불가능하다는 전제가 본문에 없다. 결과적으로 Measured 칸이 비었다.
+- **또 하나**: 이 스킬은 저장소엔 있으나 설치된 harness-dev 에는 없어 스킬
+  목록에 뜨지 않았다 (파일을 직접 읽어 따랐다). 버전 미갱신일 가능성 — 미확인.
+- **회차**: 1
+
+## 2026-10-01 — 위 항목의 "미확인" 해소, 그리고 예산 계측의 이상값 하나
+
+- **해소**: ecosystem-review 가 스킬 목록에 안 뜬 이유는 설치본이 뒤처져서였다.
+  `claude plugin list` 기준 harness-dev 설치 1.1.1 / 트리 1.2.0, harness-core
+  1.23.1 / 1.23.2, harness-slides 1.6.0 / 1.7.0. `make verify-all` 의
+  context-budget 도 같은 셋을 `measuring the OLD one` 으로 짚었다. 하네스 결함이
+  아니라 이 머신이 `claude plugin update` 를 안 돌린 것 — CLAUDE.md §2 가 이미
+  적어둔 바로 그 경로다.
+- **계측기 결함 (1회차)**: 같은 실행에서 `ui-ux-pro-max` 가 **1 tok** 으로 측정됐다.
+  plugin 이 아니라 계측기다 — `claude plugin details` 는 `~1,084 tok` 을 찍고,
+  `scripts/context-budget.sh:156` 의 `grep -oE "[0-9]+" | head -1` 이 쉼표에서
+  멈춰 `1` 을 돌려준다. 바로 읽으면 로컬 최악값은 ~10,051 로 상한을 넘는다. **천
+  단위를 넘는 플러그인은 전부 천의 자리 숫자로 읽힌다** — CI 는 측정 대상이 모두
+  1,000 미만(최대 709)이라 오늘만 맞다. PR #95 리뷰가 찾았다. 수정안:
+  `grep -oE '[0-9][0-9,]*' | head -1 | tr -d ,` 와 `~1,084` 케이스 하나. 게이트
+  자체라 별도 PR.
+- **공표 수치 드리프트 — 2026-08-26 항목(`:2077`)의 반복, 3회차**: 1회차로 적었던
+  것을 PR #95 리뷰가 바로잡았다. 같은 패턴이다 — 공표된 *구성요소* 수치를 아무것도
+  지키지 않는다. #93 이 최악값을 ~8,558 로 다시 게시하면서 `docs/agent-layer.md:221`
+  은 여유 ~610, `:204` 는 harness-dev ~239 (CI 는 404) 로 남겼다. 그리고 그
+  최악값도 이제 낡았다: PR #95 의 CI 가 8,666 (여유 334) 을 쟀고, 원인은
+  Superpowers upstream (584 → 703). 재게시는 계측기 수정과 함께 별도 PR.
+- **회차**: 계측기 결함 1 · 공표 수치 드리프트 3 (2026-08-26 의 2회차 제안이 승인 대기)
