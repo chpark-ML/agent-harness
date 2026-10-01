@@ -740,55 +740,82 @@ check_rc "...and the message names the plugin that failed" \
 # Case 4 — a newer profile version declares a dependency the machine lacks.
 # `plugin update` advances the version and installs nothing new: harness-dev
 # 1.3.0 then sat at "failed to load — Dependency "archify@agent-harness" is not
-# installed" on a returning machine (measured on a scratch config, 2026-10-01),
-# losing the whole profile. The installer installs every declared dependency by
-# name, read from the marketplace clone.
-depcfg="$upg/depcfg"
-depman="$depcfg/plugins/marketplaces/agent-harness/plugins/harness-core/.claude-plugin"
-mkdir -p "$depman"
-printf '%s' '{"name":"harness-core","dependencies":["harness-sibling","archify",{"name":"superpowers","marketplace":"claude-plugins-official"}]}' \
-  > "$depman/plugin.json"
-run_dep_probe() {  # $1 = fakebin dir
+# installed" on a returning machine (measured on a scratch config, 2026-10-01).
+# The installer asks `plugin list --json` what is missing and installs exactly
+# that. The fake answers that call; everything else it logs and accepts.
+#   ours-missing   harness-dev lacks archify                 → must be installed
+#   ours-missing   harness-dev lacks harness-core            → must be installed
+#   ours-present   superpowers carries no error              → must NOT be touched:
+#                  a re-install clears its auto flag, and --prune then leaves it
+#   foreign        other@elsewhere lacks zzz@elsewhere        → not ours, left alone
+deplist='[{"id":"harness-dev@agent-harness","errorDetails":[{"type":"dependency-unsatisfied","plugin":"harness-dev","dependency":"archify@agent-harness"},{"type":"dependency-unsatisfied","plugin":"harness-dev","dependency":"harness-core@agent-harness"}]},{"id":"superpowers@claude-plugins-official","errorDetails":null},{"id":"other@elsewhere","errorDetails":[{"type":"dependency-unsatisfied","plugin":"other","dependency":"zzz@elsewhere"}]}]'
+mk_dep_claude() {  # $1 = dir, $2 = log, $3 = a dependency whose install fails (or "none")
+  mkdir -p "$1"
+  cat > "$1/claude" <<FAKE
+#!/bin/sh
+printf '%s\n' "\$*" >> "$2"
+case "\$1 \$2 \$3" in
+  'plugin list --json') printf '%s\n' '$deplist'; exit 0 ;;
+  'plugin install $3') echo 'network unreachable' >&2; exit 1 ;;
+  'plugin install harness-dev@agent-harness') echo '✔ Plugin "harness-dev@agent-harness" is already installed (scope: user)'; exit 0 ;;
+  'plugin install '*) echo "✔ Successfully installed plugin: \$3 (scope: user)"; exit 0 ;;
+esac
+exit 0
+FAKE
+  chmod +x "$1/claude"
+}
+run_dep_probe() {  # $1 = PATH prefix
   ( cd "$probe_cwd" && env -i PATH="$1:/usr/bin:/bin" HOME="$upg/home" \
-      CLAUDE_CONFIG_DIR="$depcfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
-      "$BASH_BIN" "$probe/install.sh" --profile core --scope user 2>&1 )
+      CLAUDE_CONFIG_DIR="$upg/depcfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
+      "$BASH_BIN" "$probe/install.sh" --profile dev --scope user 2>&1 )
 }
 log_d="$upg/d.log"; : > "$log_d"
-mk_fake_claude '✔ Plugin "harness-core@agent-harness" is already installed (scope: user)' \
-               "$upg/bin-d" "$log_d" 0
-run_dep_probe "$upg/bin-d" >/dev/null 2>&1
-check_rc "a declared dependency is installed by name on a returning machine" \
-  "$(grep -q 'plugin install archify@agent-harness --scope user' "$log_d" && echo 0 || echo 1)" \
+mk_dep_claude "$upg/bin-d" "$log_d" none
+dep_out="$(run_dep_probe "$upg/bin-d")"
+check_rc "a dependency the update left missing is installed by name" \
+  "$(grep -qx 'plugin install archify@agent-harness --scope user' "$log_d" && echo 0 || echo 1)" \
   "issued: $(tr '\n' '|' < "$log_d")"
-check_rc "...a cross-marketplace one under its own marketplace" \
-  "$(grep -q 'plugin install superpowers@claude-plugins-official --scope user' "$log_d" && echo 0 || echo 1)" \
+check_rc "...every one reported, a harness-* one included" \
+  "$(grep -qx 'plugin install harness-core@agent-harness --scope user' "$log_d" && echo 0 || echo 1)" \
   "issued: $(tr '\n' '|' < "$log_d")"
-# The boundary: a harness-* dependency is a profile, and the loop above owns it.
-check_rc "...but a harness-* dependency is left to the profile loop" \
-  "$(grep -q 'plugin install harness-sibling' "$log_d" && echo 1 || echo 0)" \
+check_rc "...and the install is reported, not swallowed" \
+  "$(printf '%s' "$dep_out" | grep -q 'plugin: archify@agent-harness (declared by a newer profile version' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$dep_out" | grep -i 'archify' | head -2)"
+# The boundary that earns its keep: a present dependency is never re-installed.
+check_rc "a dependency that is present is not re-installed (its auto flag survives)" \
+  "$(grep -q 'plugin install superpowers' "$log_d" && echo 1 || echo 0)" \
+  "issued: $(tr '\n' '|' < "$log_d")"
+check_rc "...and another marketplace's missing dependency is not ours to install" \
+  "$(grep -q 'plugin install zzz@elsewhere' "$log_d" && echo 1 || echo 0)" \
   "issued: $(tr '\n' '|' < "$log_d")"
 
 # Case 5 — one dependency failing must not stop the others. The profile is
 # installed either way, and a die here would hide which dependency is missing.
 log_e="$upg/e.log"; : > "$log_e"
-mkdir -p "$upg/bin-e"
-cat > "$upg/bin-e/claude" <<FAKE
-#!/bin/sh
-printf '%s\n' "\$*" >> "$log_e"
-case "\$1 \$2 \$3" in
-  'plugin install archify@agent-harness') echo 'network unreachable' >&2; exit 1 ;;
-  'plugin install '*) echo '✔ Plugin "x" is already installed (scope: user)'; exit 0 ;;
-esac
-exit 0
-FAKE
-chmod +x "$upg/bin-e/claude"
+mk_dep_claude "$upg/bin-e" "$log_e" archify@agent-harness
 dep_out="$(run_dep_probe "$upg/bin-e")"
 check_rc "a failing dependency is named with the command to retry it" \
-  "$(printf '%s' "$dep_out" | grep -q 'could not install archify@agent-harness (needed by harness-core) — run: claude plugin install archify@agent-harness' && echo 0 || echo 1)" \
+  "$(printf '%s' "$dep_out" | grep -q 'could not install archify@agent-harness — run: claude plugin install archify@agent-harness --scope user' && echo 0 || echo 1)" \
   "got: $(printf '%s' "$dep_out" | grep -i 'archify' | head -2)"
-check_rc "...and the next dependency is still installed" \
-  "$(grep -q 'plugin install superpowers@claude-plugins-official' "$log_e" && echo 0 || echo 1)" \
+check_rc "...and the next missing dependency is still installed" \
+  "$(grep -qx 'plugin install harness-core@agent-harness --scope user' "$log_e" && echo 0 || echo 1)" \
   "issued: $(tr '\n' '|' < "$log_e")"
+
+# Case 6 — Windows. jq there writes CRLF, and a name that ends in CR is "not
+# found in marketplace", so the fix would do nothing on exactly the platform
+# that cannot be tested here. A jq that appends CR to every line stands in for
+# it, and runs on every platform.
+real_jq="$(type -P jq)"
+crjq="$upg/crjq"; mkdir -p "$crjq"
+printf '#!/bin/sh\n"%s" "$@" | sed "s/$/\\r/"\n' "$real_jq" > "$crjq/jq"
+chmod +x "$crjq/jq"
+check_eq "the CR shim really writes CRLF" "1" "$(printf '[1]' | "$crjq/jq" -c '.[]' | od -c | grep -c '\\r')"
+log_f="$upg/f.log"; : > "$log_f"
+mk_dep_claude "$upg/bin-f" "$log_f" none
+run_dep_probe "$crjq:$upg/bin-f" >/dev/null 2>&1
+check_rc "with a CRLF jq the dependency name reaches claude without a CR" \
+  "$(grep -qx 'plugin install archify@agent-harness --scope user' "$log_f" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_f" | od -c | head -3 | tr -s ' ')"
 
 # --- 12b. uninstall.sh -------------------------------------------------------
 # install.sh had no counterpart. `harnessctl uninstall` reverts the declarative

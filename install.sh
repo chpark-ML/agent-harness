@@ -274,29 +274,28 @@ done
 # A fresh install resolves a profile's dependencies; `plugin update` does not.
 # Measured on a scratch config: harness-dev moved 1.2.0 -> 1.3.0, which added
 # archify, and then sat at "failed to load — Dependency "archify@agent-harness"
-# is not installed". So a returning machine lost the whole profile, not just
-# the new dependency. Install every declared dependency explicitly, read from
-# the marketplace clone rather than listed here, so the next one cannot be
-# forgotten. `plugin install` is a presence check, so one already present costs
-# a no-op call. harness-* names are skipped: the loop above already ran them.
-# A failure warns instead of dying — the profile itself is installed, and
-# doctor names the missing dependency.
-MKT_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/$MARKETPLACE_NAME"
-for p in $PROFILE_LIST; do
-  man="$MKT_DIR/plugins/harness-$p/.claude-plugin/plugin.json"
-  [ -f "$man" ] || continue
-  for dep in $(jq -r --arg m "$MARKETPLACE_NAME" \
-      '.dependencies[]? | if type == "string" then "\(.)@\($m)" else "\(.name)@\(.marketplace // $m)" end' "$man"); do
-    case "$dep" in harness-*) continue ;; esac
-    if ! out="$(claude plugin install "$dep" --scope "$SCOPE" 2>&1)"; then
-      warn "could not install $dep (needed by harness-$p) — run: claude plugin install $dep --scope $SCOPE"
-      continue
-    fi
-    case "$out" in
-      *"already installed"*) ;;
-      *) say "plugin: $dep (dependency of harness-$p)"; printf '%s\n' "$out" | sed 's/^/    /' | tail -2 ;;
-    esac
-  done
+# is not installed" — a returning machine lost the whole profile.
+#
+# So ask Claude Code what is missing, and install only that. Re-installing every
+# declared dependency is not harmless: on a present one `plugin install` prints
+# "marked as manually installed" and clears the auto flag that `uninstall.sh
+# --prune` uses to take dependencies with it (measured on 2.1.286, found in
+# review). `plugin list --json` names each missing dependency on the plugin that
+# lacks it, so no list of names lives here and no marketplace clone is read.
+# Both trs are for Windows, where jq and the CLI write CRLF: a name ending in CR
+# is "not found in marketplace". A failure warns rather than dying — the profile
+# itself is installed, and the warning carries the command that retries it.
+missing="$(claude plugin list --json 2>/dev/null | tr -d '\r' \
+  | jq -r --arg m "@$MARKETPLACE_NAME" '.[]? | select(.id | endswith($m))
+      | .errorDetails[]? | select(.type == "dependency-unsatisfied") | .dependency' 2>/dev/null \
+  | tr -d '\r' | sort -u)"
+for dep in $missing; do
+  if out="$(claude plugin install "$dep" --scope "$SCOPE" 2>&1)"; then
+    say "plugin: $dep (declared by a newer profile version, not installed by the update)"
+    printf '%s\n' "$out" | sed 's/^/    /' | tail -2
+  else
+    warn "could not install $dep — run: claude plugin install $dep --scope $SCOPE"
+  fi
 done
 
 # ---- 3. locate harnessctl -----------------------------------------------------
