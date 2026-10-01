@@ -166,6 +166,7 @@ for spec in \
   "harness-core@agent-harness:CORE_P" \
   "harness-dev@agent-harness:DEV_P" \
   "superpowers@claude-plugins-official:DEV_P" \
+  "archify@agent-harness:DEV_P" \
   "harness-research@agent-harness:RESEARCH_P" \
   "harness-slides@agent-harness:SLIDES_P" \
   "harness-frontend@agent-harness:FRONTEND_P" \

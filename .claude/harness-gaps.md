@@ -2437,3 +2437,53 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   최악값도 이제 낡았다: PR #95 의 CI 가 8,666 (여유 334) 을 쟀고, 원인은
   Superpowers upstream (584 → 703). 재게시는 계측기 수정과 함께 별도 PR.
 - **회차**: 계측기 결함 1 · 공표 수치 드리프트 3 (2026-08-26 의 2회차 제안이 승인 대기)
+
+## 2026-10-01 — 돌아온 머신은 새 의존성을 못 받는다 (2026-08-17 계열, 2회차)
+
+- **어디**: `install.sh` 2단계 — `plugin install` (존재 확인) → `plugin update`
+- **무슨 일**: archify 를 `harness-dev` 의존성으로 넣고 scratch config 에서 업그레이드
+  경로를 재현했다. 1.2.0 이 깔린 상태에서 `marketplace update` → `plugin update` 로
+  1.3.0 이 됐지만 **archify 는 설치되지 않았고 `harness-dev` 전체가 failed to load**.
+  새로 설치한 머신은 같은 트리에서 의존성까지 받는다.
+- **2026-08-17 과 같은 계열**: 그때는 "돌아온 머신이 버전을 못 올린다"(→ `plugin update`
+  추가), 이번엔 "버전은 올렸는데 그 버전이 새로 선언한 것을 못 받는다". 둘 다
+  *재설치가 새 설치와 다른 상태를 남긴다* 는 같은 축이다.
+- **이번 PR 에서 고침**: `install.sh` 2b 가 `claude plugin list --json` 의
+  `dependency-unsatisfied` 를 읽어 *빠진 것만* 설치한다 (`verify-install.sh` §12a 케이스
+  4–6). 처음엔 선언된 의존성을 전부 다시 설치했는데, 리뷰가 그게 있는 의존성의 auto
+  플래그를 지운다는 걸 찾았다 (아래 항목). Codex 리뷰가 하나 더 찾았다 — 고정한 SHA 를
+  옮겨도 `plugin update harness-dev` 로는 archify 가 안 움직인다(v3.0.0→v3.0.1 로 실측).
+  2b 가 우리 marketplace 의 비-프로필 플러그인에 `plugin update` 도 부른다. 같은 축의 세
+  번째 모양이다: 재설치는 프로필은 옮기고 그 *아래* 는 안 옮긴다.
+- **제안 (2회차)**: 이 축을 한 줄로 막는 검사 — `verify-install` 에 "같은 프로필 목록으로
+  새 설치와 재설치를 각각 돌려 issued 명령 집합이 플러그인 측면에서 같은지" 를 단정하는
+  케이스. 오늘 케이스 4 가 그 한 사례다. 일반화는 별도 PR, 승인 대기.
+- **회차**: 2 (2026-08-17 이 1회차)
+
+## 2026-10-01 — 내 머신에서만 통과한 설치 (CLAUDE.md §4 의 "한 환경에서만 돈 줄")
+
+- **어디**: `.claude-plugin/marketplace.json` archify 엔트리 `source.url`
+- **무슨 일**: `git-subdir` 의 `url` 을 GitHub 축약형 `tt-a1i/archify` 로 썼다. Claude
+  Code 는 이를 SSH(`git@github.com:`)로 클론하고, marketplace 소스와 달리 HTTPS 로
+  물러서지 않는다. 이 머신은 SSH 가 있어 scratch 설치 두 번이 다 통과했고, SSH 없는
+  CI(`plugin manifests`)에서 `Permission denied (publickey)` 로 `harness-dev` 설치째
+  실패했다. 머지됐다면 SSH 키 없는 consumer 전원의 기본 설치가 깨졌다.
+- **재현과 수정**: `GIT_SSH_COMMAND=/usr/bin/false` 로 로컬 재현 → `url` 을
+  `https://github.com/tt-a1i/archify.git` 로 바꾸자 같은 조건에서 설치 성공.
+- **회차**: CLAUDE.md §4 가 이미 세 번을 적어둔 계열(CI 전용 분기, 로케일)의 네 번째.
+  이번엔 CI 가 막았으므로 정적 검사는 추가하지 않았다 — CI 의 SSH 없는 설치가 곧 그
+  검사다. 그 job 이 SSH 를 갖게 되는 날 이 보호는 조용히 사라진다는 점만 적어둔다.
+
+## 2026-10-01 — `plugin install` 은 순수한 존재 확인이 아니다
+
+- **어디**: `CLAUDE.md` §2 와 `install.sh` 2단계 주석 — 둘 다 `claude plugin install` 을
+  "presence check" 로 적는다.
+- **무슨 일**: 이미 있는 *의존성* 에 `plugin install` 을 부르면 2.1.286 은
+  `already installed — marked as manually installed` 를 찍고 `installed_plugins.json` 의
+  `auto: true` 를 지운다. `uninstall.sh --prune` 은 auto 인 것만 데려가므로, PR #96 의 첫
+  2b(선언된 의존성 전부 재설치)는 매 설치마다 superpowers·ui-ux-pro-max·LSP 7개를 제거
+  후에 남기게 만들었다. 우리 테스트의 가짜 claude 가 install 을 상태 없는 호출로 다뤄서
+  217/217 로 통과했다. PR #96 리뷰가 실제 CLI 로 대조군까지 돌려 찾았다.
+- **고침**: 2b 가 빠진 것만 설치한다. 문서의 "presence check" 서술은 profile(harness-*)
+  에 대해서는 여전히 맞아 그대로 뒀다 — 틀린 건 의존성에 적용했을 때다.
+- **회차**: 1

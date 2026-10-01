@@ -270,6 +270,58 @@ for p in $PROFILE_LIST; do
   printf '%s\n' "$out" | sed 's/^/    /' | tail -2
 done
 
+# ---- 2b. dependencies -------------------------------------------------------
+# Step 2 moves the profiles. It does not move what they depend on, in two ways,
+# both measured on scratch configs:
+#
+#   missing  harness-dev 1.3.0 added archify; `plugin update harness-dev` moved
+#            the version, installed nothing, and the profile sat at "failed to
+#            load — Dependency "archify@agent-harness" is not installed".
+#   stale    after archify's pin moved v3.0.0 -> v3.0.1, `plugin update
+#            harness-dev` answered "already at the latest version" and archify
+#            stayed on the old SHA. `plugin update archify@agent-harness` moved
+#            it and kept its auto flag.
+#
+# So ask Claude Code. A plugin of ours that lacks a dependency reports it as
+# `dependency-unsatisfied`, and only that name is installed — re-installing a
+# present one is not harmless: it marks it manually installed, and
+# `uninstall.sh --prune` then leaves it behind (found in review, 2.1.286). Every
+# non-profile plugin of ours that is present gets the update step 2 gives the
+# profiles. Both trs are for Windows, where jq and the CLI write CRLF and a name
+# ending in CR is "not found in marketplace".
+#
+# A failure does not stop the rest — the next dependency and the declarative
+# half still run — but it is collected, named with its retry command, and makes
+# the install exit non-zero at the end instead of reporting success over a
+# profile that cannot load.
+DEP_FAILED=""
+plugin_ids() {  # jq filter over our plugins at this scope -> ids, one per line
+  claude plugin list --json 2>/dev/null | tr -d '\r' \
+    | jq -r --arg m "@$MARKETPLACE_NAME" --arg s "$SCOPE" \
+        ".[]? | select(.id | endswith(\$m)) | $1" 2>/dev/null \
+    | tr -d '\r' | sort -u
+}
+for dep in $(plugin_ids '.errorDetails[]? | select(.type == "dependency-unsatisfied") | .dependency'); do
+  if out="$(claude plugin install "$dep" --scope "$SCOPE" 2>&1)"; then
+    say "plugin: $dep (declared by a newer profile version, not installed by the update)"
+    printf '%s\n' "$out" | sed 's/^/    /' | tail -2
+  else
+    warn "could not install $dep — run: claude plugin install $dep --scope $SCOPE"
+    DEP_FAILED="$DEP_FAILED $dep"
+  fi
+done
+for id in $(plugin_ids 'select(.scope == $s) | .id | select(startswith("harness-") | not)'); do
+  if out="$(claude plugin update "$id" --scope "$SCOPE" 2>&1)"; then
+    case "$out" in
+      *"already at the latest"*) ;;
+      *) say "plugin: $id (dependency, updated)"; printf '%s\n' "$out" | sed 's/^/    /' | tail -2 ;;
+    esac
+  else
+    warn "could not update $id — run: claude plugin update $id --scope $SCOPE"
+    DEP_FAILED="$DEP_FAILED $id"
+  fi
+done
+
 # ---- 3. locate harnessctl -----------------------------------------------------
 # The install cache is versioned (<cache>/<marketplace>/<plugin>/<version>/) and
 # marks the live copy with .in_use. Prefer that; fall back to the marketplace
@@ -441,6 +493,14 @@ echo
 say "harnessctl doctor"
 bash "$HCTL" doctor --scope "$SCOPE" 2>&1 | sed 's/^/    /'
 rc=$?
+
+if [ -n "$DEP_FAILED" ]; then
+  warn ""
+  warn "Not installed — a dependency failed, so the profile that needs it cannot load:"
+  for d in $DEP_FAILED; do warn "  $d"; done
+  warn "Fix the cause (network, GitHub access) and run the installer again."
+  exit 1
+fi
 
 cat <<EOF
 

@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-886-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-906-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -47,13 +47,13 @@
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
 | **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
-| **상시 컨텍스트** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
+| **상시 컨텍스트** | ~3,761 tok | **+2,227** | **+1,759** | **+446** | **+716** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~323)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~4,825 이고, 프로젝트 스코프 전 프로파일은 **~8,558 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.246). `frontend` 를 빼면 ~7,838 이다. 추정기는 환경을 탄다: 이전 트리에서 CI 가 ~8,389 을 읽을 때 macOS 워크스테이션은 ~8,808 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~323)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~5,100 이고, 프로젝트 스코프 전 프로파일은 **~8,833 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.286, 2026-10-01, `archify` 포함). `frontend` 를 빼면 ~8,124 이다. 추정기는 환경을 탄다: 이전 트리에서 CI 가 ~8,389 을 읽을 때 macOS 워크스테이션은 ~8,808 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 206 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 226 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -163,12 +163,12 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 ### 전부보다 덜 받기
 
-**프로파일을 고를 필요가 없다.** 전부 합쳐 상시 컨텍스트가 ~8,000 tok 이고 천장이 9,000 이라, 기본값이 전부다. `--profile` 은 *덜* 받으려고 있다 — 아래 플래그를 위 명령 뒤에 붙이면 된다.
+**프로파일을 고를 필요가 없다.** 전부 합쳐 상시 컨텍스트가 ~8,800 tok 이고 천장이 9,000 이라, 기본값이 전부다. `--profile` 은 *덜* 받으려고 있다 — 아래 플래그를 위 명령 뒤에 붙이면 된다.
 
 | 하는 일 | 플래그 | 받는 것 |
 |---|---|---|
-| **전부** (기본) | (없음) | 12개 프로파일 전부 — 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14, 우리 스킬 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, 두 역할의 규칙 파일, 언어 서버 플러그인 7 |
-| **개발만** | `--profile dev,python` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
+| **전부** (기본) | (없음) | 12개 프로파일 전부 — 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14, [`archify`](https://github.com/tt-a1i/archify) 1 (다이어그램, Node 18+ 필요), 우리 스킬 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, 두 역할의 규칙 파일, 언어 서버 플러그인 7 |
+| **개발만** | `--profile dev,python` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, [`archify`](https://github.com/tt-a1i/archify), `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
 | **연구** | `--profile research` | 가드 7, 5문서 노트 규율, `research-notes`·`repro-checklist` |
 | **연구 + 발표** | `--profile research,slides` | 위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고 **덱의 모든 수치가 근거로 추적되는지 기계로 검사**. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다 |
 | **UI/UX 는 빼고** | `--profile core,dev,research,slides` | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 를 뺀다. 매 세션 ~716 tok 인데 UI 작업이 없으면 전부 손실이고, **Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 유일한 의존성**이다 — 설치기는 프로파일 목록에 `frontend` 가 있을 때만 그 마켓플레이스를 등록하므로 **이 플래그가 거기서 빠지는 방법이다** |
@@ -193,6 +193,8 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 ```bash
 claude plugin update harness-core@agent-harness
 ```
+
+**이 경로는 프로파일의 새 버전이 추가한 의존성을 설치하지 않는다.** `claude plugin update` 는 버전만 옮기고 멈춘다 — `harness-dev` 1.3.0 이 `archify` 를 추가했을 때 이 방식으로 갱신한 기계는 `harness-dev` 가 *failed to load* 로 남았다. 설치기는 바로 이것을 확인해서 빠진 것을 설치한다. 손으로 할 때는 `claude plugin list` 가 빠진 의존성과 그것을 고치는 `claude plugin install` 을 알려준다.
 
 **이 절이 생기기 전에 설치했다면 뒤처져 있을 가능성이 높다.** 설치기는 `claude plugin install` 만 불렀는데, 이 명령은 존재 확인이다 — 이미 설치된 플러그인에는 `is already installed` 를 찍고 버전을 비교하지 않은 채 0 으로 끝난다. 그래서 재실행은 marketplace 를 최신으로 옮기고 성공을 보고한 뒤 플러그인은 그대로 두었다. 실제로 marketplace 가 1.21.0 을 주는데 `harness-core` 가 1.13.0 에 머물러 있던 기계가 발견됐다 — 훅·스킬·검증기가 마이너 8개 뒤처진 상태였고, 그렇다고 말해주는 것이 아무것도 없었다. `claude plugin list` 를 이 저장소의 버전과 대조하면 자기 기계가 그런 상태인지 알 수 있다.
 
@@ -445,7 +447,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **267** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
-| 설치기 왕복 | **206** assertion |
+| 설치기 왕복 | **226** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
@@ -457,7 +459,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **75** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **886** |
+| **합계** | **906** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 

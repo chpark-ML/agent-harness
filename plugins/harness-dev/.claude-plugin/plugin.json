@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-dev",
   "displayName": "Harness Dev",
-  "version": "1.2.0",
-  "description": "Product and service development profile: harness-core plus Superpowers",
+  "version": "1.3.0",
+  "description": "Product and service development profile: harness-core plus Superpowers and archify (diagrams, needs Node 18+)",
   "author": {
     "name": "chpark-ML"
   },
@@ -14,6 +14,7 @@
     {
       "name": "superpowers",
       "marketplace": "claude-plugins-official"
-    }
+    },
+    "archify"
   ]
 }

@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-886-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-906-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.6k%2F9k-informational">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -93,7 +93,7 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 ### Taking less than everything
 
-**You do not have to choose a profile.** Everything is ~8,600 tokens of always-on
+**You do not have to choose a profile.** Everything is ~8,800 tokens of always-on
 context against a ceiling of 9,000, so the default is all of it. `--profile`
 exists for taking *less* — the whole content set costs about 2,900 tokens per
 session more than development alone, which is worth declining only if you know
@@ -101,9 +101,9 @@ you want it back.
 
 | You want | Flags | Difference from the default |
 |---|---|---|
-| **Everything** | *(none)* | All twelve profiles: 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, our 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, the rules for both roles, and all seven language-server plugins |
+| **Everything** | *(none)* | All twelve profiles: 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, [`archify`](https://github.com/tt-a1i/archify) 1 (diagrams, needs Node 18+), our 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, the rules for both roles, and all seven language-server plugins |
 | Development only | `--profile dev` | Drops the five-document note discipline, `results-deck` and the UI/UX reference. Saves ~2,900 tok per session — the `+research`, `+slides` and `+frontend` columns of [the profile table below](#what-you-get) |
-| Research only | `--profile research` | Drops `pr-review` and the Superpowers 14 |
+| Research only | `--profile research` | Drops `pr-review`, the Superpowers 14 and `archify` |
 | No UI/UX work | `--profile core,dev,research,slides` | Drops [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). It costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate — **this is also the flag that keeps you off that marketplace**, because the installer registers it only when the profile list asks for `frontend` |
 | The language servers themselves | `--with-tools` | The LSP *plugins* are in the default; the *binaries* they drive are not. `--with-tools` runs `npm install -g`, which is why it is opt-in |
 | Game or app work | *(none — already installed)* | `csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) come with the default. **`--with-tools` cannot fetch their binaries** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
@@ -136,6 +136,8 @@ Or move the plugin half on its own — one command per profile you installed:
 ```bash
 claude plugin update harness-core@agent-harness
 ```
+
+**That path does not install a dependency a profile's new version adds.** `claude plugin update` moves the version and stops, so when `harness-dev` 1.3.0 added `archify`, a machine updated this way kept `harness-dev` at *failed to load*. The installer checks for exactly this and installs what is missing; by hand, `claude plugin list` names the missing dependency and the `claude plugin install` that fixes it.
 
 **If you installed before this section existed, you are probably behind.** The installer used to run only `claude plugin install`, and that command is a presence check: on a plugin that is already installed it prints "is already installed" and exits 0 without comparing versions. So re-running it moved the marketplace to the latest, reported success, and left the plugins exactly where they were. One machine was found at `harness-core` 1.13.0 against a marketplace serving 1.21.0 — eight minor versions of hooks, skills and verifiers behind, with nothing saying so. Compare `claude plugin list` against the versions in this repository to see whether it happened to you.
 
@@ -172,7 +174,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 206 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 226 assertions hold that line.
 
 ### Requirements
 
@@ -194,13 +196,13 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | | |
 | **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
+| **Always-on context** | ~3,761 tok | **+2,227** | **+1,759** | **+446** | **+716** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~2,017), `rules/`, and the `Report` output style (~323) — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~4,825; project scope with everything is **~8,558 tok per session** — measured in CI (ubuntu, Claude Code 2.1.246), and it is ~7,838 if you drop `frontend`. The estimator varies by environment: an earlier tree measured ~8,808 on a macOS workstation where CI read ~8,389, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~2,017), `rules/`, and the `Report` output style (~323) — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~5,100; project scope with everything is **~8,833 tok per session** — measured in CI (ubuntu, Claude Code 2.1.286, 2026-10-01, with `archify`), and it is ~8,124 if you drop `frontend`. The estimator varies by environment: an earlier tree measured ~8,808 on a macOS workstation where CI read ~8,389, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -230,7 +232,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 206 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 226 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -287,7 +289,7 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **267** |
 | session-log renderer | **46** |
-| installer round trip | **206** assertions |
+| installer round trip | **226** assertions |
 | context-budget gate | **14** |
 | inventory figures | **40** + selftest **7** |
 | slide claim checker | **50** |
@@ -299,7 +301,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **13** |
 | benchmark health | **19** |
 | context-budget ceiling | **1** |
-| **Total** | **886** |
+| **Total** | **906** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
