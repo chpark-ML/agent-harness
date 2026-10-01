@@ -9,7 +9,7 @@
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="checks" src="https://img.shields.io/badge/checks-897-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.6k%2F9k-informational">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-8.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -198,9 +198,9 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~3,761 tok | **+2,060** | **+1,759** | **+446** | **+716** | **0** |
+| **Always-on context** | ~3,761 tok | **+2,227** | **+1,759** | **+446** | **+716** | **0** |
 
-**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~2,017), `rules/`, and the `Report` output style (~323) — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~4,825; project scope with everything is **~8,558 tok per session** — measured in CI (ubuntu, Claude Code 2.1.246), and it is ~7,838 if you drop `frontend`. The estimator varies by environment: an earlier tree measured ~8,808 on a macOS workstation where CI read ~8,389, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
+**Hooks and LSP cost nothing in context.** The figures above are project scope and include `CLAUDE.md` (~2,017), `rules/`, and the `Report` output style (~323) — **most of the cost is rule prose, not skills.** User scope has no `rules/`, so it totals ~5,100; project scope with everything is **~8,833 tok per session** — measured in CI (ubuntu, Claude Code 2.1.286, 2026-10-01, with `archify`), and it is ~8,124 if you drop `frontend`. The estimator varies by environment: an earlier tree measured ~8,808 on a macOS workstation where CI read ~8,389, because the Korean trigger clauses in our skill descriptions are counted differently. **The 9,000 ceiling is the gate**, and CI enforces it on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
