@@ -1,6 +1,6 @@
 # archify and DESIGN.md — design
 
-Status: approved in conversation; **implementation blocked on §8** (the context budget). Date: 2026-10-01.
+Status: approved in conversation. **PR 1 proceeds** after measuring ~167 tok on its own (see the §8 addendum); **PR 2 stays blocked on §8**. Date: 2026-10-01.
 
 > Dated design record. Counts and case totals quoted below describe the tree at the time of writing; [`agent-layer.md`](../../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
 
@@ -191,3 +191,5 @@ The local figure cannot settle anything, for two independent reasons. It measure
 
 1. Measure PR 1's real cost in a scratch config (§6, second row) instead of the inferred ~170, and read the worst case from the PR's CI run, not from a local one.
 2. Then choose one: narrow PR 2's `paths` and accept losing the new-project case §4 argued for; or take archify out of the default set — `dev` is in `PROFILES_DEFAULT` (`install.sh:40`), so as designed every default install pays its ~170 tok, its Node ≥ 18 requirement and an 11 MB fetch, 203 of whose 312 files sit under `archify/test/`; or raise `CONTEXT_CEILING` with a stated reason in the same change; or name what comes out. "Ships as designed" is open only if step 1 measures well under the inference.
+
+> *Added 2026-10-01, after measuring PR 1*: the §8 overflow was the **sum** of both PRs. Measured alone, archify costs **~167 tok** (`claude plugin details archify` in a scratch config after installing `harness-dev` from the PR 1 tree), against CI's 334 of headroom — it fits, with ~167 to spare, so PR 1 proceeds and PR 2's ~200 no longer fits behind it. The same scratch install showed no `node_modules/` in the cache, which settles §6's lockfile row. And **the upgrade path failed in a way none of §6 anticipated**: on a config that had `harness-dev` 1.2.0, `marketplace update` then `plugin update` moved it to 1.3.0 without installing `archify`, and the profile sat at *failed to load*. PR 1 therefore also changes `install.sh` to install declared dependencies by name.

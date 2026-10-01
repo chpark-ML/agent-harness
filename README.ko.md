@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-886-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-897-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -47,7 +47,7 @@
 | **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
 | **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
@@ -67,7 +67,7 @@
 | **규약** (글) | 글이 행동을 바꾸나 | 브랜치 규약 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **스킬 라우팅** | 의도한 스킬로 가나 | **59 / 60** |
 | **LSP** | 토큰·정확도가 나아지나 | **결론 없음** — 이 표본으로는 61% 이상만 보인다 |
-| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 206 assertion 이 단정 |
+| **설치기** | 제거하면 원래대로인가 | **정준 동일** — 217 assertion 이 단정 |
 
 기대하면 **안 되는** 것도 적어 둔다. commit 제목 70자 제한은 재봤더니 하네스가 있으나 없으나 6/6 이라 **규칙에서 지웠고**, LSP 는 효과가 있는지 아직 모른다. 무엇을 못 쟀는지도 [적어 두었다](#아직-못-잰-것).
 
@@ -167,8 +167,8 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 | 하는 일 | 플래그 | 받는 것 |
 |---|---|---|
-| **전부** (기본) | (없음) | 12개 프로파일 전부 — 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14, 우리 스킬 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, 두 역할의 규칙 파일, 언어 서버 플러그인 7 |
-| **개발만** | `--profile dev,python` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
+| **전부** (기본) | (없음) | 12개 프로파일 전부 — 가드 7, 권한 3티어, 6원칙 `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14, [`archify`](https://github.com/tt-a1i/archify) 1 (다이어그램, Node 18+ 필요), 우리 스킬 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, 두 역할의 규칙 파일, 언어 서버 플러그인 7 |
+| **개발만** | `--profile dev,python` | 가드 7, [Superpowers](https://github.com/obra/superpowers) 14, [`archify`](https://github.com/tt-a1i/archify), `pr-create`·`pr-review`, Python 언어 서버. TypeScript 면 `python` 대신 `typescript` |
 | **연구** | `--profile research` | 가드 7, 5문서 노트 규율, `research-notes`·`repro-checklist` |
 | **연구 + 발표** | `--profile research,slides` | 위에 더해 `results-deck` — 산출물을 발표 서사로 바꾸고 **덱의 모든 수치가 근거로 추적되는지 기계로 검사**. 렌더링은 [`slides-grab`](https://www.npmjs.com/package/slides-grab) 에 넘긴다 |
 | **UI/UX 는 빼고** | `--profile core,dev,research,slides` | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 를 뺀다. 매 세션 ~716 tok 인데 UI 작업이 없으면 전부 손실이고, **Anthropic 이 큐레이션하지 않는 마켓플레이스에서 오는 유일한 의존성**이다 — 설치기는 프로파일 목록에 `frontend` 가 있을 때만 그 마켓플레이스를 등록하므로 **이 플래그가 거기서 빠지는 방법이다** |
@@ -445,7 +445,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 |---|---|
 | 훅 7종 동작 | **267** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
-| 설치기 왕복 | **206** assertion |
+| 설치기 왕복 | **217** assertion |
 | context 예산 게이트 (`verify-context-budget`) | **14** |
 | 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
@@ -457,7 +457,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **75** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **886** |
+| **합계** | **897** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
