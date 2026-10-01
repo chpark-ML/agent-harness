@@ -2451,7 +2451,10 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **이번 PR 에서 고침**: `install.sh` 2b 가 `claude plugin list --json` 의
   `dependency-unsatisfied` 를 읽어 *빠진 것만* 설치한다 (`verify-install.sh` §12a 케이스
   4–6). 처음엔 선언된 의존성을 전부 다시 설치했는데, 리뷰가 그게 있는 의존성의 auto
-  플래그를 지운다는 걸 찾았다 (아래 항목).
+  플래그를 지운다는 걸 찾았다 (아래 항목). Codex 리뷰가 하나 더 찾았다 — 고정한 SHA 를
+  옮겨도 `plugin update harness-dev` 로는 archify 가 안 움직인다(v3.0.0→v3.0.1 로 실측).
+  2b 가 우리 marketplace 의 비-프로필 플러그인에 `plugin update` 도 부른다. 같은 축의 세
+  번째 모양이다: 재설치는 프로필은 옮기고 그 *아래* 는 안 옮긴다.
 - **제안 (2회차)**: 이 축을 한 줄로 막는 검사 — `verify-install` 에 "같은 프로필 목록으로
   새 설치와 재설치를 각각 돌려 issued 명령 집합이 플러그인 측면에서 같은지" 를 단정하는
   케이스. 오늘 케이스 4 가 그 한 사례다. 일반화는 별도 PR, 승인 대기.
