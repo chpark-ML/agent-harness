@@ -2448,9 +2448,10 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **2026-08-17 과 같은 계열**: 그때는 "돌아온 머신이 버전을 못 올린다"(→ `plugin update`
   추가), 이번엔 "버전은 올렸는데 그 버전이 새로 선언한 것을 못 받는다". 둘 다
   *재설치가 새 설치와 다른 상태를 남긴다* 는 같은 축이다.
-- **이번 PR 에서 고침**: `install.sh` 2b 가 매니페스트의 `dependencies` 를 읽어 이름으로
-  설치한다 (`verify-install.sh` §12a 케이스 4·5). 목록을 하드코딩하지 않아 다음 의존성도
-  같은 경로를 탄다.
+- **이번 PR 에서 고침**: `install.sh` 2b 가 `claude plugin list --json` 의
+  `dependency-unsatisfied` 를 읽어 *빠진 것만* 설치한다 (`verify-install.sh` §12a 케이스
+  4–6). 처음엔 선언된 의존성을 전부 다시 설치했는데, 리뷰가 그게 있는 의존성의 auto
+  플래그를 지운다는 걸 찾았다 (아래 항목).
 - **제안 (2회차)**: 이 축을 한 줄로 막는 검사 — `verify-install` 에 "같은 프로필 목록으로
   새 설치와 재설치를 각각 돌려 issued 명령 집합이 플러그인 측면에서 같은지" 를 단정하는
   케이스. 오늘 케이스 4 가 그 한 사례다. 일반화는 별도 PR, 승인 대기.
@@ -2469,3 +2470,17 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **회차**: CLAUDE.md §4 가 이미 세 번을 적어둔 계열(CI 전용 분기, 로케일)의 네 번째.
   이번엔 CI 가 막았으므로 정적 검사는 추가하지 않았다 — CI 의 SSH 없는 설치가 곧 그
   검사다. 그 job 이 SSH 를 갖게 되는 날 이 보호는 조용히 사라진다는 점만 적어둔다.
+
+## 2026-10-01 — `plugin install` 은 순수한 존재 확인이 아니다
+
+- **어디**: `CLAUDE.md` §2 와 `install.sh` 2단계 주석 — 둘 다 `claude plugin install` 을
+  "presence check" 로 적는다.
+- **무슨 일**: 이미 있는 *의존성* 에 `plugin install` 을 부르면 2.1.286 은
+  `already installed — marked as manually installed` 를 찍고 `installed_plugins.json` 의
+  `auto: true` 를 지운다. `uninstall.sh --prune` 은 auto 인 것만 데려가므로, PR #96 의 첫
+  2b(선언된 의존성 전부 재설치)는 매 설치마다 superpowers·ui-ux-pro-max·LSP 7개를 제거
+  후에 남기게 만들었다. 우리 테스트의 가짜 claude 가 install 을 상태 없는 호출로 다뤄서
+  217/217 로 통과했다. PR #96 리뷰가 실제 CLI 로 대조군까지 돌려 찾았다.
+- **고침**: 2b 가 빠진 것만 설치한다. 문서의 "presence check" 서술은 profile(harness-*)
+  에 대해서는 여전히 맞아 그대로 뒀다 — 틀린 건 의존성에 적용했을 때다.
+- **회차**: 1
