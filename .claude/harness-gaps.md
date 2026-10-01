@@ -2413,3 +2413,19 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **또 하나**: 이 스킬은 저장소엔 있으나 설치된 harness-dev 에는 없어 스킬
   목록에 뜨지 않았다 (파일을 직접 읽어 따랐다). 버전 미갱신일 가능성 — 미확인.
 - **회차**: 1
+
+## 2026-10-01 — 위 항목의 "미확인" 해소, 그리고 예산 계측의 이상값 하나
+
+- **해소**: ecosystem-review 가 스킬 목록에 안 뜬 이유는 설치본이 뒤처져서였다.
+  `claude plugin list` 기준 harness-dev 설치 1.1.1 / 트리 1.2.0, harness-core
+  1.23.1 / 1.23.2, harness-slides 1.6.0 / 1.7.0. `make verify-all` 의
+  context-budget 도 같은 셋을 `measuring the OLD one` 으로 짚었다. 하네스 결함이
+  아니라 이 머신이 `claude plugin update` 를 안 돌린 것 — CLAUDE.md §2 가 이미
+  적어둔 바로 그 경로다.
+- **이상값 (1회차)**: 같은 실행에서 `ui-ux-pro-max` 가 **1 tok** 으로 측정됐다
+  (`scripts/context-budget.sh` 의 plugins 표). 공개값은 ~716 (2026-08-18 실측).
+  2.13.0 에서 실제로 줄었는지 계측기가 잘못 읽는지 확인하지 않았다. 계측기 쪽이면
+  frontend 프로필의 비용이 조용히 0 으로 보이는 omission 이다.
+- **문서 드리프트 (1회차)**: `docs/agent-layer.md:221` 은 여유 ~610 tok 이라 쓰고,
+  같은 문서 `:208` 의 공개 최악값 ~8,558 은 여유 ~442 를 뜻한다.
+- **회차**: 이상값·드리프트 각 1
