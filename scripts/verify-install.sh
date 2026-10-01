@@ -111,8 +111,19 @@ done < <(jq -r '[.. | objects | select(has("command")) | .command][]' "$HARNESS/
 check_rc "every hooks.json registration resolves to an executable file" \
   "$([ -z "$unresolved" ] && echo 0 || echo 1)" "unresolved:$unresolved"
 
+# Only relative-path entries have a directory here. An entry fetched from
+# elsewhere (archify's git-subdir) has none, so counting every entry made a
+# correct marketplace fail 13 against 12 — found by review before it shipped.
+local_entries() { jq -r '[.plugins[] | select(.source | type == "string")] | length' "$1"; }
 check_rc "marketplace lists every plugin directory" \
-  "$([ "$(jq -r '.plugins|length' "$HARNESS/.claude-plugin/marketplace.json")" = "$(ls -d "$HARNESS"/plugins/*/ | wc -l | tr -d ' ')" ] && echo 0 || echo 1)"
+  "$([ "$(local_entries "$HARNESS/.claude-plugin/marketplace.json")" = "$(ls -d "$HARNESS"/plugins/*/ | wc -l | tr -d ' ')" ] && echo 0 || echo 1)"
+# Both directions on a fixture, because the real tree only ever shows one: an
+# object-sourced entry must not count, and a string-sourced one still must.
+mkt_fx="$WORK/mkt-fixture.json"
+printf '%s' '{"plugins":[{"name":"a","source":"./plugins/a"},{"name":"b","source":"./plugins/b"},{"name":"ext","source":{"source":"git-subdir","url":"o/r","path":"x"}}]}' > "$mkt_fx"
+check_eq "an externally sourced entry is not counted as a local directory" "2" "$(local_entries "$mkt_fx")"
+printf '%s' '{"plugins":[{"name":"a","source":"./plugins/a"},{"name":"b","source":"./plugins/b"},{"name":"c","source":"./plugins/c"}]}' > "$mkt_fx"
+check_eq "...while every relative-path entry still is" "3" "$(local_entries "$mkt_fx")"
 
 # --- 1. install over an opinionated settings.json ----------------------------
 section "--with repeats accumulate"
@@ -726,6 +737,59 @@ check_rc "...and the message names the plugin that failed" \
   "$(printf '%s' "$upg_out" | grep -q 'could not update harness-core' && echo 0 || echo 1)" \
   "got: $(printf '%s' "$upg_out" | tail -3)"
 
+# Case 4 — a newer profile version declares a dependency the machine lacks.
+# `plugin update` advances the version and installs nothing new: harness-dev
+# 1.3.0 then sat at "failed to load — Dependency "archify@agent-harness" is not
+# installed" on a returning machine (measured on a scratch config, 2026-10-01),
+# losing the whole profile. The installer installs every declared dependency by
+# name, read from the marketplace clone.
+depcfg="$upg/depcfg"
+depman="$depcfg/plugins/marketplaces/agent-harness/plugins/harness-core/.claude-plugin"
+mkdir -p "$depman"
+printf '%s' '{"name":"harness-core","dependencies":["harness-sibling","archify",{"name":"superpowers","marketplace":"claude-plugins-official"}]}' \
+  > "$depman/plugin.json"
+run_dep_probe() {  # $1 = fakebin dir
+  ( cd "$probe_cwd" && env -i PATH="$1:/usr/bin:/bin" HOME="$upg/home" \
+      CLAUDE_CONFIG_DIR="$depcfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
+      "$BASH_BIN" "$probe/install.sh" --profile core --scope user 2>&1 )
+}
+log_d="$upg/d.log"; : > "$log_d"
+mk_fake_claude '✔ Plugin "harness-core@agent-harness" is already installed (scope: user)' \
+               "$upg/bin-d" "$log_d" 0
+run_dep_probe "$upg/bin-d" >/dev/null 2>&1
+check_rc "a declared dependency is installed by name on a returning machine" \
+  "$(grep -q 'plugin install archify@agent-harness --scope user' "$log_d" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_d")"
+check_rc "...a cross-marketplace one under its own marketplace" \
+  "$(grep -q 'plugin install superpowers@claude-plugins-official --scope user' "$log_d" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_d")"
+# The boundary: a harness-* dependency is a profile, and the loop above owns it.
+check_rc "...but a harness-* dependency is left to the profile loop" \
+  "$(grep -q 'plugin install harness-sibling' "$log_d" && echo 1 || echo 0)" \
+  "issued: $(tr '\n' '|' < "$log_d")"
+
+# Case 5 — one dependency failing must not stop the others. The profile is
+# installed either way, and a die here would hide which dependency is missing.
+log_e="$upg/e.log"; : > "$log_e"
+mkdir -p "$upg/bin-e"
+cat > "$upg/bin-e/claude" <<FAKE
+#!/bin/sh
+printf '%s\n' "\$*" >> "$log_e"
+case "\$1 \$2 \$3" in
+  'plugin install archify@agent-harness') echo 'network unreachable' >&2; exit 1 ;;
+  'plugin install '*) echo '✔ Plugin "x" is already installed (scope: user)'; exit 0 ;;
+esac
+exit 0
+FAKE
+chmod +x "$upg/bin-e/claude"
+dep_out="$(run_dep_probe "$upg/bin-e")"
+check_rc "a failing dependency is named with the command to retry it" \
+  "$(printf '%s' "$dep_out" | grep -q 'could not install archify@agent-harness (needed by harness-core) — run: claude plugin install archify@agent-harness' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$dep_out" | grep -i 'archify' | head -2)"
+check_rc "...and the next dependency is still installed" \
+  "$(grep -q 'plugin install superpowers@claude-plugins-official' "$log_e" && echo 0 || echo 1)" \
+  "issued: $(tr '\n' '|' < "$log_e")"
+
 # --- 12b. uninstall.sh -------------------------------------------------------
 # install.sh had no counterpart. `harnessctl uninstall` reverts the declarative
 # half from its manifest and then prints "The plugins are untouched", leaving
@@ -1162,6 +1226,39 @@ check_rc "without the claude CLI the composite section skips with a note" \
   "got: $(printf '%s' "$mout" | grep -A1 'always-on context' | tail -1)"
 check_rc "...and skipping is not a failure" \
   "$([ "$mrc" -eq 0 ] && echo 0 || echo 1)" "got exit $mrc"
+
+# --- 15b. doctor: node for archify ---------------------------------------------
+# archify, a harness-dev dependency, runs its CLI with node and asks for >= 18.
+# Without it the skill loads and every diagram fails, and nothing in the plugin
+# half says why — so doctor names it. The PATH above has no node at all, which
+# is the absent case for real rather than a stub that pretends.
+section "doctor: node for archify"
+
+check_rc "with no node on PATH doctor says it is missing" \
+  "$(printf '%s' "$mout" | grep -q 'node missing — if you use harness-dev' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$mout" | grep -i 'node' | head -1)"
+
+nstub="$WORK/nstub"
+node_doctor() {  # $1 = the version the stub prints
+  mkdir -p "$nstub/$1"
+  printf '#!/bin/sh\necho %s\n' "$1" > "$nstub/$1/node"
+  chmod +x "$nstub/$1/node"
+  ( cd "$C" && env PATH="$nstub/$1:$noclaude" HOME="$cfg3" CLAUDE_CONFIG_DIR="$cfg3" \
+      BIN_DIR="$cfg3/nobin" "$BASH_BIN" "$HCTL" doctor --scope project 2>&1 )
+}
+nout="$(node_doctor v20.11.1)"
+check_rc "a current node is ok, with its version" \
+  "$(printf '%s' "$nout" | grep -q 'ok    node v20.11.1 (archify, harness-dev)' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$nout" | grep -i 'node' | head -1)"
+# The boundary: 18 is the floor archify states, so exactly 18 must pass.
+nout="$(node_doctor v18.0.0)"
+check_rc "...node 18.0.0, the floor itself, is ok" \
+  "$(printf '%s' "$nout" | grep -q 'ok    node v18.0.0' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$nout" | grep -i 'node' | head -1)"
+nout="$(node_doctor v16.20.2)"
+check_rc "an older node is named as too old, not as missing" \
+  "$(printf '%s' "$nout" | grep -q 'node v16.20.2 is older than 18' && echo 0 || echo 1)" \
+  "got: $(printf '%s' "$nout" | grep -i 'node' | head -1)"
 
 # --- 13. the jq bootstrap ----------------------------------------------------
 # jq is required by every guard and by harnessctl, and a machine without root

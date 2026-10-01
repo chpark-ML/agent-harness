@@ -231,6 +231,17 @@ if [ "$CMD" = doctor ]; then
   else
     say "  --    slides-grab missing — if you use harness-slides: npm install slides-grab && npx playwright install chromium"
   fi
+  # archify (a harness-dev dependency) runs its CLI with node, and its
+  # package.json asks for >= 18. Below that, or absent, the skill loads and
+  # every diagram it tries to build fails.
+  node_major="$(node --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p')"
+  if [ -n "$node_major" ] && [ "$node_major" -ge 18 ]; then
+    ok "node $(node --version) (archify, harness-dev)"
+  elif [ -n "$node_major" ]; then
+    say "  --    node $(node --version) is older than 18 — if you use harness-dev's archify: install Node 18 or newer"
+  else
+    say "  --    node missing — if you use harness-dev's archify: install Node 18 or newer"
+  fi
 
   say ""
   say "install state:"

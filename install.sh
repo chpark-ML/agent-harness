@@ -270,6 +270,35 @@ for p in $PROFILE_LIST; do
   printf '%s\n' "$out" | sed 's/^/    /' | tail -2
 done
 
+# ---- 2b. dependencies a newer profile version declares -----------------------
+# A fresh install resolves a profile's dependencies; `plugin update` does not.
+# Measured on a scratch config: harness-dev moved 1.2.0 -> 1.3.0, which added
+# archify, and then sat at "failed to load — Dependency "archify@agent-harness"
+# is not installed". So a returning machine lost the whole profile, not just
+# the new dependency. Install every declared dependency explicitly, read from
+# the marketplace clone rather than listed here, so the next one cannot be
+# forgotten. `plugin install` is a presence check, so one already present costs
+# a no-op call. harness-* names are skipped: the loop above already ran them.
+# A failure warns instead of dying — the profile itself is installed, and
+# doctor names the missing dependency.
+MKT_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/$MARKETPLACE_NAME"
+for p in $PROFILE_LIST; do
+  man="$MKT_DIR/plugins/harness-$p/.claude-plugin/plugin.json"
+  [ -f "$man" ] || continue
+  for dep in $(jq -r --arg m "$MARKETPLACE_NAME" \
+      '.dependencies[]? | if type == "string" then "\(.)@\($m)" else "\(.name)@\(.marketplace // $m)" end' "$man"); do
+    case "$dep" in harness-*) continue ;; esac
+    if ! out="$(claude plugin install "$dep" --scope "$SCOPE" 2>&1)"; then
+      warn "could not install $dep (needed by harness-$p) — run: claude plugin install $dep --scope $SCOPE"
+      continue
+    fi
+    case "$out" in
+      *"already installed"*) ;;
+      *) say "plugin: $dep (dependency of harness-$p)"; printf '%s\n' "$out" | sed 's/^/    /' | tail -2 ;;
+    esac
+  done
+done
+
 # ---- 3. locate harnessctl -----------------------------------------------------
 # The install cache is versioned (<cache>/<marketplace>/<plugin>/<version>/) and
 # marks the live copy with .in_use. Prefer that; fall back to the marketplace
