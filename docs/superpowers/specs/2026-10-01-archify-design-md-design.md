@@ -63,11 +63,11 @@ Facts the design rests on:
 
 ### What A changes about trust
 
-Every earlier dependency is served by **its author's** marketplace. This is the first time our marketplace serves somebody else's code under our name. The consequence is a responsibility, recorded as an addendum to ADR-0009: **whoever moves the `sha` reads the upstream diff between the two commits**, because nothing else stands between an upstream change and every default install. The upside is the same fact read the other way — an upstream change reaches nobody until we move the pin.
+Pinning someone else's code is not new — `claude-plugins-official` serves Superpowers as `obra/superpowers` pinned to a SHA ([ADR-0009](../../adr/0009-external-dependencies.md), Context), and `ui-ux-pro-max` comes from its author's own marketplace. What is new is that **our** marketplace does the serving, under our name, so the curation that `claude-plugins-official` does for Superpowers becomes ours to do. The consequence is a responsibility, recorded as an addendum to ADR-0009: **whoever moves the `sha` reads the upstream diff between the two commits**, because nothing else stands between an upstream change and every default install. The upside is the same fact read the other way — an upstream change reaches nobody until we move the pin.
 
 ### Decisions inside PR 1
 
-- **The update check stays on.** It installs nothing, and switching it off by default would need an `env` merge in `harnessctl` — `settings-fragment.json` writes top-level scalars only, and `env` is an object, so a consumer who already has an `env` key would silently not get it. New machinery for a notice is §7 over-design. `docs/agent-layer.md` names the variable for anyone who wants it off.
+- **The update check stays on.** It installs nothing, and switching it off by default would need an `env` merge in `harnessctl` — `settings-fragment.json` writes top-level scalars only, and `env` is an object, so a consumer who already has an `env` key would silently not get it. New machinery for a notice is the over-design `CLAUDE.md` §7 warns against. `docs/agent-layer.md` names the variable for anyone who wants it off.
 - **`harnessctl doctor` reports `node`.** One line in the same style as the `slides-grab` check (`harnessctl:227-232`): `ok` when `node --version` is ≥ 18, otherwise a `--` line naming archify and `harness-dev`. `doctor` is not profile-aware today and this does not make it so.
 - **The skill's namespaced name is `archify:archify`.** Plugin skills are prefixed by the plugin name. To be confirmed by the install in §6, not assumed.
 
@@ -104,7 +104,7 @@ Narrowing `paths` to UI extensions looks cheaper and breaks the rule's main case
 
 ### Known limit
 
-Rules are not installed at user scope (`harnessctl:445`). A user-scope consumer gets neither this rule nor `dev`'s and `research`'s. That is the existing, accepted constraint, and the rule's document says so rather than working around it.
+Rules are not installed at user scope (`harnessctl:445`), and **user scope is the installer's default** (`install.sh:42`, `SCOPE="user"`). So a plain `./install.sh` delivers this rule to nobody; it reaches only a consumer who passes `--scope project`. `dev`'s and `research`'s rules have lived with the same constraint, but for this rule it is most of the reach, and the owner should weigh that against the ~200 tok it costs the consumers it does reach. The rule's document says so rather than working around it.
 
 ### Files
 
@@ -112,7 +112,8 @@ Rules are not installed at user scope (`harnessctl:445`). A user-scope consumer 
 |---|---|
 | `plugins/harness-core/declarative/rules/frontend/design-md.md` | new; description quoted (`verify-frontmatter`) |
 | `install.sh` | `frontend` in the module case at line 114, and the comment above it |
-| `scripts/verify-install.sh` | the default profile list installs the rule; uninstall leaves the tree as it was |
+| `scripts/verify-install.sh` | the default profile list **with `--scope project`** installs the rule (the default scope installs no rules); uninstall leaves the tree as it was |
+| `scripts/context-budget.sh` | a `frontend)` bucket in the module case at `:87-91` — today an unknown module falls to `*)` and is charged to `CORE_RULE_TOK`, i.e. to every project row including `core` alone — and that bucket added to the frontend sum at `:215` |
 | `plugins/harness-core/.claude-plugin/plugin.json` | `version` bump (declarative payload changed) |
 | `docs/agent-layer.md` | rules row of the inventory, the `harness-frontend` description |
 | `README.md`, `README.ko.md` | the frontend profile row |
@@ -121,7 +122,7 @@ Rules are not installed at user scope (`harnessctl:445`). A user-scope consumer 
 ## 5. What this does not do
 
 - Install `getdesign` or any `DESIGN.md`. The rule tells the agent the tool exists; the choice of brand is the user's.
-- Write a skill for either asset. archify is a dependency; `awesome-design-md` has no skill to depend on, and building a working skill around it is the §1 second non-goal.
+- Write a skill for either asset. archify is a dependency; `awesome-design-md` has no skill to depend on, and building a working skill around it is the second non-goal in `docs/agent-layer.md` §1.
 - Switch off archify's update check by default (PR 1, *Decisions*).
 - Touch `img2threejs`. Not requested.
 
@@ -132,7 +133,7 @@ Rules are not installed at user scope (`harnessctl:445`). A user-scope consumer 
 | Manifests are valid | `claude plugin validate . --strict` | both PRs |
 | archify installs and loads as one skill | scratch `CLAUDE_CONFIG_DIR`, add this checkout as a directory marketplace, `claude plugin install harness-dev@agent-harness`, then `claude plugin details archify` — record the skill name and the always-on figure | PR 1 |
 | Whether the lockfile pulls `devDependencies` into the cache | inspect the installed cache directory for `node_modules/` after the step above | PR 1 |
-| archify's body runs | one diagram end to end through the installed skill (`finalize … --quality showcase`) — **external code; ask for permission at this step** | PR 1 |
+| archify's body runs | **settled by hand on 2026-10-01** (§7). What remains is one diagram through the *installed* skill, which also confirms the agent resolves `bin/archify.mjs` to the plugin cache, as the body's *replace with the installed package's absolute path* instruction requires — **external code; ask for permission at this step** | PR 1 |
 | Routing is undisturbed | `results-deck` paired, with and without archify, 3 runs each — the `ui-ux-pro-max` method (§4b). **Costs model sessions** | PR 1 |
 | The rule installs and uninstalls cleanly | `scripts/verify-install.sh` new cases | PR 2 |
 | The rule changes behaviour | one UI task in a scratch project that has a `DESIGN.md`: the first UI action reads it, and the output uses its tokens | PR 2 |
@@ -143,7 +144,7 @@ A step that cannot run is reported as not run, beside the claim it would have su
 
 ## 7. First run, 2026-10-01
 
-The owner asked for a status report on this repository built with archify, so the body ran once before any of PR 1 exists. **It ran by hand, not through the plugin path PR 1 creates**: a scratch clone at `d5a1333` (the default-branch head, not the `v3.0.1` pin in §3), invoked as `node bin/archify.mjs` with `ARCHIFY_UPDATE_CHECK_DISABLED=1`. It therefore settles §6's *archify's body runs* row and none of the install or loading rows.
+The owner asked for a status report on this repository built with archify, so the body ran once before any of PR 1 exists. **It ran by hand, not through the plugin path PR 1 creates**: a scratch clone at `d5a1333` (the default-branch head, not the `v3.0.1` pin in §3), invoked as `node bin/archify.mjs` with `ARCHIFY_UPDATE_CHECK_DISABLED=1`. **The difference from the pin does not touch what ran**: GitHub's compare `2ab3cae...d5a1333` changes two files under `archify/`, both tests (`test/readme-showcase.test.mjs` modified, `test/repair-rounds.test.mjs` added), so the runtime that ran is byte-identical to the one §3 pins. It therefore settles that the pinned body runs, and none of the install or loading rows — §6's row stays, narrowed to one run through the installed skill.
 
 | Step | Result |
 |---|---|
@@ -152,7 +153,7 @@ The owner asked for a status report on this repository built with archify, so th
 | `finalize … --repo-root <this repo> --quality showcase` | **first draft, all four gates pass** — `validate`, `deliver`, `check`, `browser-check` — in 6,559 ms; a 767,592-byte standalone HTML; receipt `update.status: "disabled"`, so no request left the machine |
 | `visual-check --summary --require-provenance` | `containment`, `readability`, `viewerChrome`, `themeStates`, `captures` pass. The 1440×900 light and 2048×1320 dark captures were then looked at: nodes, labels and cards legible in both themes; two relationship labels sit on the boundary's dashed edge, readable, left alone |
 
-The input is kept as [`2026-10-01-archify-run/candidate.json`](2026-10-01-archify-run/candidate.json) — its sha256 `33fa5904…67e2` is the `specification.sha256` in the `finalize` receipt, so it is the file that ran, not a later copy — and the 1440×900 light capture as [`harness-status-1440-light.png`](2026-10-01-archify-run/harness-status-1440-light.png). The 767 KB HTML and the receipts are not committed: the HTML is regenerated from the input, and the receipts carry this machine's absolute paths. To regenerate, from a directory that contains the input at the path its `meta.output` expects:
+The input is kept as [`2026-10-01-archify-run/candidate.json`](2026-10-01-archify-run/candidate.json) — its sha256 `33fa5904…67e2` is the `specification.sha256` in the `finalize` receipt, so it is the file that ran, not a later copy — and the 1440×900 light capture as [`harness-status-1440-light.png`](2026-10-01-archify-run/harness-status-1440-light.png). The 767 KB HTML and the receipts are not committed: the HTML is regenerated from the input, and the receipts carry this machine's absolute paths. To regenerate, run from the directory holding `candidate.json` — the output argument overrides `meta.output`, which only has to be a relative `.html` path inside the working directory:
 
 ```bash
 node <archify>/bin/archify.mjs finalize architecture candidate.json harness-status.html \
@@ -176,15 +177,17 @@ The status cards themselves surfaced the finding in §8.
 | Figure | Value | Source |
 |---|---|---|
 | Ceiling | 9,000 tok | `Makefile` `CONTEXT_CEILING` |
-| Published worst case | ~8,558 → headroom ~442 | `docs/agent-layer.md:208`, measured in CI |
-| Local worst case, 2026-10-01 | 8,968 → headroom 32 | `make verify-all`, **stale**: it measured installed `harness-core` 1.23.1, `harness-dev` 1.1.1 and `harness-slides` 1.6.0 against a tree at 1.23.2, 1.2.0 and 1.7.0 |
-| PR 1 adds | ~170 tok, **inferred** from the 665-character description | not measured |
+| **CI worst case, 2026-10-01** | **8,666 → headroom 334** | run `36804527564` on this design's own PR head, job *plugin manifests*, `make context-budget-strict`. This is the figure to decide on |
+| Published worst case | ~8,558 → headroom ~442 | `docs/agent-layer.md:208` — measured in CI on 2026-08-29 and stale since: Superpowers alone moved 584 → 703 upstream |
+| Local worst case, 2026-10-01 | 8,968 → headroom 32 | `make verify-all` — **wrong twice over**, see below |
+| PR 1 adds | ~170 tok, **inferred** from the 652-character description at `2ab3cae` | not measured |
 | PR 2 adds | ~200 tok at project scope, **inferred** | not measured |
 
-~370 inferred against ~442 of published headroom fits with ~70 to spare; against the local figure it does not fit at all. Neither number is good enough to decide on, and two oddities from the same run say so: `ui-ux-pro-max` measured **1 tok** locally against a published ~716, and `docs/agent-layer.md:221` states ~610 of headroom where `:208` implies ~442. Both are in the ledger as first occurrences.
+**~370 inferred against CI's 334 of headroom does not fit — about 36 over**, before either figure is measured. The "fits and ships as designed" branch below is therefore closed unless measurement comes in well under the inference.
+
+The local figure cannot settle anything, for two independent reasons. It measured three stale installs (`harness-core` 1.23.1, `harness-dev` 1.1.1, `harness-slides` 1.6.0 against a tree at 1.23.2, 1.2.0, 1.7.0). And it read `ui-ux-pro-max` as **1 tok**: `claude plugin details` prints `~1,084 tok`, and `scripts/context-budget.sh:156` extracts it with `grep -oE "[0-9]+" | head -1`, which stops at the comma. Parsed correctly the local worst case is about 10,051. Even current plugins differ between this machine and CI (Superpowers 840 vs 703, `harness-research` 483 vs 245), so updating the stale three will not make the two agree. CI is the instrument; local runs only corroborate. The parser defect sits in the gate itself and is tracked for its own PR — CI is right today only because every plugin it measures is under 1,000.
 
 **Implementation starts only after this is decided**, in this order:
 
-1. `claude plugin update` the three stale plugins and re-run `context-budget`, so the local figure measures the tree.
-2. Measure PR 1's real cost in a scratch config (§6, second row) instead of the inferred ~170.
-3. Then choose one: it fits and ships as designed; or narrow PR 2's `paths` and accept losing the new-project case §4 argued for; or raise `CONTEXT_CEILING` with a stated reason in the same change; or name what comes out.
+1. Measure PR 1's real cost in a scratch config (§6, second row) instead of the inferred ~170, and read the worst case from the PR's CI run, not from a local one.
+2. Then choose one: narrow PR 2's `paths` and accept losing the new-project case §4 argued for; or take archify out of the default set — `dev` is in `PROFILES_DEFAULT` (`install.sh:40`), so as designed every default install pays its ~170 tok, its Node ≥ 18 requirement and an 11 MB fetch, 203 of whose 312 files sit under `archify/test/`; or raise `CONTEXT_CEILING` with a stated reason in the same change; or name what comes out. "Ships as designed" is open only if step 1 measures well under the inference.
