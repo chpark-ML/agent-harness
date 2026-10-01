@@ -223,8 +223,10 @@ echo
 # same place and for the same reason.
 #
 # --prune takes the auto-installed dependencies with it, which is how
-# superpowers leaves: install.sh never installs it directly, a profile declares
-# it, and prune removes what nothing needs any more. -y because --prune asks
+# superpowers leaves: a profile declares it, and prune removes what nothing needs
+# any more. install.sh installs a dependency directly only when an update left
+# it missing, and never re-installs a present one — that would clear its auto
+# flag and strand it here. -y because --prune asks
 # when stdout is not a TTY.
 say "plugin half (scope: $SCOPE)"
 OURS="$(claude plugin list --json 2>/dev/null \
