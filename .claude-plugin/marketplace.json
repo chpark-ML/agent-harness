@@ -100,7 +100,7 @@
       "description": "Third-party (tt-a1i/archify, MIT), pinned: validated architecture, workflow, sequence, dataflow and lifecycle diagrams as standalone HTML. Needs Node 18+",
       "source": {
         "source": "git-subdir",
-        "url": "tt-a1i/archify",
+        "url": "https://github.com/tt-a1i/archify.git",
         "path": "archify",
         "ref": "v3.0.1",
         "sha": "2ab3cae7ac2c2a55d7386ca789d03c4fcd31816c"

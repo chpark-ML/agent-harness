@@ -2455,3 +2455,17 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   새 설치와 재설치를 각각 돌려 issued 명령 집합이 플러그인 측면에서 같은지" 를 단정하는
   케이스. 오늘 케이스 4 가 그 한 사례다. 일반화는 별도 PR, 승인 대기.
 - **회차**: 2 (2026-08-17 이 1회차)
+
+## 2026-10-01 — 내 머신에서만 통과한 설치 (CLAUDE.md §4 의 "한 환경에서만 돈 줄")
+
+- **어디**: `.claude-plugin/marketplace.json` archify 엔트리 `source.url`
+- **무슨 일**: `git-subdir` 의 `url` 을 GitHub 축약형 `tt-a1i/archify` 로 썼다. Claude
+  Code 는 이를 SSH(`git@github.com:`)로 클론하고, marketplace 소스와 달리 HTTPS 로
+  물러서지 않는다. 이 머신은 SSH 가 있어 scratch 설치 두 번이 다 통과했고, SSH 없는
+  CI(`plugin manifests`)에서 `Permission denied (publickey)` 로 `harness-dev` 설치째
+  실패했다. 머지됐다면 SSH 키 없는 consumer 전원의 기본 설치가 깨졌다.
+- **재현과 수정**: `GIT_SSH_COMMAND=/usr/bin/false` 로 로컬 재현 → `url` 을
+  `https://github.com/tt-a1i/archify.git` 로 바꾸자 같은 조건에서 설치 성공.
+- **회차**: CLAUDE.md §4 가 이미 세 번을 적어둔 계열(CI 전용 분기, 로케일)의 네 번째.
+  이번엔 CI 가 막았으므로 정적 검사는 추가하지 않았다 — CI 의 SSH 없는 설치가 곧 그
+  검사다. 그 job 이 SSH 를 갖게 되는 날 이 보호는 조용히 사라진다는 점만 적어둔다.
