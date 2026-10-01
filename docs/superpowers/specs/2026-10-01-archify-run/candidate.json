@@ -1,0 +1,364 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "agent-harness 현황 — 배포 경로와 상태 (2026-10-01)",
+    "output": ".archify/architecture-harness-status-20261001-105544/harness-status.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/chpark-ML/agent-harness.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "739fdcdb2abcdad47d484f06622e00c0d58e3c09"
+    }
+  },
+  "components": [
+    {
+      "id": "developer",
+      "type": "external",
+      "label": "개발자",
+      "sublabel": "consumer 프로젝트",
+      "pos": [
+        40,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "install.sh",
+          "line": 1,
+          "end_line": 12,
+          "label": "설치 진입점"
+        }
+      ]
+    },
+    {
+      "id": "installer",
+      "type": "backend",
+      "label": "install.sh",
+      "sublabel": "기본 12개 프로필",
+      "pos": [
+        310,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "install.sh",
+          "line": 40,
+          "label": "PROFILES_DEFAULT"
+        },
+        {
+          "path": "install.sh",
+          "line": 225,
+          "label": "marketplace add"
+        },
+        {
+          "path": "install.sh",
+          "line": 262,
+          "end_line": 266,
+          "label": "install, then update"
+        }
+      ]
+    },
+    {
+      "id": "marketplace",
+      "type": "cloud",
+      "label": "agent-harness",
+      "sublabel": "marketplace · 12 entries",
+      "pos": [
+        580,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "line": 1,
+          "end_line": 98
+        }
+      ]
+    },
+    {
+      "id": "plugins",
+      "type": "backend",
+      "label": "플러그인 12개",
+      "sublabel": "core 1.23.2 + 프로필 11",
+      "pos": [
+        850,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "plugins/harness-core/.claude-plugin/plugin.json",
+          "line": 1,
+          "end_line": 18
+        },
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "line": 14,
+          "end_line": 97,
+          "label": "entries"
+        }
+      ]
+    },
+    {
+      "id": "session",
+      "type": "frontend",
+      "label": "Claude Code 세션",
+      "sublabel": "훅 7 · 스킬 · Report",
+      "pos": [
+        1120,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "plugins/harness-core/hooks/hooks.json",
+          "line": 3,
+          "end_line": 55,
+          "label": "PreToolUse 5 · Start · Stop"
+        },
+        {
+          "path": "plugins/harness-core/declarative/settings-fragment.json",
+          "line": 5,
+          "label": "outputStyle"
+        }
+      ]
+    },
+    {
+      "id": "ci",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "verify.yml · 4 jobs",
+      "pos": [
+        580,
+        60
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": ".github/workflows/verify.yml",
+          "line": 1,
+          "end_line": 102
+        }
+      ]
+    },
+    {
+      "id": "harnessctl",
+      "type": "backend",
+      "label": "harnessctl init",
+      "sublabel": "선언형 절반",
+      "pos": [
+        310,
+        380
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "install.sh",
+          "line": 306,
+          "end_line": 308,
+          "label": "init 호출"
+        },
+        {
+          "path": "plugins/harness-core/bin/harnessctl",
+          "line": 440,
+          "end_line": 455,
+          "label": "CLAUDE.md, rules"
+        }
+      ]
+    },
+    {
+      "id": "consumer",
+      "type": "database",
+      "label": "consumer .claude/",
+      "sublabel": "settings · CLAUDE.md · rules",
+      "pos": [
+        310,
+        540
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "plugins/harness-core/bin/harnessctl",
+          "line": 121,
+          "end_line": 130,
+          "label": "write targets"
+        },
+        {
+          "path": "plugins/harness-core/bin/harnessctl",
+          "line": 759,
+          "label": "settings merge"
+        }
+      ]
+    },
+    {
+      "id": "external",
+      "type": "external",
+      "label": "외부 marketplace 2",
+      "sublabel": "Superpowers · LSP · ui-ux",
+      "pos": [
+        850,
+        380
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "line": 8,
+          "end_line": 11,
+          "label": "allowCross…"
+        },
+        {
+          "path": "plugins/harness-dev/.claude-plugin/plugin.json",
+          "line": 12,
+          "end_line": 18
+        },
+        {
+          "path": "plugins/harness-frontend/.claude-plugin/plugin.json",
+          "line": 12,
+          "end_line": 18
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "GitHub · chpark-ML/agent-harness",
+      "wraps": [
+        "ci",
+        "marketplace",
+        "plugins"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "run-installer",
+      "from": "developer",
+      "to": "installer",
+      "label": "./install.sh",
+      "variant": "emphasis"
+    },
+    {
+      "id": "install-plugins",
+      "from": "installer",
+      "to": "marketplace",
+      "label": "plugin install"
+    },
+    {
+      "id": "serve-plugins",
+      "from": "marketplace",
+      "to": "plugins",
+      "label": "12 entries"
+    },
+    {
+      "id": "load-plugins",
+      "from": "plugins",
+      "to": "session",
+      "label": "hooks + skills"
+    },
+    {
+      "id": "ci-verify",
+      "from": "ci",
+      "to": "marketplace",
+      "label": "verify on push"
+    },
+    {
+      "id": "run-init",
+      "from": "installer",
+      "to": "harnessctl",
+      "label": "harnessctl init"
+    },
+    {
+      "id": "write-declarative",
+      "from": "harnessctl",
+      "to": "consumer",
+      "label": "write + manifest"
+    },
+    {
+      "id": "pull-dependencies",
+      "from": "plugins",
+      "to": "external",
+      "label": "dependencies",
+      "variant": "dashed"
+    },
+    {
+      "id": "read-declarative",
+      "from": "consumer",
+      "to": "session",
+      "label": "settings · rules",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "저장소 vs 이 머신의 설치본",
+      "items": [
+        "harness-core 1.23.2 → 설치 1.23.1",
+        "harness-dev 1.2.0 → 설치 1.1.1 (ecosystem-review 미포함)",
+        "harness-slides 1.7.0 → 설치 1.6.0",
+        "나머지 9개 프로필은 일치 · claude plugin list 기준"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "검증",
+      "items": [
+        "main CI verify 최근 3회 success (2026-08-29)",
+        "로컬 make verify-all: 이 브랜치 FAIL — 문서 885, 실행 886",
+        "원인: 새 spec 1개로 doc-refs 대상 74→75 (main 은 74)"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "상시 컨텍스트 예산",
+      "items": [
+        "CI 공개값 ~8,558 / 9,000 tok (agent-layer.md:208)",
+        "로컬 실측 8,968 · 여유 32 — 구버전 설치본 측정이라 STALE",
+        "agent-layer.md:221 의 여유 ~610 은 두 값 모두와 불일치",
+        "ui-ux-pro-max 로컬 1 tok vs 공개 ~716 — 원인 미확인"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "활동과 대기",
+      "items": [
+        "마지막 머지 #94 (2026-08-29) · 이후 머지 0 · 열린 PR 0",
+        "백로그 ⏳ 17건 · 원장의 승인 대기 2회차 제안 2건"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # archify and DESIGN.md — design
 
-Status: approved in conversation, spec awaiting review. Date: 2026-10-01.
+Status: approved in conversation; **implementation blocked on §8** (the context budget). Date: 2026-10-01.
 
 > Dated design record. Counts and case totals quoted below describe the tree at the time of writing; [`agent-layer.md`](../../agent-layer.md) is the source of truth for current numbers — the figures here are a record of that moment.
 
@@ -15,7 +15,7 @@ The owner stated the need on 2026-10-01 after a survey of four candidates (`arch
 
 ## 2. What was read, and what was not run
 
-Read from a clone (`tt-a1i/archify@d5a1333`, `VoltAgent/awesome-design-md@f696123`) and from the Claude Code plugin docs. **Nothing from either candidate has been executed yet** — the auto-mode classifier refused `node bin/archify.mjs doctor` as external code, and that refusal is logged in `.claude/harness-gaps.md`. Every behavioural claim below is therefore read, not measured, and §6 lists the run that turns each into a measurement.
+Read from a clone (`tt-a1i/archify@d5a1333`, `VoltAgent/awesome-design-md@f696123`) and from the Claude Code plugin docs. When this section was written nothing from either candidate had been executed — the auto-mode classifier refused `node bin/archify.mjs doctor` as external code, and that refusal is logged in `.claude/harness-gaps.md`. The owner then asked for archify to be run, and §7 records that run; it settles one row of §6 by hand, and every other behavioural claim below is still read, not measured.
 
 Facts the design rests on:
 
@@ -140,3 +140,51 @@ Rules are not installed at user scope (`harnessctl:445`). A user-scope consumer 
 | Published totals | the check total moves and `verify-all` fails until the five copies agree; the always-on worst case is produced by the first CI run and republished in a second commit (`CLAUDE.md` §2d) | both PRs |
 
 A step that cannot run is reported as not run, beside the claim it would have supported — not dropped.
+
+## 7. First run, 2026-10-01
+
+The owner asked for a status report on this repository built with archify, so the body ran once before any of PR 1 exists. **It ran by hand, not through the plugin path PR 1 creates**: a scratch clone at `d5a1333` (the default-branch head, not the `v3.0.1` pin in §3), invoked as `node bin/archify.mjs` with `ARCHIFY_UPDATE_CHECK_DISABLED=1`. It therefore settles §6's *archify's body runs* row and none of the install or loading rows.
+
+| Step | Result |
+|---|---|
+| `doctor` | every runtime `ok`, ending `Archify is ready.` |
+| The diagram | one Architecture overview of this repository pinned at `739fdcd` (origin/main): 9 components, 9 relationships, 1 boundary, 4 status cards, every component carrying `sources` with line ranges. Authored in Korean |
+| `finalize … --repo-root <this repo> --quality showcase` | **first draft, all four gates pass** — `validate`, `deliver`, `check`, `browser-check` — in 6,559 ms; a 767,592-byte standalone HTML; receipt `update.status: "disabled"`, so no request left the machine |
+| `visual-check --summary --require-provenance` | `containment`, `readability`, `viewerChrome`, `themeStates`, `captures` pass. The 1440×900 light and 2048×1320 dark captures were then looked at: nodes, labels and cards legible in both themes; two relationship labels sit on the boundary's dashed edge, readable, left alone |
+
+The input is kept as [`2026-10-01-archify-run/candidate.json`](2026-10-01-archify-run/candidate.json) — its sha256 `33fa5904…67e2` is the `specification.sha256` in the `finalize` receipt, so it is the file that ran, not a later copy — and the 1440×900 light capture as [`harness-status-1440-light.png`](2026-10-01-archify-run/harness-status-1440-light.png). The 767 KB HTML and the receipts are not committed: the HTML is regenerated from the input, and the receipts carry this machine's absolute paths. To regenerate, from a directory that contains the input at the path its `meta.output` expects:
+
+```bash
+node <archify>/bin/archify.mjs finalize architecture candidate.json harness-status.html \
+  --repo-root <this repository> --quality showcase --json
+```
+
+The status cards are a snapshot of 2026-10-01 — installed versions, the local budget run, PR counts — and go stale on the next `claude plugin update`; the topology and its `sources` are pinned to `739fdcd` and do not.
+
+Three things the run showed that reading had not:
+
+- **The browser gate found Chrome on its own** (`/Applications/Google Chrome.app`). Whether `finalize` passes, degrades or fails on a machine with no Chrome was not tested, so §3's `doctor` line may need a second check beside `node`. Open until tested.
+- **The Viewer's fixed controls stay English for a Korean diagram.** Only `en` and `zh-CN` ship built-in catalogs; any other `meta.locale` needs a hand-supplied `meta.translations`. Authored content is unaffected. Worth one sentence in the dependency's documentation, not a change.
+- **The repository-evidence contract is strict and it helped.** `meta.repository` pins a forty-character revision and every cited path is checked against committed bytes at that revision, which is why the diagram cites `739fdcd` rather than this branch's unpushed head.
+
+The status cards themselves surfaced the finding in §8.
+
+## 8. The context budget — the gap this design missed
+
+§3 and §4 add standing text and never price it against the ceiling. `docs/agent-layer.md:221` says adding is a trade, and the trade was not made.
+
+| Figure | Value | Source |
+|---|---|---|
+| Ceiling | 9,000 tok | `Makefile` `CONTEXT_CEILING` |
+| Published worst case | ~8,558 → headroom ~442 | `docs/agent-layer.md:208`, measured in CI |
+| Local worst case, 2026-10-01 | 8,968 → headroom 32 | `make verify-all`, **stale**: it measured installed `harness-core` 1.23.1, `harness-dev` 1.1.1 and `harness-slides` 1.6.0 against a tree at 1.23.2, 1.2.0 and 1.7.0 |
+| PR 1 adds | ~170 tok, **inferred** from the 665-character description | not measured |
+| PR 2 adds | ~200 tok at project scope, **inferred** | not measured |
+
+~370 inferred against ~442 of published headroom fits with ~70 to spare; against the local figure it does not fit at all. Neither number is good enough to decide on, and two oddities from the same run say so: `ui-ux-pro-max` measured **1 tok** locally against a published ~716, and `docs/agent-layer.md:221` states ~610 of headroom where `:208` implies ~442. Both are in the ledger as first occurrences.
+
+**Implementation starts only after this is decided**, in this order:
+
+1. `claude plugin update` the three stale plugins and re-run `context-budget`, so the local figure measures the tree.
+2. Measure PR 1's real cost in a scratch config (§6, second row) instead of the inferred ~170.
+3. Then choose one: it fits and ships as designed; or narrow PR 2's `paths` and accept losing the new-project case §4 argued for; or raise `CONTEXT_CEILING` with a stated reason in the same change; or name what comes out.
