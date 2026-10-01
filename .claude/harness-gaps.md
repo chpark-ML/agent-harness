@@ -2401,3 +2401,15 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   것이 있으면 브랜치를 먼저 만든다"*. 규약 파일 수정이라 별도 PR 이다.
 - **회차**: 2 (2026-08-20 이 1회차. 뿌리는 `CLAUDE.md` §6 —
   *"이 저장소는 자기 훅으로 보호되지 않으므로 규율만이 지킨다"*, 그 진술의 두 번째 실측)
+
+## 2026-10-01 — ecosystem-review Step 2 의 "실행" 이 auto mode 에서 막힌다
+
+- **파일**: `plugins/harness-dev/skills/ecosystem-review/SKILL.md` Step 2
+  (*"run whatever tests it has"*)
+- **무슨 일**: archify 조사 중 scratchpad 클론에서 `node bin/archify.mjs doctor` /
+  `demo` 를 돌리려 했고, auto mode 분류기가 `[Code from External]` 로 거부했다.
+  Step 2 는 "판정을 뒤집는 값싼 측정" 을 필수처럼 쓰지만, 외부 코드 실행이 사용자
+  승인 없이는 불가능하다는 전제가 본문에 없다. 결과적으로 Measured 칸이 비었다.
+- **또 하나**: 이 스킬은 저장소엔 있으나 설치된 harness-dev 에는 없어 스킬
+  목록에 뜨지 않았다 (파일을 직접 읽어 따랐다). 버전 미갱신일 가능성 — 미확인.
+- **회차**: 1
