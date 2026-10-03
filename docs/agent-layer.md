@@ -194,7 +194,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 226 assertions, context-budget gate 14, inventory figures 40 + selftest 7, frontmatter 15 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, document references 75 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 906. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
+**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 226 assertions, context-budget gate 16, inventory figures 40 + selftest 7, frontmatter 15 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, document references 75 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 908. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
@@ -217,6 +217,8 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | **worst case** (project, every profile) | **~8,833 tok / session** — measured in CI on 2026-10-01 with `archify`, and ~8,124 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
 | Every profile at user scope | ~5,100 | no rules there |
 | `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
+
+**Accounting correction, 2026-10-03:** the plugin-cost parser now preserves thousands separators. Previously `~1,084 tok` became `1`; two regression cases compare formatted and unformatted totals and confirm that the ceiling still blocks. Installer verification also clears an inherited `CLAUDE_CONFIG_DIR` in its unset-config fixture. These repairs change the measurement, not the harness payload or ceiling; no new cost figure is inferred from the old truncated value.
 
 **This table has been wrong twice, and both times for the same reason — it was maintained by hand.**
 

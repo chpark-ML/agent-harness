@@ -97,6 +97,16 @@ run_budget --ceiling 99999 --require-plugins
 check_eq "a complete strict run passes" 0 "$RC"
 case "$OUT" in *"PARTIAL"*) bad "...and does not call itself partial" ;; *) ok "...and does not call itself partial" ;; esac
 
+# Thousands separators must preserve magnitude, including at the ceiling.
+echo
+echo "formatted token counts"
+STUB_COST=1084 run_budget --ceiling 99999 --require-plugins
+PLAIN_W="$(worst_of)"
+STUB_COST=1,084 run_budget --ceiling 99999 --require-plugins
+check_eq "comma-formatted costs equal unformatted costs" "$PLAIN_W" "$(worst_of)"
+STUB_COST=1,084 run_budget --ceiling "$((PLAIN_W - 1))" --require-plugins
+check_eq "comma-formatted costs still enforce the ceiling" 1 "$RC"
+
 # ---- 2. no CLI --------------------------------------------------------------
 echo
 echo "incomplete measurement"

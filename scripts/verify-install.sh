@@ -646,7 +646,7 @@ check_rc "the shim picks the newest version, not the last alphabetically" \
 
 # With no config directory set, the shim must fall back to $HOME/.claude — the
 # ordinary case, and the one the fix must not break.
-shim_out="$( env PATH="/usr/bin:/bin" HOME="$fakehome" sh "$shimbin/harnessctl" 2>&1 )"
+shim_out="$( env -u CLAUDE_CONFIG_DIR PATH="/usr/bin:/bin" HOME="$fakehome" sh "$shimbin/harnessctl" 2>&1 )"
 check_rc "the shim falls back to \$HOME/.claude when unset" \
   "$(printf '%s' "$shim_out" | grep -q DECOY && echo 0 || echo 1)" \
   "got: $shim_out"

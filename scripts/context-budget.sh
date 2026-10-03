@@ -153,7 +153,7 @@ installed_version() {
 always_on() {
   [ "$CLI" -eq 1 ] || { echo ""; return; }
   claude plugin details "$1" 2>/dev/null \
-    | grep -E "Always-on:" | grep -oE "[0-9]+" | head -1
+    | grep -E "Always-on:" | grep -oE "[0-9][0-9,]*" | head -1 | tr -d ,
 }
 
 echo
