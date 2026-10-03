@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-907-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-908-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -54,16 +54,16 @@ Then paste the rest unchanged:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
-harnessctl init --scope project --with dev,research
+harnessctl init --scope project --with dev
 ```
 
-**`--with` is not optional here, and its absence is silent.** `harnessctl` takes the module list from `--with` or from the target's own manifest, and a repository being set up for the first time has neither — so plain `harnessctl init --scope project` installs the catch-all workflow rule and nothing else. Name the same role profiles you installed: the default above is `dev,research`, and `--profile dev,python` would be `--with dev` (`python` is a language profile and carries no rules).
+**`--with` is not optional here, and its absence is silent.** `harnessctl` takes the module list from `--with` or from the target's own manifest, and a repository being set up for the first time has neither — so plain `harnessctl init --scope project` installs the catch-all workflow rule and nothing else. Name the same role profiles you installed: the default above is `dev`, and `--profile dev,python` would be `--with dev` (`python` is a language profile and carries no rules).
 
 The split follows what each asset is *for*. Guards and skills are yours: they belong machine-wide, or the one repository you forgot to install in becomes the hole. Rules and project settings are the team's: they belong in the commit, so they arrive with a clone.
 
 Run `harnessctl init` on its own in any repository later — `install.sh` is not repeated.
 
-The first command puts `harnessctl` in `~/.local/bin`. If that directory is not already on your `PATH`, the installer says so and names the file to add it to, but it cannot change the shell you are sitting in — apply that line and reopen the shell, or call the shim by its full path: `~/.local/bin/harnessctl init --scope project --with dev,research`.
+The first command puts `harnessctl` in `~/.local/bin`. If that directory is not already on your `PATH`, the installer says so and names the file to add it to, but it cannot change the shell you are sitting in — apply that line and reopen the shell, or call the shim by its full path: `~/.local/bin/harnessctl init --scope project --with dev`.
 
 An existing project loses nothing. A `CLAUDE.md` you already have is kept as it is, your own rules outside `.claude/rules/harness/` are untouched, and `settings.json` is parsed and re-serialised rather than replaced, so existing keys and permissions survive and duplicates are not created. If a file the harness does not own already sits at one of its managed paths, the install **stops before writing anything** and names it. Add `--dry-run` to the `harnessctl` command to see its plan first; `install.sh` has no such flag.
 
@@ -91,23 +91,22 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 </details>
 
-### Taking less than everything
+### Choose the profiles you use
 
-**You do not have to choose a profile.** Everything is ~5,271 tokens of always-on
-context against a ceiling of 9,000, so the default is all of it. `--profile`
-exists for taking *less* — the whole content set costs about 2,900 tokens per
-session more than development alone, which is worth declining only if you know
-you want it back.
+The default is `core,dev`: guards, development conventions, PR workflows, Superpowers and archify. Add research, presentation, frontend and language profiles explicitly with `--profile`; core is always included as a dependency.
 
-| You want | Flags | Difference from the default |
+| Work | Flag | What it selects |
 |---|---|---|
-| **Everything** | *(none)* | All twelve profiles: 7 guards, three permission tiers, the six-principle `CLAUDE.md`, [Superpowers](https://github.com/obra/superpowers) 14 skills, [`archify`](https://github.com/tt-a1i/archify) 1 (diagrams, needs Node 18+), our 5, [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7, the rules for both roles, and all seven language-server plugins |
-| Development only | `--profile dev` | Drops the five-document note discipline, `results-deck` and the UI/UX reference. Saves ~2,900 tok per session — the `+research`, `+slides` and `+frontend` columns of [the profile table below](#what-you-get) |
-| Research only | `--profile research` | Drops `pr-review`, the Superpowers 14 and `archify` |
-| No UI/UX work | `--profile core,dev,research,slides` | Drops [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). It costs ~716 tok in every session, which is pure loss on a project that does no UI work, and it is the one dependency that comes from a marketplace Anthropic does not curate — **this is also the flag that keeps you off that marketplace**, because the installer registers it only when the profile list asks for `frontend` |
-| The language servers themselves | `--with-tools` | The LSP *plugins* are in the default; the *binaries* they drive are not. `--with-tools` runs `npm install -g`, which is why it is opt-in |
-| Game or app work | *(none — already installed)* | `csharp` (Unity) · `cpp` (Unreal) · `lua` (Roblox) · `swift` (iOS) · `kotlin` (Android) come with the default. **`--with-tools` cannot fetch their binaries** — they come from `dotnet`, Homebrew or Xcode rather than npm, so `harnessctl doctor` reports each with its own install command |
-| Guards and nothing else | `--profile core` | The permission tiers, the guards, `CLAUDE.md`, `pr-create` |
+| **Development baseline** | *(none)* | `core,dev` |
+| Development with Python | `--profile dev,python` | Development plus the Python LSP plugin; use `typescript` for TypeScript/JavaScript |
+| Research | `--profile research` | Research notes and reproducibility |
+| Research and presentation | `--profile research,slides` | Research plus deck and manuscript traceability |
+| Frontend development | `--profile dev,frontend,typescript` | Development, UI/UX reference and TypeScript LSP |
+| Game or app work | `--profile dev,csharp` | Choose `csharp`, `cpp`, `lua`, `swift` or `kotlin` for your stack |
+| Language server binaries | `--with-tools` | Fetch npm-distributed servers for selected profiles; other servers are reported by doctor |
+| Guards and PR creation | `--profile core` | Core only |
+
+Existing installations keep profiles already installed; this selection does not silently uninstall them. Remove unwanted profiles through Claude Code's plugin lifecycle. The third-party UI marketplace is registered only when selecting `frontend`.
 
 **The one thing to know about `--scope`.** It defaults to `user`, which covers the whole machine — but the **rule files install at project scope only**, because `~/.claude/rules` is not a location Claude Code reads. So a new project needs one more run inside it:
 
@@ -174,7 +173,7 @@ By hand still works. Both `harnessctl` commands end by listing what is actually 
 
 Templates you may have edited — `CLAUDE.md`, `*-paths.txt`, `gh-account.txt` — are kept by default; add `--purge-templates` to remove those too.
 
-**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 226 assertions hold that line.
+**A verified property:** after uninstall, `settings.json` is **canonically identical** to what it was before (`jq -S`). The installer reverts only the receipt it wrote (`harness-manifest.json`) and touches nothing else. 232 assertions hold that line.
 
 ### Requirements
 
@@ -202,7 +201,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
 | **Always-on context** | ~1,700 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
 
-**Hooks and LSP cost nothing in context.** CI on a complete install measured **~3,402 tok per session** for `core,dev` at project scope; project scope with everything is **~5,271 tok per session** (Ubuntu CI, Claude Code 2.1.288, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
+**Hooks and LSP cost nothing in context.** CI on a complete install measured **~3,402 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,271 tok per session** (Ubuntu CI, Claude Code 2.1.288, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -232,7 +231,7 @@ Every layer is compared against stock Claude Code. **This table is the point of 
 | **Conventions** | does written prose change behaviour? | branch naming 0/12 → **10 / 12** (*p* ≈ 0.00007) |
 | **Skill routing** | does work reach the skill we said it would? | **59 / 60** |
 | **LSP** | does it reduce tokens or errors? | **inconclusive** — this sample can only resolve effects above 61% |
-| **Installer** | does uninstall restore the original? | **canonically identical**, 226 assertions |
+| **Installer** | does uninstall restore the original? | **canonically identical**, 232 assertions |
 
 **Read the first row as two numbers.** A guard that blocks everything scores 100% and gets switched off the same day, after which it stops zero. 7% is the price of the 94%.
 
@@ -289,9 +288,9 @@ make context-budget          # always-on token cost per scope and profile
 |---|---|
 | 7 hook verifiers | **267** |
 | session-log renderer | **46** |
-| installer round trip | **226** assertions |
+| installer round trip | **232** assertions |
 | context-budget gate | **16** |
-| inventory figures | **40** + selftest **7** |
+| inventory figures | **35** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
 | document references | **75** files + **21** own cases |
@@ -301,7 +300,7 @@ make context-budget          # always-on token cost per scope and profile
 | plugin and marketplace manifests | **13** |
 | benchmark health | **19** |
 | context-budget ceiling | **1** |
-| **Total** | **907** |
+| **Total** | **908** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 

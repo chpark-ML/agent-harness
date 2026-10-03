@@ -778,6 +778,32 @@ run_dep_probe() {  # $1 = PATH prefix
       CLAUDE_CONFIG_DIR="$depcfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
       "$BASH_BIN" "$probe/install.sh" --profile dev --scope user 2>&1 )
 }
+# Selection changes what is installed, without removing unrelated profiles.
+selection_log="$upg/selection.log"; : > "$selection_log"
+selection_list="$deplist"; deplist='[]'
+mk_dep_claude "$upg/bin-selection" "$selection_log" none
+deplist="$selection_list"
+run_selection_probe() {
+  ( cd "$probe_cwd" && env -i PATH="$upg/bin-selection:/usr/bin:/bin" HOME="$upg/home" \
+      CLAUDE_CONFIG_DIR="$depcfg" BIN_DIR="$upg/bin" SHELL=/bin/bash \
+      "$BASH_BIN" "$probe/install.sh" --scope user "$@" 2>&1 )
+}
+run_selection_probe >/dev/null 2>&1; selection_rc=$?
+check_eq "the default development baseline installs successfully" 0 "$selection_rc"
+selected="$(sed -n 's/^plugin install \(harness-[^ ]*\) --scope user$/\1/p' "$selection_log" | LC_ALL=C sort)"
+check_eq "the default installs only core and dev" \
+  "$(printf 'harness-core@agent-harness\nharness-dev@agent-harness')" "$selected"
+check_rc "the default does not register the frontend marketplace" \
+  "$(grep -q 'marketplace add .*ui-ux-pro-max' "$selection_log" && echo 1 || echo 0)"
+: > "$selection_log"
+run_selection_probe --profile research,slides,frontend,python >/dev/null 2>&1; selection_rc=$?
+check_eq "specialized profiles remain explicitly installable" 0 "$selection_rc"
+selected="$(sed -n 's/^plugin install \(harness-[^ ]*\) --scope user$/\1/p' "$selection_log" | LC_ALL=C sort)"
+check_eq "explicit selection installs the requested profiles" \
+  "$(printf 'harness-frontend@agent-harness\nharness-python@agent-harness\nharness-research@agent-harness\nharness-slides@agent-harness')" "$selected"
+check_rc "explicit frontend selection registers its marketplace" \
+  "$(grep -q 'marketplace add .*ui-ux-pro-max' "$selection_log" && echo 0 || echo 1)"
+
 log_d="$upg/d.log"; : > "$log_d"
 mk_dep_claude "$upg/bin-d" "$log_d" none
 dep_out="$(run_dep_probe "$upg/bin-d")"; dep_rc=$?

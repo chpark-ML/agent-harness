@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # agent-harness — one command, complete install.
 #
-#   ./install.sh                                  # everything, user scope
-#   ./install.sh --scope project                  # everything, this repo only
-#   ./install.sh --profile dev                    # less than everything
+#   ./install.sh                                  # core + dev, user scope
+#   ./install.sh --scope project                  # core + dev, this repo only
+#   ./install.sh --profile research,slides        # research and presentation
 #   ./install.sh --profile dev,python             # one language axis, not all seven
 #   ./install.sh --with-tools                     # npm-install the language servers too
 #
@@ -30,14 +30,9 @@ MARKETPLACE_NAME="agent-harness"
 # claude-plugins-official, so unlike superpowers it has to be registered here.
 UIUX_REPO="nextlevelbuilder/ui-ux-pro-max-skill"
 UIUX_MARKETPLACE="ui-ux-pro-max-skill"
-# Every profile. The default is what a consumer gets without reading anything,
-# so --profile exists to ask for *less*, not to discover what was held back.
-# frontend was out of the default until 2026-08-19 over its ~716 tok always-on
-# cost; the ceiling has room for it (~7,927 of 9,000, measured in CI) and the
-# language profiles cost nothing in context at all, so what the holdout actually
-# bought was a consumer doing UI work who never learned the profile existed.
-# Kept as a separate variable because usage() prints it — one copy, no drift.
-PROFILES_DEFAULT="core,dev,research,slides,frontend,python,typescript,csharp,cpp,lua,swift,kotlin"
+# Start with the development baseline. Role, output and language profiles are
+# selected explicitly with --profile; all supported profiles remain available.
+PROFILES_DEFAULT="core,dev"
 PROFILES="$PROFILES_DEFAULT"
 SCOPE="user"
 REF=""
@@ -75,8 +70,8 @@ usage() {
   --profile <list>   comma-separated: core, dev, research, slides, frontend,
                      and the language profiles python, typescript, csharp, cpp,
                      lua, swift, kotlin
-                     The default is every one of them, so pass this only to get
-                     less:  $PROFILES_DEFAULT
+                     Default: $PROFILES_DEFAULT
+                     Select the roles, outputs and languages you use.
   --scope <s>        user (default) or project
   --with-tools       npm install the language servers the LSP plugins need
   --ref <ref>        pin the marketplace to a git tag or branch
