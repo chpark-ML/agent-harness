@@ -202,7 +202,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
 | **Always-on context** | ~1,696 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
 
-**Hooks and LSP cost nothing in context.** A complete scratch install measured **~3,398 tok per session** for `core,dev` at project scope and **~5,267 tok per session** for the default (every profile; macOS, Claude Code 2.1.287, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
+**Hooks and LSP cost nothing in context.** CI on a complete install measured **~3,398 tok per session** for `core,dev` at project scope and **~5,267 tok per session** for the default (every profile; Ubuntu CI, Claude Code 2.1.288, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -295,7 +295,7 @@ make context-budget          # always-on token cost per scope and profile
 | slide claim checker | **50** |
 | block provenance checker | **29** |
 | document references | **75** files + **21** own cases |
-| documented commands exist | **45** + selftest **12** |
+| documented commands exist | **44** + selftest **12** |
 | frontmatter | **15** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |

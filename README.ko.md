@@ -53,7 +53,7 @@
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
 | **상시 컨텍스트** | ~1,696 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
 
-**훅과 LSP는 상시 컨텍스트 비용이 0이다.** 완전한 임시 설치에서 프로젝트 스코프 `core,dev`는 **~3,398 tok / 세션**, 기본값인 전 프로파일은 **~5,267 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.287, 2026-10-03). user 스코프는 각각 ~2,348과 ~3,675였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
+**훅과 LSP는 상시 컨텍스트 비용이 0이다.** CI의 완전한 설치에서 프로젝트 스코프 `core,dev`는 **~3,398 tok / 세션**, 기본값인 전 프로파일은 **~5,267 tok / 세션**으로 측정했다(Ubuntu CI, Claude Code 2.1.288, 2026-10-03). user 스코프는 각각 ~2,348과 ~3,675였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -134,7 +134,7 @@ harnessctl init --scope project --with dev,research
 
 `harnessctl init` 은 나중에 아무 저장소에서나 단독으로 돌리면 된다. `install.sh` 를 다시 돌릴 필요는 없다.
 
-첫 명령은 `harnessctl` 을 `~/.local/bin` 에 놓는다. 그 디렉터리가 아직 `PATH` 에 없으면 설치기가 그 사실과 고쳐야 할 파일 이름을 알려주지만, **지금 앉아 있는 셸의 PATH 를 바꿔주지는 못한다** — 알려준 줄을 적용하고 셸을 새로 열거나, 전체 경로로 부른다: `~/.local/bin/harnessctl init --scope project --with dev`.
+첫 명령은 `harnessctl` 을 `~/.local/bin` 에 놓는다. 그 디렉터리가 아직 `PATH` 에 없으면 설치기가 그 사실과 고쳐야 할 파일 이름을 알려주지만, **지금 앉아 있는 셸의 PATH 를 바꿔주지는 못한다** — 알려준 줄을 적용하고 셸을 새로 열거나, 전체 경로로 부른다: `~/.local/bin/harnessctl init --scope project --with dev,research`.
 
 **기존 프로젝트는 아무것도 잃지 않는다.** 이미 있는 `CLAUDE.md` 는 그대로 두고, `.claude/rules/harness/` 바깥의 내 rule 은 손대지 않으며, `settings.json` 은 통째 교체가 아니라 파싱 후 재직렬화라 기존 키와 권한이 살아남고 중복도 안 생긴다. 하네스가 소유하지 않은 파일이 관리 경로에 이미 있으면 **아무것도 쓰기 전에 멈추고** 그 경로를 알려준다. `harnessctl` 쪽에 `--dry-run` 을 붙이면 계획만 먼저 볼 수 있다. `install.sh` 에는 그런 플래그가 없다.
 
@@ -457,7 +457,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **19** |
 | 문서 내부 참조 (`verify-doc-refs`) | **75** 파일 + 자체 **21** |
-| 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
+| 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **44** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
 | **합계** | **907** |
 
