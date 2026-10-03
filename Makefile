@@ -14,7 +14,7 @@ TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
 # Always-on context the harness costs a consumer, worst case (project scope,
-# every profile). The 2026-10-03 complete Ubuntu CI install measured 5267;
+# every profile). Measured at 5271 in CI on 2026-10-03 (Claude Code 2.1.288);
 # CI independently enforces the ceiling. Headroom is not spare room to fill.
 # Raising the ceiling requires an explicit decision — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000

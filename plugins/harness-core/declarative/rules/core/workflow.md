@@ -13,7 +13,7 @@ Create a PR when the user requests it or a cohesive change reaches a natural sto
 
 The `pr-create` skill handles state inspection, branching, semantic commits, verification, push and PR creation.
 
-- Never push directly to the default branch or force-push.
+- Branch first; never push directly to the default branch or force-push.
 - Branch: `{feat,fix,chore}-<slug>`, with no `/`.
 - PR title: `[<slug>] <description>`, at most 70 characters; do not repeat the type.
 - PR body: motivation → changes → verification → notes.

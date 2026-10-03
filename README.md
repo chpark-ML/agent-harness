@@ -93,7 +93,7 @@ The clone was never required: the installer reads nothing from the checkout. It 
 
 ### Taking less than everything
 
-**You do not have to choose a profile.** Everything is ~5,267 tokens of always-on
+**You do not have to choose a profile.** Everything is ~5,271 tokens of always-on
 context against a ceiling of 9,000, so the default is all of it. `--profile`
 exists for taking *less* — the whole content set costs about 2,900 tokens per
 session more than development alone, which is worth declining only if you know
@@ -200,9 +200,9 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~1,696 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
+| **Always-on context** | ~1,700 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
 
-**Hooks and LSP cost nothing in context.** CI on a complete install measured **~3,398 tok per session** for `core,dev` at project scope and **~5,267 tok per session** for the default (every profile; Ubuntu CI, Claude Code 2.1.288, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
+**Hooks and LSP cost nothing in context.** CI on a complete install measured **~3,402 tok per session** for `core,dev` at project scope; project scope with everything is **~5,271 tok per session** (Ubuntu CI, Claude Code 2.1.288, 2026-10-03). User-scope totals were ~2,348 and ~3,675 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 

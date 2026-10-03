@@ -205,7 +205,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | What | Always loaded | When |
 |---|---|---|
 | `CLAUDE.md` | **~742 tok** | both user and project; copied only when absent |
-| `rules/core/workflow.md` | **~622** | project only |
+| `rules/core/workflow.md` | **~626** | project only |
 | `rules/dev/review.md` | **~428** | project only, `--with dev` |
 | `rules/research/notes.md` | **~542** | project only, `--with research` |
 | `output-styles/report.md` | **~173** | while selected |
@@ -214,11 +214,11 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | `harness-research` | ~245 | `research` |
 | `harness-slides` | ~373 | `slides` |
 | `harness-frontend` + `ui-ux-pro-max` | ~0 + ~709 | `frontend` |
-| Project, `core,dev` | **~3,398 tok / session** | select with `--profile dev` |
-| **worst case / default** (project, every profile) | **~5,267 tok / session** | ceiling 9,000, enforced in CI |
+| Project, `core,dev` | **~3,402 tok / session** | select with `--profile dev` |
+| **worst case / default** (project, every profile) | **~5,271 tok / session** | ceiling 9,000, enforced in CI |
 | `core,dev` / every profile at user scope | ~2,348 / ~3,675 | no rules there |
 
-**Diet review, 2026-10-03:** removed repeated rationale, duplicated workflow instructions and long examples from the five always-on instruction files; their combined bytes fell from 24,302 to 10,038 (58.7%). The six principles, branch/PR/commit contracts, gap ledger and authorization procedure, review checklist, research document contracts and output-style provenance remain. Repository-only `CLAUDE.md` was condensed separately. All guards, skill descriptions, routing boundaries and zero-context language profiles remain. Core moves to 1.25.0 so consumers receive the managed-rule and style changes; existing user-edited `CLAUDE.md` files are preserved.
+**Diet review, 2026-10-03:** removed repeated rationale, duplicated workflow instructions and long examples from the five always-on instruction files; their combined bytes fell from 24,302 to 10,052 (58.6%). The six principles, branch/PR/commit contracts, gap ledger and authorization procedure, review checklist, research document contracts and output-style provenance remain. Repository-only `CLAUDE.md` was condensed separately. All guards, skill descriptions, routing boundaries and zero-context language profiles remain. Core moves to 1.25.0 so consumers receive the managed-rule and style changes; existing user-edited `CLAUDE.md` files are preserved.
 
 Behavioral equivalence remains **unmeasured**. The first scratch-config benchmark attempts stopped with `api_error` before model execution. A credentialed three-trial `bench-convention` pilot then exercised the revised rules and selected output style, but all three sessions could not commit: Git branch/commit commands required interactive approval. Its apparent 0/3 branch score is therefore not evidence of a prose regression or preservation. Session reports explicitly disclosed the missing commit and verification limits. Historical behavior and routing measurements below describe the pre-diet prose; their scores are not claimed for this revision.
 
