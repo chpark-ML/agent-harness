@@ -51,9 +51,9 @@
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
-| **상시 컨텍스트** | ~3,761 tok | **+2,227** | **+1,759** | **+446** | **+716** | **0** |
+| **상시 컨텍스트** | ~1,696 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
 
-**훅과 LSP 는 상시 컨텍스트 비용이 0 이다.** 위 수치는 프로젝트 스코프 기준으로, `CLAUDE.md`(~2,017)와 `rules/`(~1,539 + 모듈별), 그리고 `Report` output style(~323)을 포함한다 — **비용의 대부분은 스킬이 아니라 규칙 문서다.** user 스코프는 `rules/` 가 설치되지 않으므로 전 프로파일 합계가 ~5,100 이고, 프로젝트 스코프 전 프로파일은 **~8,833 tok / 세션** 이다 — CI 기준 (ubuntu, Claude Code 2.1.286, 2026-10-01, `archify` 포함). `frontend` 를 빼면 ~8,124 이다. 추정기는 환경을 탄다: 이전 트리에서 CI 가 ~8,389 을 읽을 때 macOS 워크스테이션은 ~8,808 이 나왔다. 스킬 설명문의 한국어 트리거 절을 다르게 세기 때문이다. **게이트는 9,000 상한이고**, CI 가 완전한 설치 위에서 그것을 강제한다.
+**훅과 LSP는 상시 컨텍스트 비용이 0이다.** 완전한 임시 설치에서 프로젝트 스코프 `core,dev`는 **~3,398 tok / 세션**, 기본값인 전 프로파일은 **~5,267 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.287, 2026-10-03). user 스코프는 각각 ~2,348과 ~3,675였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -128,7 +128,7 @@ curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/instal
 harnessctl init --scope project --with dev,research
 ```
 
-**`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예처럼 `--profile` 을 안 줬다면 기본값에 둘 다 들어 있으므로 `--with dev,research` 이고, `--profile dev,python` 으로 줄여 깔았다면 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다).
+**`--with` 는 여기서 선택이 아니고, 빠뜨려도 아무 말이 없다.** `harnessctl` 은 모듈 목록을 `--with` 아니면 대상의 매니페스트에서 가져오는데, 처음 설정하는 저장소에는 둘 다 없다 — 그래서 그냥 `harnessctl init --scope project` 를 돌리면 catch-all workflow rule 하나만 깔린다. 설치할 때 고른 역할 프로파일을 그대로 적는다. 위 예처럼 `--profile`을 안 줬다면 `--with dev,research`이고, `--profile dev,python` 으로 줄여 깔았다면 `--with dev` 다 (`python` 은 언어 축이라 rule 이 없다).
 
 나뉘는 기준은 그 자산이 **누구 것인가**다. 가드와 스킬은 내 것이라 기계 전체에 있어야 한다 — 설치를 잊은 저장소 하나가 곧 구멍이다. rule 과 프로젝트 설정은 팀 것이라 커밋에 있어야 한다. clone 과 함께 도착해야 하니까.
 
@@ -163,7 +163,7 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 ### 전부보다 덜 받기
 
-**프로파일을 고를 필요가 없다.** 전부 합쳐 상시 컨텍스트가 ~8,800 tok 이고 천장이 9,000 이라, 기본값이 전부다. `--profile` 은 *덜* 받으려고 있다 — 아래 플래그를 위 명령 뒤에 붙이면 된다.
+**프로파일을 고를 필요가 없다.** 전부 합쳐 상시 컨텍스트가 ~5,267 tok 이고 천장이 9,000 이라, 기본값이 전부다. `--profile` 은 *덜* 받으려고 있다 — 아래 플래그를 위 명령 뒤에 붙이면 된다.
 
 | 하는 일 | 플래그 | 받는 것 |
 |---|---|---|
@@ -204,7 +204,7 @@ claude plugin update harness-core@agent-harness
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `--profile <list>` | 전부 (12개) | `core` · `dev` · `research` · `slides` · `frontend` · 언어 축 `python` · `typescript` · `csharp` · `cpp` · `lua` · `swift` · `kotlin`, 콤마로 조합. **기본값이 전부이므로 이 옵션은 덜 받으려고 쓴다** |
+| `--profile <list>` | 전부 (12개) | `core` · `dev` · `research` · `slides` · `frontend` · 언어 축 `python` · `typescript` · `csharp` · `cpp` · `lua` · `swift` · `kotlin`, 콤마로 조합. 기본값이 전부이므로 이 옵션은 덜 받으려고 쓴다 |
 | `--scope user\|project` | `user` | `user` 는 머신 전체, `project` 는 현재 저장소만 |
 | `--with-tools` | 꺼짐 | LSP 가 요구하는 언어 서버를 `npm -g` 로 설치 (전역 변경이라 opt-in) |
 | `--ref <tag\|branch>` | — | marketplace 를 특정 리비전에 고정 |
@@ -227,7 +227,7 @@ harnessctl doctor
 claude plugin marketplace add chpark-ML/agent-harness
 claude plugin install harness-dev@agent-harness --scope user
 # 새 세션에서
-harnessctl init --scope user --with dev
+harnessctl init --scope user --with dev,research
 ```
 
 `install.sh` 가 두 번째 단계를 세션 재시작 없이 해내는 방법은 플러그인 디렉터리의 `harnessctl` 을 경로로 직접 부르는 것이다 — PATH 등록만 새 세션이 필요하지, 설치를 끝내는 데는 필요 없다.
@@ -521,7 +521,7 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 외부 저작물에서 가져온 것 둘, 출처와 라이선스를 밝힌다.
 
-- **`CLAUDE.md` §1–§4** — MIT 라이선스 [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) 를 거의 그대로 옮겼다. Andrej Karpathy 의 LLM 코딩 함정 관찰에서 나온 것이다. §5 만 우리 것이다.
+- **`CLAUDE.md` §1–§4** — MIT 라이선스 [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) 를 축약했다. Andrej Karpathy 의 LLM 코딩 함정 관찰에서 나온 것이다. §5 만 우리 것이다.
 - **`CLAUDE.md` §5 의 발생 기록(ledger) 방식** — CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) 에서 가져왔다. "적는 행위가 곧 집행" 이라는 논지가 그쪽 것이다.
 
 의존으로 들이는 것은 [`superpowers`](https://github.com/obra/superpowers) 와 공식 마켓플레이스의 LSP 플러그인들이고, 각자의 라이선스를 따른다.

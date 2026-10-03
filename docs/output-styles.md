@@ -25,13 +25,7 @@ This style covers what §6 does not: **length and shape**, and **provenance**. T
 two do not overlap, deliberately — the same rule written into two layers with
 different precedence is a rule you can no longer reason about.
 
-**One line is shared on purpose.** Both open on *the reader did not watch you
-work*, because each has to stand on its own: §6 is absent from any consumer whose
-`CLAUDE.md` predates it, and the style has to make sense in a system prompt with
-no §6 in sight. The **rules** are disjoint; only the premise they are derived
-from is stated twice. Checklist C in `harness-reviewer` says overlapping text is
-a finding — this is the exception, and it is written here so an audit does not
-reopen it every time.
+The 2026-10-03 diet removes repeated framing and examples from both layers. §6 keeps the rules about referents and unfamiliar terms; the style keeps result-first structure and provenance. Neither repeats the other's procedure.
 
 Three things it asks for:
 
