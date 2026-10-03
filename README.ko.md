@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-906-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-908-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -448,7 +448,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 훅 7종 동작 | **267** |
 | 세션 로그 렌더러 (`verify-harness-log`) | **46** |
 | 설치기 왕복 | **226** assertion |
-| context 예산 게이트 (`verify-context-budget`) | **14** |
+| context 예산 게이트 (`verify-context-budget`) | **16** |
 | 인벤토리 수치 (`verify-inventory`) | **40** + selftest **7** |
 | 발표 수치 검사기 | **50** |
 | 블록 근거 검사기 (`verify-check-provenance`) | **29** |
@@ -459,7 +459,7 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 문서 내부 참조 (`verify-doc-refs`) | **75** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **45** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **906** |
+| **합계** | **908** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
