@@ -194,29 +194,33 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 226 assertions, context-budget gate 16, inventory figures 40 + selftest 7, frontmatter 15 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, document references 75 files + 21 own cases, documented commands 45 + 12, context-budget ceiling 1 — a total of 908. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
+**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 226 assertions, context-budget gate 16, inventory figures 40 + selftest 7, frontmatter 15 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, document references 75 files + 21 own cases, documented commands 44 + 12, context-budget ceiling 1 — a total of 907. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
 **And it produced three false positives first.** The frozen corpus (`evals/prose-corpus.md`) is a copy of past documents, so its links are relative to the original location, and the relative links in the `declarative/` payload are correct relative to their *post-install* location. All three were removed by fixing the checker — going the other way would have made correct things wrong. The last one especially: the ledger was *quoting a broken link as evidence*, and because inline code was not stripped, the quotation was counted as a real link. **The discipline of adding the opposite-direction case when widening a guard applies here too.**
 
-**Context cost is counted by `make context-budget`.** Below is the 2026-08-26 CI output, and **do not edit the table by hand** — re-run the script. CI is the only place it can be read honestly: `claude plugin details` reports nothing where the plugins are not installed, so a developer machine counts every plugin as 0.
+**Context cost is counted by `make context-budget`.** The following is the complete Ubuntu CI install measurement from PR #99, Claude Code 2.1.288, 2026-10-03, with `--require-plugins`; a fresh macOS install produced the same totals. Partial measurements do not price the whole harness. CI independently enforces the ceiling on a complete install; plugin estimates can differ by environment.
 
 | What | Always loaded | When |
 |---|---|---|
-| `CLAUDE.md` | **~2,017 tok** | both user and project |
-| `rules/core/workflow.md` | **~1,539** | project only |
-| `rules/dev/review.md` | **~1,029** | project only, `--with dev` |
-| `rules/research/notes.md` | **~1,165** | project only, `--with research` |
-| `output-styles/report.md` | **~323** | always, while it is the selected style |
+| `CLAUDE.md` | **~742 tok** | both user and project; copied only when absent |
+| `rules/core/workflow.md` | **~626** | project only |
+| `rules/dev/review.md` | **~428** | project only, `--with dev` |
+| `rules/research/notes.md` | **~542** | project only, `--with research` |
+| `output-styles/report.md` | **~173** | while selected |
 | `harness-core` | ~159 | always |
-| `harness-dev` + `superpowers` + `archify` | ~239 + ~584 + **~167** | `dev` |
+| `harness-dev` + `superpowers` + `archify` | ~404 + ~703 + ~167 | `dev` |
 | `harness-research` | ~245 | `research` |
 | `harness-slides` | ~373 | `slides` |
-| `harness-frontend` + `ui-ux-pro-max` | ~0 + **~716** | `frontend` |
-| **worst case** (project, every profile) | **~8,833 tok / session** — measured in CI on 2026-10-01 with `archify`, and ~8,124 if `frontend` is dropped. **Since 2026-08-19 the worst case is also the default**, because `install.sh` installs every profile unless `--profile` asks for less | ceiling 9,000, enforced in CI |
-| Every profile at user scope | ~5,100 | no rules there |
-| `skill-creator` (developer — orphaned 2026-08-13, no longer installed) | ~112 when installed | ~10.9k when called |
+| `harness-frontend` + `ui-ux-pro-max` | ~0 + ~709 | `frontend` |
+| Project, `core,dev` | **~3,402 tok / session** | select with `--profile dev` |
+| **worst case / default** (project, every profile) | **~5,271 tok / session** | ceiling 9,000, enforced in CI |
+| `core,dev` / every profile at user scope | ~2,348 / ~3,675 | no rules there |
+
+**Diet review, 2026-10-03:** removed repeated rationale, duplicated workflow instructions and long examples from the five always-on instruction files; their combined bytes fell from 24,302 to 10,052 (58.6%). The six principles, branch/PR/commit contracts, gap ledger and authorization procedure, review checklist, research document contracts and output-style provenance remain. Repository-only `CLAUDE.md` was condensed separately. All guards, skill descriptions, routing boundaries and zero-context language profiles remain. Core moves to 1.25.0 so consumers receive the managed-rule and style changes; existing user-edited `CLAUDE.md` files are preserved.
+
+Behavioral equivalence remains **unmeasured**. The first scratch-config benchmark attempts stopped with `api_error` before model execution. A credentialed three-trial `bench-convention` pilot then exercised the revised rules and selected output style, but all three sessions could not commit: Git branch/commit commands required interactive approval. Its apparent 0/3 branch score is therefore not evidence of a prose regression or preservation. Session reports explicitly disclosed the missing commit and verification limits. Historical behavior and routing measurements below describe the pre-diet prose; their scores are not claimed for this revision.
 
 **Accounting correction, 2026-10-03:** the plugin-cost parser now preserves thousands separators. Previously `~1,084 tok` became `1`; two regression cases compare formatted and unformatted totals and confirm that the ceiling still blocks. Installer verification also clears an inherited `CLAUDE_CONFIG_DIR` in its unset-config fixture. These repairs change the measurement, not the harness payload or ceiling; no new cost figure is inferred from the old truncated value.
 

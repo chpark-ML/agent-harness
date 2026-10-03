@@ -1,172 +1,122 @@
 # CLAUDE.md — working on agent-harness itself
 
-This repository *is* a Claude Code harness, shipped as plugins plus a declarative installer. The conventions below apply while developing it. The product's own behavioural defaults live in [`plugins/harness-core/declarative/CLAUDE.md`](plugins/harness-core/declarative/CLAUDE.md) — **read that file before any non-trivial task here**; it applies to work in this repository too, and it is the text consumers receive:
-
-1. **Think Before Coding** — state assumptions, surface alternatives, stop when unclear.
-2. **Simplicity First** — minimum code that solves the problem, nothing speculative.
-3. **Surgical Changes** — every changed line traces to the request.
-4. **Goal-Driven Execution** — define the check, run it, then report done.
-5. **Surface Harness Gaps** — propose, don't silently patch around.
-
-**Language.** Match the user's prompt language. Everything that ships is written in English — documents, scripts, and the output the two programs print. The exceptions are deliberate and named in §8.
-
----
+This repository ships a Claude Code harness as plugins plus a declarative installer. Read [the consumer defaults](plugins/harness-core/declarative/CLAUDE.md) before non-trivial work; they apply here too. Match the user's language. Shipped content is English except §8's named exceptions.
 
 ## 1. What goes where
 
-There are two delivery paths, and the fork is **whether a plugin can carry it** ([ADR-0008](docs/adr/0008-plugin-declarative-split.md)).
-
-| What you are adding | Where it goes |
+| Artifact | Location |
 |---|---|
-| A hook | `plugins/harness-core/hooks/<name>.sh` + registered in `hooks/hooks.json` |
-| A skill or command every consumer gets | `plugins/harness-core/{skills,commands}/` |
-| A skill only one profile gets | `plugins/harness-<profile>/skills/` |
-| A verification script | `plugins/harness-core/scripts/` |
-| An executable | `plugins/harness-core/bin/` — added to the Bash tool's PATH automatically |
-| An output style | `plugins/harness-core/output-styles/<name>.md` + the `outputStyle` scalar that selects it |
-| Permissions and scalars | `plugins/harness-core/declarative/settings-fragment.json` |
-| `CLAUDE.md`, rules, consumer config templates | `plugins/harness-core/declarative/` |
-| A dependency on an external plugin | That profile's `dependencies` |
-| Something only this repository uses | `scripts/` and `.claude/` (not shipped) |
-| A dated Superpowers design record (spec or plan) | `docs/superpowers/{specs,plans}/` (not shipped; frozen once its work merges) |
+| Shared hook, skill, command, executable or output style | `plugins/harness-core/{hooks,skills,commands,bin,output-styles}/` |
+| Profile-specific skill | `plugins/harness-<profile>/skills/` |
+| Shipped verifier | `plugins/harness-core/scripts/` |
+| Permissions, settings scalars, consumer `CLAUDE.md`, rules and config templates | `plugins/harness-core/declarative/` |
+| External plugin | The profile's `dependencies` |
+| Repository-only tools | `scripts/` and `.claude/` |
+| Superpowers design records | `docs/superpowers/{specs,plans}/`; frozen after merge |
 
-**Exactly three things a plugin cannot carry, and all three are confirmed facts**: a plugin's `settings.json` supports only `agent` and `subagentStatusLine`, a plugin-root `CLAUDE.md` is not read as context, and `rules` is not on the component list. Only those three go in `declarative/`, and `harnessctl` writes them.
-
-**The declarative payload lives in `harness-core` and nowhere else.** Scatter it per profile and harnessctl has to find another plugin's cache — but caches are separate per plugin and `../` references are forbidden. Profile selection is handled by the `harnessctl init --with <name>` flag instead. Skills are the opposite: the platform loads them from each plugin's own cache, so they belong in their own profile.
+A plugin cannot distribute permissions, `CLAUDE.md` or rules; `harnessctl` writes them ([ADR-0008](docs/adr/0008-plugin-declarative-split.md)). Keep declarative payloads in core because plugin caches cannot reference siblings. Profile skills stay in their own plugins.
 
 ## 2. A new hook is a bundle of artifacts
 
-Miss one and it is unfinished. The [`harness-reviewer`](.claude/agents/harness-reviewer.md) agent audits this.
+All required; use the same `<name>` throughout:
 
 1. `plugins/harness-core/hooks/<name>.sh`
-2. `plugins/harness-core/scripts/verify-<name>.sh` — 8 cases or more
+2. `plugins/harness-core/scripts/verify-<name>.sh`, with 8+ cases
 3. `docs/hooks/<name>.md`
-4. Registration in `plugins/harness-core/hooks/hooks.json` (anchored on `${CLAUDE_PLUGIN_ROOT}`)
-5. `docs/agent-layer.md` updated
-6. `version` bumped in `plugins/harness-core/.claude-plugin/plugin.json`
-7. **Blocking hooks only** — cases in `evals/incidents.sh`, written from the §2 accident table without looking at the hook's regexes
+4. Registration in `plugins/harness-core/hooks/hooks.json`, anchored on `${CLAUDE_PLUGIN_ROOT}`
+5. `docs/agent-layer.md` inventory update
+6. Core manifest `version` bump
+7. Blocking hooks: independent incident cases in `evals/incidents.sh`, drawn from §2's accident table in agent-layer rather than from the regexes
 
-The `<name>` has to match in all four places or the audit cannot run mechanically.
-
-**Item 7 is what the verifier cannot do.** `verify-<name>.sh` scores the hook against cases drawn from its own patterns, so on its own it measures what we built rather than what we meant to stop. `gh-account-guard` shipped with a full verifier and no corpus cases at all, and the published catch rate then described four blocking hooks while reading as if it described five.
-
-**The version bump is not optional.** The manifest states a `version`, so committing alone delivers nothing to users — Claude Code sees the same version string and keeps its cache. We accept that constraint in order to use `claude plugin validate --strict` as a CI gate (an unspecified `version` turns from a warning into a failure under strict).
-
-**But the bump is necessary, not sufficient — it does not reach anyone by itself.** `claude plugin install` is a presence check: on a plugin that is already installed it exits 0 without comparing versions, so the documented install command delivered a bumped version to new machines only. Returning users needed `claude plugin update`, which nothing told them to run. `install.sh` now issues it (`verify-install.sh` §12a holds that), and the README has an Updating section. When judging whether a change has shipped, the question is whether an *installed* machine moved, not whether the manifest did.
+Use [harness-reviewer](.claude/agents/harness-reviewer.md) for bundle audits. A version bump changes the cache key but does not update an installed machine: the installer must run `plugin update`, and install any newly unsatisfied dependencies. Reinstalling an already-present dependency can clear its auto-installed flag; do not do that indiscriminately.
 
 ## 2b. A new skill is a bundle too
 
-For the same reason hooks owe a verifier, skills owe a **trigger eval**. A description's triggers and its negative routing are claims about behaviour, and an unmeasured claim is just a claim.
+1. `plugins/harness-<profile>/skills/<name>/SKILL.md`, with a quoted description
+2. `evals/trigger/<name>.json`: 6 positive and 6 negative cases, including neighboring skills' work
+3. `make bench-trigger` measurement recorded in agent-layer §4b
+4. agent-layer §3 inventory update
+5. One end-to-end execution of the body before merge
+6. That plugin's `version` bump
 
-1. `plugins/harness-<profile>/skills/<name>/SKILL.md` — the description **must be quoted** (§4)
-2. `evals/trigger/<name>.json` — 6 positive, 6 negative. **The negatives matter more**: put in the near-misses that should reach a neighbouring skill.
-3. Measure with `make bench-trigger` and put the result in the §4b table of `docs/agent-layer.md`
-4. An entry in the §3 inventory of `docs/agent-layer.md` — the skills row counts per profile
-5. **Run the body once, end to end, before merging.** Any commit range will do
-6. Bump that plugin's `version`
-
-**Item 5 is the one the trigger eval cannot cover.** `bench-trigger` measures whether the skill *fires*; nothing measures whether its procedure *runs*. A hook has `verify-<name>.sh` and an executable has its own verifier — a skill body is prose, and prose is not executed by anything. `cross-model-review` merged at 12/12 with three defects in its Step 4, and one real run found all three: a transport that did not exist, a guard that read the page once when the page lags, and a stability test that both reads passed while the answer was still truncated.
-
-**A negative case asks "did the work go where we wrote that it would", not "did our skill stay quiet".** `bench-trigger` records which skill was actually called, so you can check whether it reached the neighbour the negative routing named. If it reached nothing at all, that is a different result and it is fixed differently.
-
-**One run per query is not a measurement** (the default is 3). And trigger measurement has several ways of quietly killing the instrument, so read [the trap table in §4b](docs/agent-layer.md) before concluding anything.
+A negative case checks where work went, not just whether our skill stayed silent. Use repeated trials (default 3), a positive control and a fixture satisfying the prompt's premises. Read agent-layer §4b's instrument limits before interpreting a zero. Trigger success does not verify the body.
 
 ## 2c. A new `bin/` executable is a bundle too
 
-Different from a hook in two places, which is why it needs its own list.
+1. Executable `plugins/harness-core/bin/<name>` with catches / scope / bypass in its header
+2. `plugins/harness-core/scripts/verify-<name>.sh`, using §4's case policy
+3. `docs/<name>.md`
+4. A shim through `install.sh`'s existing `bin/` glob; no hook registration
+5. agent-layer inventory update
+6. Core `version` bump
 
-1. `plugins/harness-core/bin/<name>` — executable bit set, `catches` / `scope` / `bypass` in the header comment
-2. `plugins/harness-core/scripts/verify-<name>.sh` — the case mix is set by §4's table
-3. `docs/<name>.md` — not `docs/hooks/`, because it is not a hook
-4. **A shim in `install.sh`**, not a `hooks.json` entry. A plugin's `bin/` reaches the Bash tool's PATH but **not the user's terminal**, so an executable with no shim ships with a documented command that does not exist. The shim loop globs `bin/`; do not add a name to it.
-5. `docs/agent-layer.md` updated
-6. `version` bumped
+Plugin `bin/` reaches the Bash tool's PATH, not the user's terminal; the shim supplies the documented terminal command.
 
 ## 2d. And every bundle moves the published numbers
 
-The three lists above say what to write. This says what writing it breaks, and it applies to all of them — the counts in the documents are derived from the tree, so adding a file changes them.
+Run `make verify-all` to derive the check total; update its five published copies in both READMEs and agent-layer. Do not guess counts.
 
-- **The check total.** A new `SKILL.md` is +3 on its own: `verify-doc-refs` scans it twice (once as a document, once as an instruction file) and `verify-frontmatter` once. `make verify-all` fails until the five published copies agree, so this one announces itself — but budget the commit.
-- **The always-on worst case.** Only CI can measure it. `context-budget` reads the *installed* plugin, and a developer machine has the released version from GitHub, not the tree — it will say `measuring the OLD one` and refuse to gate. So **the first CI run on the PR produces the real number, and a second commit republishes it** in `README.md`, `README.ko.md`, `docs/agent-layer.md` and the `Makefile`. Plan for the round trip rather than discovering it.
-
-Do not hand-edit either figure to what you expect. Both are generated, and the last time one was typed it was wrong by 3.6×.
+CI measures the current installed plugin's always-on cost. After the first PR run, republish the measured worst case in both READMEs, agent-layer and `Makefile`. A developer's stale cache cannot price the new tree; plan for the CI round trip.
 
 ## 2e. An output style is a bundle too — and it is the only one in the system prompt
 
-Different from the three lists in §2, §2b and §2c in one way that decides everything else: an output style is not appended to context, it **replaces part of the system prompt**. That is why it outranks `CLAUDE.md`, and why getting it wrong is not a missing feature but a subtracted one.
+1. `plugins/*/output-styles/<name>.md`: `name`, quoted `description`, explicit `keep-coding-instructions`
+2. Selecting `outputStyle` scalar in `declarative/settings-fragment.json`, namespaced `<plugin>:<style name>`
+3. `docs/output-styles.md`
+4. Frontmatter discovery and context-budget accounting
+5. Installer cases proving selection and preservation of a consumer's own style through install and uninstall
+6. agent-layer update and plugin `version` bump
+7. One real execution with the style selected
 
-1. `plugins/harness-core/output-styles/<name>.md` — `name`, a **quoted** `description`, and `keep-coding-instructions` stated explicitly
-2. The `outputStyle` scalar in `declarative/settings-fragment.json`. **Shipping the file selects nothing.** And the name is namespaced `<plugin>:<style name>`; a bare name does not resolve. The verifier **derives** that value from the style's own `name:` — never repeat it as a literal, or a rename leaves every check green while the style stops loading
-3. `docs/output-styles.md` — not `docs/hooks/`, same reason as §2c
-4. A glob in `scripts/verify-frontmatter.sh` and accounting in `scripts/context-budget.sh`
-5. Cases in `scripts/verify-install.sh` — the scalar is written, **and a consumer's own style survives install and uninstall**
-6. `docs/agent-layer.md` updated, `version` bumped
-
-**Item 1's third field is the one that bites.** `keep-coding-instructions` defaults to **false**, and that default strips Claude Code's built-in software-engineering instructions — how to scope a change, when to comment, how to verify work. A style that omits the key therefore guts the harness while looking like it only changed the tone. `verify-frontmatter` requires the key to be *present*, not to be true: replacing those instructions is a legitimate thing to write, and arriving at it by omission is not.
-
-**Item 5 is where the real risk lives, and it is not ours.** Only one output style is active at a time, so writing `outputStyle` over a consumer's choice does not add to their setup, it takes theirs away. `harnessctl` already gets this right — a scalar is written only when the key is absent — which is why the frontmatter field `force-for-plugin: true` is **not** used: it overrides the user's setting for as long as the plugin is enabled, and `harness-core` is enabled in every profile.
-
-**What no instrument covers**: whether the prose works. Same hole as §2b item 5 — a style body is prose, and nothing executes prose. Select it and do one real piece of work before merging.
-
-**§2d applies to this list as well.** A style file plus its document move the check total, and its always-on cost is only measurable in CI.
+The verifier derives the selector from frontmatter; do not hardcode a duplicate name. `keep-coding-instructions` defaults to false and removes built-in coding instructions. State the value deliberately. Do not use `force-for-plugin` without an explicit case for overriding the consumer's selection. Only one style is active; budget the largest, not the sum. §2d applies.
 
 ## 3. The hook contract
 
-- **bash 3.2 and jq only.** No Python or Node extensions ([ADR-0002](docs/adr/0002-hook-contract.md)). **The rule is about what ships**: nothing under `plugins/` may use python3, and the repo-only `scripts/` may — four do today (`verify-frontmatter`, `verify-doc-refs`, `verify-benches`, `bench-tier`), plus `bench-trigger.py` which is wholly Python and never part of `verify`. macOS's `/bin/bash` is the floor — no `mapfile`, no associative arrays, no `${x^^}`. Under `set -u`, expand an empty array as `"${a[@]+"${a[@]}"}"`.
-- **A hook that parses stdin** disables itself with one stderr line and `exit 0` when `jq` is absent. A missing hook must not block work. Hooks that never read stdin have nothing to parse, so they need no jq and correctly have no such guard (today the two informational ones, `session-brief` and `check-uncommitted` — which tools a hook shells out to is beside the point) — each hook's document says so, so nobody goes hunting for a guard that was never there.
-- **Only a blocking hook exits 2.** Everything else exits 0 no matter what. An informational hook that stops a turn is a bug.
-- A block message carries *what was caught* and *how to get past it*, and points at `docs/hooks/<name>.md`. A consumer cannot open the hook file in their own tree — it lives in the plugin cache — so the message is the only interface.
-- Put catches / scope / bypass in the header comment.
+- Shipped scripts and executables use **bash 3.2 and jq only**. No Python, Node, `mapfile`, associative arrays or `${x^^}`. Repository-only `scripts/` are exempt ([ADR-0002](docs/adr/0002-hook-contract.md)).
+- Under `set -u`, expand possibly-empty arrays as `"${a[@]+"${a[@]}"}"`.
+- Hooks parsing stdin self-disable with one stderr line and exit 0 when jq is missing. Hooks that never read stdin need no jq guard.
+- Only a blocking hook exits 2; informational hooks always exit 0.
+- A block message states what was caught, how to proceed and `docs/hooks/<name>.md`. Consumers cannot read the cached script as their interface.
+- Headers state catches / scope / bypass.
 
 ## 4. The verification mandate
 
-**A guard merged without verification is not a guard, it is decoration** ([ADR-0003](docs/adr/0003-verification-mandate.md)).
-
 ```bash
-make verify-all              # verify, plus whether the published check total matches reality
-make verify                  # syntax + frontmatter + doc-refs + budget + hooks + harnessctl + manifests
-make verify BASH=/bin/bash   # the macOS bash 3.2 floor — required before merging
+make verify-all
+make verify BASH=/bin/bash
 ```
 
-**Whether a repo-only verifier (`scripts/verify-*.sh`) owes its own cases is decided by how that verifier fails.** Unlike hooks there was no rule, so three of them were judged on the spot, and those three cases made the rule.
+Run both before merge; `verify` alone does not validate the published total. `make bench*` costs model sessions and is not a CI gate.
 
-| How it fails | What to attach | Example |
-|---|---|---|
-| **False positive** — calls a correct thing wrong | **Cases.** A check that cries wolf gets switched off, and a switched-off check is zero | `verify-doc-refs` (19 cases) |
-| **Omission** — does not look at what it should | **Prevent it by design first.** Glob instead of hardcoding a list. Cases only when design cannot | `context-budget` (the file list is a glob) |
-| True or false is self-evident | Neither | `verify-frontmatter`'s checks (its *reporting* path is a separate question and earned 4 — see below) |
-
-**And either way, a line that runs in only *one* of the environments the verifier runs in is an unverified line.** `verify-check-total` was written on a machine with the Claude CLI, and the branch that runs only when the CLI is absent executed for the first time in CI, where it broke.
-
-**"Environment" is not only CI-versus-local — the third occurrence was the locale.** `verify-frontmatter` printed its summary with an em-dash and Python's stdout defaults to `errors='strict'`, so on a cp949 console it passed 11 / 11 and then died reporting it: a green run exiting 1. Every python-embedding verifier now sets `errors='replace'` — degrade the character, never the verifier — and `verify-frontmatter.sh --selftest` holds the line, half of it a glob so a fourth script cannot arrive without it. **Write the reproduction so it runs everywhere**: `PYTHONIOENCODING=ascii` reproduces this on any platform, which is why the case is worth having; a Windows-only case would have been invisible to CI and become the same bug again.
-
-- Hook verifiers use `run_case` / `expect` / `expect_match` from `plugins/harness-core/scripts/_verify-lib.sh`; repo-only verifiers use `scripts/_check-lib.sh`, which sources it and adds `check_rc` / `check_eq` / `summary` on top (the hook runner needs a hook file, which repo-only scripts do not have). Do not write a third.
-- Cases come in three kinds: **no-op** (input the hook must not touch), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is the one that earns its keep.
-- **Frontmatter on a skill, rule or agent fails silently and empty.** An unquoted YAML scalar containing a colon-space fails to parse, and the description loads blank — no triggers, no negative routing. `scripts/verify-frontmatter.sh` stops that. Always quote the description value.
-- If you touched the installer, `scripts/verify-install.sh` is the gate. Especially the property that *settings.json after uninstall is canonically identical to the original* — break that and a consumer loses something.
-- After an incident, add the regression case before the fix.
-- **A benchmark is not `verify`.** `make verify` is free and CI runs it. `make bench*` burns model sessions, so it costs real money and does not run in CI — run it by hand when you change something it covers, and record the number in §4b.
+- Use `_verify-lib.sh` for shipped verifiers and `scripts/_check-lib.sh` for repository checks; do not add another runner.
+- Cover no-op, block and boundary inputs. When widening a guard, pin a similar input that must still pass. Add the incident regression before the fix.
+- Cover each environment-dependent path. Write portable reproductions where possible, such as `PYTHONIOENCODING=ascii` for encoding failures. Python verifiers use `errors='replace'` when reporting.
+- A repository verifier needs self-tests when it can falsely reject valid input. Prevent omissions with discovery globs first; self-evident assertions need no tests mirroring their implementation.
+- Skill, rule, agent and style frontmatter must parse; quote descriptions. Skill descriptions carry explicit negative routing and the second-language triggers declared in `.claude/trigger-langs`.
+- Installer changes must pass `scripts/verify-install.sh`, including canonically identical settings after uninstall and preservation of user edits.
+- Prose procedures require an end-to-end execution; structural checks cannot establish that the instructions work.
 
 ## 5. `docs/agent-layer.md` is the single source of truth
 
-A change to the harness's scope, inventory or backlog updates **that file only** ([ADR-0004](docs/adr/0004-single-source-of-truth.md)). Do not copy the same content into the README or a separate roadmap — the moment there are two, one of them is about to become false. Not shipping an installed index file is the same reasoning.
+Scope, inventory and backlog belong only in [agent-layer](docs/agent-layer.md), not a new roadmap or README expansion ([ADR-0004](docs/adr/0004-single-source-of-truth.md)). Mirror published verification and cost figures as §2d requires.
 
 ## 6. Commits and PRs
 
-- Branch `{feat,fix,chore}-<slug>`, PR title `[<slug>] <description>`, 70 characters or fewer.
-- **No AI attribution** ([ADR-0006](docs/adr/0006-no-ai-attribution.md)). No `Co-Authored-By: Claude` trailer, no `🤖 Generated with` footer. This repository is not protected by its own hooks (it cannot install onto itself), so discipline is the only thing holding it.
-- Structural changes to the harness and content additions go in separate PRs.
-- Read `.claude/harness-gaps.md` before opening a PR. If an entry is on its second occurrence, raise it in the PR body under `## Notes` — this repository follows its own §5 too.
+- Branch `{feat,fix,chore}-<slug>`; PR title `[<slug>] <description>`, at most 70 characters.
+- Verb-first commit subject; explain why in the body. Split commits by meaning.
+- No AI attribution in commits or PRs ([ADR-0006](docs/adr/0006-no-ai-attribution.md)). This repository does not install its own guards.
+- Structural harness changes and content additions go in separate PRs.
+- Read `.claude/harness-gaps.md` before opening a PR. Raise repeated observations in the PR's Notes; keep unrelated repairs separate.
 
 ## 7. Resisting over-design
 
-The §2 this repository preaches at consumers applies to this repository. One of the reference harnesses deleted 875 lines of just-in-case defence in a single commit, and that was a win. A new hook, rule or module is added only for a problem that **actually happened twice**. Candidates sit in the `docs/agent-layer.md` backlog marked ⏳, waiting for the second occurrence.
+A new hook, rule or module requires a problem that actually occurred twice. Record candidates as ⏳ in agent-layer §7, naming the accident they address. Prefer removal over speculative defenses.
 
 ## 8. What stays in Korean, and why
 
-Everything shipped is English. Four things are not, and each is a decision rather than an omission — so nobody "finishes the job" by translating them.
+English is the shipped default. Preserve these exceptions:
 
-- **`README.ko.md`** — the mirror, chosen deliberately. It tracks `README.md`; do not let them drift.
-- **`.claude/harness-gaps.md`** — a repo-local, append-only ledger. Translating it would mean rewriting history entries, which is the one thing an append-only record must not do. It is not shipped.
-- **Benchmark prompts** in `scripts/bench-convention.sh` and `scripts/bench-tier.sh`, and the trigger phrases quoted in ADR-0011's measurement table. These are measurement *inputs*: translate one and the recorded number describes a run that never happened. If a bench is ever re-run in English, that is a new measurement with its own row, not an edit to an old one.
-- **The Korean in the five skill descriptions** — the `한국어 트리거` clauses (410 characters, counted from the label through the period closing the last quoted phrase) *and* the negative-routing sentences that follow them (198 more). Only the first half was measured — measured, not assumed: pass^3 0.83 against 0.50, Fisher *p* = 0.545, kept because the result was not significant either way (§4b). [`.claude/trigger-langs`](.claude/trigger-langs) makes the requirement a property of this deployment rather than of the harness, so a contributor writing for another language is not asked for a Korean marker. It is a file and not a `Makefile` variable for a measured reason: Windows `make.exe` re-encodes recipe text through the ANSI codepage on its way into the child environment, so `한국어` arrived as mojibake and five skills that plainly carry the marker were reported as missing it.
+- `README.ko.md`: mirror of `README.md`; update both together.
+- `.claude/harness-gaps.md`: append-only ledger; translating it rewrites history.
+- Benchmark prompts in `scripts/bench-*.sh` and quoted measurement inputs: translating changes the experiment. A translated run is a new dated measurement.
+- Korean trigger and negative-routing clauses in skill descriptions: the measured deployment choice declared in `.claude/trigger-langs`. Do not require Korean in a deployment declaring another language; do not silently translate existing measurement inputs.
