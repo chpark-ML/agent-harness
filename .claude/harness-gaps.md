@@ -2501,3 +2501,21 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
   `[ -f … ] &&` 형태는 경로가 틀리면 조용히 넘어간다. 이번엔 오타가 아니라 설치 위치의
   가정이 틀렸다.
 - **회차**: 2 (사용자 원장 기준)
+
+## 2026-10-15 — `Read(./.env*)` 가 비밀값 없는 `.env.example` 까지 막는다 (3회차, 이 PR 에서 고침)
+
+- **어디**: `plugins/harness-core/declarative/settings-fragment.json:68` — deny `Read(./.env*)`
+- **무슨 일**: 소비자 저장소의 `.env.example`(설정 키만 있는 추적 파일)을 읽으려다 세 번 막혔다
+  (사용자 원장 2026-10-08, 2026-10-15 두 번). 리뷰 subagent 는 설정 키를 못 읽었고, 다른
+  세션은 `git show HEAD:.env.example` 로 우회했다.
+- **처음 제안이 틀렸던 점**: "allow 에 `Read(./.env.example)` 추가" 는 효과가 없다. Claude Code 는
+  deny → ask → allow 순으로 평가하고 구체성은 순서를 바꾸지 않는다 — "an allow rule can't carve an
+  exception out of a deny rule". 예외는 deny 목록 안의 gitignore 부정(`Read(!…)`)으로만 만들 수 있고,
+  같은 설정 파일 안에서 대상 규칙 **뒤에** 있어야 한다.
+- **실측** (Claude Code 2.1.300, `--setting-sources project` 로 사용자 설정 배제, 격리 폴더):
+  `Read(./.env*)` + `Read(!./.env.example)` → 둘 다 막힘 · `Read(./.env)` 대조군 → example 읽힘 ·
+  `Read(./.env*)` + `Read(!.env.example)` → example 읽힘, `.env` 막힘 · `Read(.env*)` +
+  `Read(!.env.example)` → 같음. 즉 부정 패턴에 `./` 를 붙이면 아무것도 빼지 못한다.
+- **고친 것**: fragment deny 에 `Read(./.env*)` 바로 뒤 `Read(!.env.example)`. `harnessctl` 은 fragment
+  항목을 순서대로 기존 목록 뒤에 붙이므로(`harnessctl:477-501`) 설치 후에도 순서가 유지된다.
+- **회차**: 3 (사용자 원장 기준)

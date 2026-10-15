@@ -38,7 +38,7 @@ Making things the agent **cannot** do, and fixing the things it has **agreed** t
 
 | TrueFoundry's governance | Ours |
 |---|---|
-| access policy — per-tool restriction | `permissions`, 3 tiers (allow 47 / ask 3 / deny 8) |
+| access policy — per-tool restriction | `permissions`, 3 tiers (allow 47 / ask 3 / deny 9) |
 | guardrails — pre/post tool-invoke hooks | 5 blocking PreToolUse hooks + 2 informational Stop hooks |
 | budgets | `make context-budget` — an always-on context ceiling of 9,000 |
 | identity — a per-node identity | **Missing.** We are a single-session harness, so there are no nodes yet |

@@ -192,7 +192,7 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | | `core`<br><sub>always</sub> | `+dev`<br><sub>role</sub> | `+research`<br><sub>role</sub> | `+slides`<br><sub>output</sub> | `+frontend`<br><sub>domain</sub> | `+python`·`+typescript`<br><sub>language</sub> |
 |---|---|---|---|---|---|---|
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
-| **Permission tiers** | allow 47 / ask 3 / deny 8 | | | | | |
+| **Permission tiers** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | | |
 | **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |

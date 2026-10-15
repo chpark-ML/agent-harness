@@ -73,7 +73,7 @@ Nine categories. **The adoption order is the axis of progress** — guardrails �
 |---|---|---|---|
 | **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
 | **0** | Output styles | `plugins/*/output-styles/*.md`, selected by the `outputStyle` scalar | ✅ core 1 ([`Report`](output-styles.md)) — the only layer that reaches the *system prompt* |
-| **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 8 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
+| **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 9 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 3 + research 2 + slides 2, with Superpowers 14 and `archify` 1 on top under `dev` — and `ui-ux-pro-max` 7 more when `frontend` is installed |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |

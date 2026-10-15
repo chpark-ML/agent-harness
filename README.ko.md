@@ -44,7 +44,7 @@
 | | `core`<br><sub>항상</sub> | `+dev`<br><sub>역할</sub> | `+research`<br><sub>역할</sub> | `+slides`<br><sub>산출물</sub> | `+frontend`<br><sub>도메인</sub> | `+python`·`+typescript`<br><sub>언어</sub> |
 |---|---|---|---|---|---|---|
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
-| **권한 3티어** | allow 47 / ask 3 / deny 8 | | | | | |
+| **권한 3티어** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
 | **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
