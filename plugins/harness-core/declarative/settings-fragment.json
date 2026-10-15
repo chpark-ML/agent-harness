@@ -66,6 +66,7 @@
       "Bash(git reset --hard:*)",
       "Bash(git clean -fd:*)",
       "Read(./.env*)",
+      "Read(!.env.example)",
       "Read(./secrets/**)",
       "Read(./**/.credentials*)"
     ]
