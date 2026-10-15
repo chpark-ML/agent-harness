@@ -122,8 +122,12 @@ EOF
 
 A PR is the natural moment to read it: the work closes as one unit, and it is the only point where `CLAUDE.md` §5's "propose after two occurrences" can be judged.
 
+The ledger sits beside the `.claude/` the harness was installed into, which is not always the repository root — one install can serve a folder of repositories, and a worktree sits a level deeper still. Read the nearest one above the working directory:
+
 ```bash
-[ -f .claude/harness-gaps.md ] && tail -40 .claude/harness-gaps.md
+d=$PWD
+while [ "$d" != / ] && [ ! -f "$d/.claude/harness-gaps.md" ]; do d=$(dirname "$d"); done
+[ -f "$d/.claude/harness-gaps.md" ] && tail -40 "$d/.claude/harness-gaps.md"
 ```
 
 - If the same file and the same symptom appear **twice or more**, put one line in the PR body under `## Notes`: `*harness gap*: <file>:<line> — <diagnosis> (occurrence N)`.
