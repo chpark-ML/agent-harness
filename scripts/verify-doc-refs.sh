@@ -160,7 +160,8 @@ def check_paths(path, read):
     for i, line in enumerate(read(path).split('\n'), 1):
         for token in PATH_TOKEN.findall(line):
             top = token.split('/')[0]
-            if not os.path.exists(os.path.join(repo, top)):
+            # Codex installs this consumer root without adding it to the harness checkout.
+            if top != '.agents' and not os.path.exists(os.path.join(repo, top)):
                 problems.append((i, token, "no '%s' in this repo" % top))
     return problems
 
@@ -249,6 +250,10 @@ CASES = [
      "run `.claece/harness-gaps.md` now\n", 1),
     ("post-install path is not a typo", 'paths', 'a.md',
      "run `.claude/rules/harness/workflow.md` now\n", 0),
+    ("Codex post-install ledger is not a typo", 'paths', 'a.md',
+     "run `.agents/harness-gaps.md` now\n", 0),
+    ("a misspelled Codex consumer root is caught", 'paths', 'a.md',
+     "run `.agnts/harness-gaps.md` now\n", 1),
     ("placeholder is not a path", 'paths', 'a.md',
      "see `evals/trigger/<name>.json` and `origin/<default>..HEAD`\n", 0),
     ("home-relative path is not ours to check", 'paths', 'a.md',

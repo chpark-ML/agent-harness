@@ -120,19 +120,22 @@ EOF
 
 ## Step 6 — Read the harness-gap ledger
 
-A PR is the natural moment to read it: the work closes as one unit, and it is the only point where `CLAUDE.md` §5's "propose after two occurrences" can be judged.
+A PR is the natural moment to read it: the work closes as one unit, and the installed harness principles' "propose after two occurrences" can be judged (`CLAUDE.md` in Claude Code, `AGENTS.md` in Codex).
 
-The ledger sits beside the `.claude/` the harness was installed into, which is not always the repository root — one install can serve a folder of repositories, and a worktree sits a level deeper still. Read the nearest one above the working directory:
+Use a ledger location explicitly named by the active instructions. Otherwise the host-relative path is `.agents/harness-gaps.md` for Codex and `.claude/harness-gaps.md` for Claude Code. One installation can serve a folder of repositories, and a worktree can sit deeper still. Define this lookup, then call `read_gap_ledger .agents/harness-gaps.md` in Codex or `read_gap_ledger .claude/harness-gaps.md` in Claude Code:
 
 ```bash
-d=$PWD
-while [ "$d" != / ] && [ ! -f "$d/.claude/harness-gaps.md" ]; do d=$(dirname "$d"); done
-[ -f "$d/.claude/harness-gaps.md" ] && tail -40 "$d/.claude/harness-gaps.md"
+read_gap_ledger() {
+  local ledger="$1" d="$PWD"
+  while [ "$d" != / ] && [ ! -f "$d/$ledger" ]; do d=$(dirname "$d"); done
+  if [ -f "$d/$ledger" ]; then tail -40 "$d/$ledger"; fi
+}
 ```
 
 - If the same file and the same symptom appear **twice or more**, put one line in the PR body under `## Notes`: `*harness gap*: <file>:<line> — <diagnosis> (occurrence N)`.
 - Once only: leave it. It stays in the ledger waiting for a second.
 - **An empty or missing ledger is not evidence there are no gaps.** It usually means nobody wrote to one. If something snagged during this work and is not written down, write it now.
+- Preserve the active host's ledger path when writing; do not create a second ledger under the other host's directory.
 
 ## Step 7 — Report
 

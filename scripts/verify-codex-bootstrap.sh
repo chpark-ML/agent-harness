@@ -18,7 +18,10 @@ cat > "$WORK/bin/claude" <<'S'
 #!/bin/sh
 printf '%s\n' "$*" >> "$CLAUDE_CALLS"
 [ "$ALLOW_CLAUDE" = 1 ] || exit 97
-case "$*" in 'plugin list --json') printf '[]\n' ;; esac
+case "$*" in
+  'plugin list --json') printf '[]\n' ;;
+  'plugin marketplace list --json') printf '[{"name":"agent-harness","installLocation":"%s"}]\n' "$SHARED_SOURCE" ;;
+esac
 exit 0
 S
 chmod +x "$WORK/bin/claude"
@@ -27,7 +30,7 @@ invoke() {
   local script="$1"; shift
   ( cd "$PROJ" && env -i PATH="$WORK/bin:$PATH" HOME="$WORK/home" \
     CLAUDE_CONFIG_DIR="$WORK/claude" BIN_DIR="$WORK/shims" \
-    CLAUDE_CALLS="$WORK/claude-calls" ALLOW_CLAUDE="$ALLOW" SHELL=/bin/bash \
+    CLAUDE_CALLS="$WORK/claude-calls" ALLOW_CLAUDE="$ALLOW" SHARED_SOURCE="$WORK/shared-source" SHELL=/bin/bash \
     "$RUN_BASH" "$REPO/$script" "$@" ) > "$WORK/out" 2>&1
   RC=$?
 }
@@ -74,6 +77,10 @@ invoke uninstall.sh --agent codex --scope project
 check_rc 'a fetched self-contained installation can be removed' "$RC"
 
 ALLOW=1
+mkdir -p "$WORK/shared-source/plugins"
+cp -R "$REPO/plugins/harness-core" "$WORK/shared-source/plugins/"
+cp -R "$REPO/plugins/harness-dev" "$WORK/shared-source/plugins/"
+printf '\nSelected Claude source control\n' >> "$WORK/shared-source/plugins/harness-dev/skills/engineering/SKILL.md"
 mkdir -p "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/bin"
 : > "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/.in_use"
 printf '#!/bin/sh\nexit 0\n' > "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/bin/harnessctl"
@@ -81,15 +88,37 @@ invoke install.sh --agent both --scope project
 check_rc 'both route reaches the actual Codex installer after the Claude boundary' "$RC" "$(tail -3 "$WORK/out")"
 check_rc 'both route calls the Claude plugin installer' "$(grep -qx 'plugin install harness-dev@agent-harness --scope project' "$WORK/claude-calls"; echo $?)" "$(cat "$WORK/claude-calls" 2>/dev/null)"
 check_rc 'both route also installs Codex skill files' "$([ -f "$PROJ/.agents/skills/engineering/SKILL.md" ]; echo $?)"
+cmp -s "$PROJ/.agents/skills/engineering/SKILL.md" "$WORK/shared-source/plugins/harness-dev/skills/engineering/SKILL.md"
+check_rc 'both hosts use the selected Claude source rather than a different local checkout' "$?"
+awk '/^read_gap_ledger\(\) \{/{body=1} body{print} body && /^}/{exit}' "$PROJ/.agents/skills/pr-create/SKILL.md" > "$WORK/ledger-helper"
 # A Codex ownership conflict must stop combined removal before its Claude phase.
 printf '\nconsumer edit\n' >> "$ROOT/payload/plugins/harness-dev/skills/engineering/SKILL.md"
 cp "$WORK/claude-calls" "$WORK/calls-before"
 invoke uninstall.sh --agent both --scope project
 check_rc 'combined removal stops on a Codex ownership conflict' "$([ "$RC" -ne 0 ]; echo $?)"
 cmp -s "$WORK/claude-calls" "$WORK/calls-before"; check_rc 'a Codex removal failure never starts Claude removal' "$?" "$(tail -5 "$WORK/claude-calls")"
-cp "$REPO/plugins/harness-dev/skills/engineering/SKILL.md" "$ROOT/payload/plugins/harness-dev/skills/engineering/SKILL.md"
+cp "$WORK/shared-source/plugins/harness-dev/skills/engineering/SKILL.md" "$ROOT/payload/plugins/harness-dev/skills/engineering/SKILL.md"
 invoke uninstall.sh --agent both --scope project
 check_rc 'combined removal succeeds after resolving the conflict' "$RC" "$(tail -3 "$WORK/out")"
 cmp -s "$PROJ/AGENTS.md" "$WORK/original"; check_rc 'combined removal retains consumer instructions' "$?"
+mv "$WORK/shared-source" "$WORK/hidden-shared-source"
+invoke install.sh --agent both --scope project
+check_rc 'an unavailable selected source fails instead of forking the two hosts' "$([ "$RC" -ne 0 ]; echo $?)"
+check_rc 'an unavailable selected source creates no Codex payload' "$([ ! -e "$ROOT" ]; echo $?)"
+mv "$WORK/hidden-shared-source" "$WORK/shared-source"
+
+# Run the function extracted from the actual installed skill body.
+check_rc 'the installed PR skill contains an executable host-ledger lookup' "$([ -s "$WORK/ledger-helper" ]; echo $?)"
+LEDGER="$WORK/ledger-project"
+mkdir -p "$LEDGER/.agents" "$LEDGER/.claude" "$LEDGER/child/.agents" "$LEDGER/child/nested" "$WORK/no-ledger"
+printf 'ancestor Codex gap\n' > "$LEDGER/.agents/harness-gaps.md"
+printf 'Claude gap\n' > "$LEDGER/.claude/harness-gaps.md"
+printf 'nearer Codex gap\n' > "$LEDGER/child/.agents/harness-gaps.md"
+ledger_lookup() { ( cd "$1" && . "$WORK/ledger-helper" && read_gap_ledger "$2" ); }
+check_eq 'Codex reads the nearest Codex ledger' 'nearer Codex gap' "$(ledger_lookup "$LEDGER/child/nested" .agents/harness-gaps.md)"
+check_eq 'Claude reads its own ledger when both hosts coexist' 'Claude gap' "$(ledger_lookup "$LEDGER/child/nested" .claude/harness-gaps.md)"
+ledger_lookup "$WORK/no-ledger" .agents/harness-gaps.md > "$WORK/ledger-out"
+check_rc 'a missing ledger is a successful read-only lookup' "$?"
+check_rc 'a missing Codex ledger never creates a Claude directory' "$([ ! -e "$WORK/no-ledger/.claude" ] && [ ! -s "$WORK/ledger-out" ]; echo $?)"
 summary
 exit $?

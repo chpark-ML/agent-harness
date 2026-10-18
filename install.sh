@@ -229,7 +229,13 @@ install_codex() (
   codex_source=""
   codex_tmp=""
   trap '[ -z "$codex_tmp" ] || rm -rf "$codex_tmp"' EXIT
-  if [ -z "$REF" ] && [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  if [ "$AGENT_TARGET" = both ]; then
+    codex_source="$(claude plugin marketplace list --json 2>/dev/null \
+      | jq -er --arg name "$MARKETPLACE_NAME" '[.[] | select(.name == $name) | (.installLocation // .path)] | .[0] | select(type == "string" and length > 0)' \
+      | tr -d '\r')" || die "cannot resolve the marketplace source selected by Claude"
+    [ -f "$codex_source/plugins/harness-core/bin/harness-codex" ] \
+      || die "selected Claude marketplace has no Codex adapter; update that marketplace revision before using --agent both"
+  elif [ -z "$REF" ] && [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     [ ! -f "$candidate/plugins/harness-core/bin/harness-codex" ] || codex_source="$candidate"
   fi

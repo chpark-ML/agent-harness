@@ -22,7 +22,7 @@ The bootstrap defaults to `--agent claude`, `--scope user` and the development p
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --agent codex --scope project --profile research,slides
 ```
 
-Run the same bootstrap again to update from the current source. With a downloaded or piped script, the bootstrap fetches the source from GitHub; `--ref` selects its revision. A checkout uses its own source unless `--ref` is supplied. The selected Codex profiles replace the previous Codex selection. Other profiles, third-party dependencies and `--with-tools` keep their Claude behavior with `--agent both`; Codex keeps its host tools.
+Run the same bootstrap again to update. For Codex-only installation, a downloaded or piped script fetches the source from GitHub; `--ref` selects its revision. A checkout uses its own source unless `--ref` is supplied. With `--agent both`, Codex uses the marketplace source actually selected by the Claude installation, which must contain the Codex adapter. An older or modified local checkout cannot fork the two hosts' workflow content. The selected Codex profiles replace the previous Codex selection. Other profiles, third-party dependencies and `--with-tools` keep their Claude behavior with `--agent both`; Codex keeps its host tools.
 
 Start a new Codex session after installation. Skills remain selective: Codex discovers their descriptions and reads a body when needed. Superpowers remains the implementation owner when available; otherwise the skills use the host's existing workflow. Browser review and rendering require an available host adapter or renderer.
 

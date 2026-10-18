@@ -155,5 +155,38 @@
       "metadata discovery, not a model-quality measurement",
       "project scope"
     ]
+  },
+  "both_hosts": {
+    "scope": "project",
+    "core": "1.27.1",
+    "actual_claude_and_codex_bootstrap_exit": 0,
+    "shared_skill_files_match": true,
+    "consumer_instructions_restored": true,
+    "source_hashes": {
+      "install.sh": "fc5e1d4b9edf304eb577269b249d0520630c9eb98003b5f4c8b0668f744d582f",
+      "plugins/harness-core/skills/pr-create/SKILL.md": "57b73c998b1ebd44149e5b61863f3644da3e28fb6e3b6a8f14568e7732e3923d"
+    },
+    "installed_claude_packages": [
+      {
+        "plugin": "core",
+        "version": "1.27.1",
+        "files": 39
+      },
+      {
+        "plugin": "dev",
+        "version": "1.6.0",
+        "files": 21
+      },
+      {
+        "plugin": "research",
+        "version": "1.0.4",
+        "files": 8
+      },
+      {
+        "plugin": "slides",
+        "version": "1.7.1",
+        "files": 3
+      }
+    ]
   }
 }
