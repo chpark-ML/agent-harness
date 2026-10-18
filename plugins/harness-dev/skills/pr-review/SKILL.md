@@ -51,6 +51,8 @@ For changes to interfaces, ownership boundaries or unexplained operational const
 
 Walk `review.md` R2's six items in order. For each, collect the `file:line` of what it caught. Omit items that caught nothing — a list of passes is not output.
 
+Review comments and suppressions in the diff, plus those that constrain the behavior being changed, using [comment review](references/comment-review.md). A comment is a claim to check, not a reason to preserve a workaround. Report the needed deletion or root-cause fix within this skill's report-only scope.
+
 When the change is too large to read fully, state what was covered. **A partial review that gives the impression of a full one is worse than no review.**
 
 ## Step 5 — Report

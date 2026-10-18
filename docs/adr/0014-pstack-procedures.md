@@ -32,12 +32,23 @@ This is an owner-requested addition, not a claim of two observed incidents.
    treating consensus as proof. Preserve its transport and consent boundary;
    this change authorizes no additional sends or reviewers.
 4. Keep these procedures in skill bodies. Add no always-applied rule, hook,
-   external dependency, model preset, automatic merge or comment-deletion pass.
+   external dependency, model preset, automatic merge or blanket comment deletion.
    Keep pstack's MIT notice in the shipped dev plugin.
 
 The new skill belongs to the conventions layer: it authors a repository's
 verification contract. General implementation, TDD and debugging remain with
 Superpowers. This is not a second orchestration framework.
+
+### Follow-up: comment review (2026-10-18)
+
+The owner also requested the intent behind `no-comments`: prevent comments
+from preserving obsolete assumptions and excusing workarounds. `pr-review`
+now checks comment claims and suppressions against live paths and evidence.
+It proposes deletion for redundant prose, root-cause fixes for workarounds,
+and executable protection for valid invariants where feasible. Current
+external constraints, legal notices, public contracts and necessary rationale
+remain. Unknown claims become decisions, not automatic keeps or deletions.
+This stays a scoped, report-only review pass; it adds no agent or cleanup hook.
 
 ## Verification
 

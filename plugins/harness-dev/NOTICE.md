@@ -1,6 +1,6 @@
 # Third-party notices
 
-The `project-verification` skill, `pr-review`'s design-evidence reference and
+The `project-verification` skill, `pr-review`'s design-evidence and comment-review references, and
 `cross-model-review`'s review synthesis adapt procedures from Lauren Tan's
 [pstack](https://github.com/cursor/plugins/tree/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack),
 at commit `d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f`. They use this harness's

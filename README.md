@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-914-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-915-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.3k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
@@ -293,14 +293,14 @@ make context-budget          # always-on token cost per scope and profile
 | inventory figures | **35** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
-| document references | **80** files + **21** own cases |
+| document references | **81** files + **21** own cases |
 | documented commands exist | **44** + selftest **12** |
 | frontmatter | **16** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |
 | benchmark health | **19** |
 | context-budget ceiling | **1** |
-| **Total** | **914** |
+| **Total** | **915** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
