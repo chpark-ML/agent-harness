@@ -68,9 +68,12 @@ jobs:
           node-version: '22'
       - name: install the Claude CLI
         run: npm install -g @anthropic-ai/claude-code
+      - name: install the verified Codex CLI
+        run: npm install -g @openai/codex@0.163.0
       - name: report the environment
         run: claude --version
       - run: make verify-plugins
+      - run: make verify-codex-loader
       # The context ceiling can only be enforced where the plugins are actually
       # installed — `claude plugin details` reports nothing otherwise, every
       # plugin cost counts as 0, and the gate passes on the declarative half

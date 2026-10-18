@@ -1607,7 +1607,7 @@ for f in "$HARNESS"/plugins/harness-core/hooks/*.sh \
          "$HARNESS"/plugins/harness-core/scripts/_verify-lib.sh; do
   [ -f "$f" ] && grep -q '^jq() { local rc; command jq' "$f" && wrapped=$((wrapped + 1))
 done
-check_eq "the CR-stripping wrapper is still in all eight" 8 "$wrapped"
+check_eq "the CR-stripping wrapper is still in all nine" 9 "$wrapped"
 
 # --- summary -----------------------------------------------------------------
 summary

@@ -13,7 +13,7 @@ Adapted from Lauren Tan's pstack; source revisions and the MIT license are in [N
 
 Use the user's actual goal, current branch and repository instructions. State the observable result, allowed scope and the evidence that will establish completion. Resolve an empirical question by observing it; ask only when a missing preference or requirement affects the work.
 
-Keep one workflow responsible for execution. Use Superpowers for ordinary brainstorming, planning, implementation, TDD and debugging. This skill supplies additional checks and specialized playbooks; it does not start a second plan. `pr-create` owns PR mechanics, `pr-review` owns open-PR review, `cross-model-review` owns outside review, and `project-verification` owns reusable verification instructions.
+Keep one workflow responsible for execution. Use Superpowers for ordinary brainstorming, planning, implementation, TDD and debugging when installed; otherwise keep the host's existing implementation workflow. Invoke only available skills with the host's tools. This skill supplies additional checks and specialized playbooks; it does not start a second plan. `pr-create` owns PR mechanics, `pr-review` owns open-PR review, `cross-model-review` owns outside review, and `project-verification` owns reusable verification instructions.
 
 Preserve the task's authorization, delegation policy and review or publishing gates. Upstream tool names and model presets are capabilities to check, not capabilities this skill installs.
 

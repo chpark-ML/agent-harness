@@ -8,13 +8,14 @@ The **single source of truth** for this repository. What the harness covers, wha
 |---|---|---|
 | Plugins | `plugins/harness-{core,dev,research,slides,frontend}/` and the language profiles `plugins/harness-{python,typescript,csharp,cpp,lua,swift,kotlin}/` | Hooks, skills, commands, verifiers, and `bin/` executables (`harnessctl`, [`harness-log`](harness-log.md)). Claude Code loads them directly and puts `bin/` on the Bash tool's PATH |
 | Declarative installer | `plugins/harness-core/bin/harnessctl` | Writes what a plugin cannot carry — permissions, `CLAUDE.md`, `rules` — to the target, and removes it symmetrically |
-| Bootstrap | `install.sh` | The whole install in one command: ensure jq → register the marketplace → plugins → `harnessctl init` → language servers → `doctor`. It holds no harness logic; it calls the two halves in order |
-| Removal | `uninstall.sh` | The same four things taken back, in the only order that works — `harnessctl uninstall` → plugins → marketplace → shims. harnessctl ships *inside* the plugin cache, so removing the plugins first strands the declarative half. A bootstrapped jq, `npm -g` language servers and any plugin this harness did not install are reported, never removed |
+| Codex adapter | [`harness-codex`](harness-codex.md) | Copies canonical workflow packages into an owned snapshot, registers skills through `.agents/skills`, and adds shared principles and rules to `AGENTS.md`; preserves host settings and permissions |
+| Bootstrap | `install.sh` | Selects `--agent claude` (default), `codex` or `both`. The Claude path: ensure jq → register the marketplace → plugins → `harnessctl init` → language servers → `doctor`. It holds no harness logic; it calls the two halves in order |
+| Removal | `uninstall.sh` | Selects the same host target; Codex removes only its receipt-owned files, links and instruction block, before Claude removal when targeting both. The Claude path takes the same four things taken back, in the only order that works — `harnessctl uninstall` → plugins → marketplace → shims. harnessctl ships *inside* the plugin cache, so removing the plugins first strands the declarative half. A bootstrapped jq, `npm -g` language servers and any plugin this harness did not install are reported, never removed |
 | Verification runners | `plugins/harness-core/scripts/verify-*.sh`, `scripts/verify-{install,frontmatter}.sh` | Hook behaviour, the harnessctl round trip, frontmatter |
 
 **Non-goal** — application code, build systems, per-language or per-framework scaffolding, tracking and deployment backends. Those belong to the consumer project.
 
-**A second non-goal** — we do not build a competing general-purpose implementation framework. Brainstorming, TDD, systematic debugging, planning and worktrees remain with Superpowers. Our own layer prevents accidents, fixes conventions, supplies specialized evidence procedures and installs or removes them safely. The owner-requested [pstack integration](adr/0015-pstack-native-integration.md) adds default dev checkpoints and one selectively loaded engineering companion; it keeps the existing workflow owner rather than starting a second plan.
+**A second non-goal** — we do not build a competing general-purpose implementation framework. Brainstorming, TDD, systematic debugging, planning and worktrees remain with Superpowers. Our own layer prevents accidents, fixes conventions, supplies specialized evidence procedures and installs or removes them safely. The owner-requested [pstack integration](adr/0015-pstack-native-integration.md) adds default dev checkpoints and one selectively loaded engineering companion; it keeps the existing workflow owner rather than starting a second plan. The [Codex adapter](adr/0016-codex-workflows.md) uses Superpowers when available and otherwise the current host implementation workflow.
 
 Superpowers covers development workflow broadly but includes **nothing research-specific**, so our profiles reflect upstream coverage rather than trying to contain equal amounts. The dev profile adds repository conventions and verification contracts. Its `project-verification` skill authors consumer-owned instructions from existing entry points; implementation, TDD and debugging stay upstream. When extending `dev`, check whether Superpowers already has the workflow.
 
@@ -55,6 +56,7 @@ Problems no project should have to solve from scratch. Each row is owned by **on
 | Review criteria get explained out loud again each time | Every time | The `dev` module |
 | Agents can run checks but have no maintained recipe for exercising a project's real user paths | Site-dependent; owner-requested 2026-10-18 | `dev`: `project-verification` ([ADR-0014](adr/0014-pstack-procedures.md)) |
 | Cross-cutting engineering work can carry unproven design, performance and handoff assumptions into the next unit | Site-dependent; owner-requested 2026-10-18 | Default dev checkpoints and `dev:engineering`, with executable evidence and one workflow owner ([ADR-0015](adr/0015-pstack-native-integration.md)) |
+| Shared engineering procedures are installed in Claude Code but remain undiscovered in Codex | Site-dependent; owner-requested 2026-10-18 | `harness-codex` and explicit bootstrap host selection ([ADR-0016](adr/0016-codex-workflows.md)) |
 | Experiment results cannot be reproduced later | It is the default | The `research` module |
 | Records scatter and a new session cannot pick them up | Common | The `research` module |
 | A result has to become a talk, and the figures in the talk drift from the runs that produced them | Site-dependent | The `slides` module |
@@ -73,18 +75,20 @@ Nine categories. **The adoption order is the axis of progress** — guardrails �
 
 | Phase | Category | Location | Now |
 |---|---|---|---|
-| **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**` | ✅ core 1 + dev 1 + research 1 |
+| **0** | Conventions | `CLAUDE.md`, `.claude/rules/harness/**`; compiled `AGENTS.md` for Codex | ✅ core 1 + dev 1 + research 1 |
 | **0** | Output styles | `plugins/*/output-styles/*.md`, selected by the `outputStyle` scalar | ✅ core 1 ([`Report`](output-styles.md)) — the only layer that reaches the *system prompt* |
 | **0** | Permissions | `settings.json` (merged from a fragment) | ✅ allow 47 / ask 3 / deny 9 ([ADR-0012](adr/0012-test-runners-in-allow.md)) |
 | **1** | Hooks | `plugins/harness-core/hooks/` — registered by `hooks.json` | ✅ 7 (5 blocking, 2 informational) |
 | **1** | Skills | `plugins/*/skills/<name>/SKILL.md` | ✅ core 1 + dev 5 + research 2 + slides 2, with Superpowers 14 and `archify` 1 on top under `dev` — and `ui-ux-pro-max` 7 more when `frontend` is installed |
 | **2** | Sub-agents | `.claude/agents/*.md` | ⏳ 1 for the harness itself (`harness-reviewer`) — none for consumers |
 | **3** | Slash commands | `plugins/harness-core/commands/*.md` (what consumers get; `.claude/commands/` is this repository's own copy) | ✅ 1 (`/verify`) |
-| **3** | Executables | `plugins/*/bin/` | ✅ 4 — `harnessctl` (install, check, remove), [`harness-log`](harness-log.md) (session history → HTML), [`harness-check-claims`](harness-check-claims.md) and [`harness-check-provenance`](harness-check-provenance.md) (claim traceability) |
+| **3** | Executables | `plugins/*/bin/` | ✅ 5 — [`harness-codex`](harness-codex.md) (Codex delivery), `harnessctl` (Claude install, check, remove), [`harness-log`](harness-log.md) (session history → HTML), [`harness-check-claims`](harness-check-claims.md) and [`harness-check-provenance`](harness-check-provenance.md) (claim traceability) |
 | **4** | MCP servers | `.mcp.json` | ⏳ none |
 | **—** | External plugins | A profile's `dependencies` | ✅ Superpowers, 2 LSPs, `ui-ux-pro-max`, `archify` ([ADR-0009](adr/0009-external-dependencies.md)) — `ui-ux-pro-max` is the first dependency taken from a marketplace Anthropic does not curate, and `archify` the first that **our** marketplace serves, pinned |
 | **—** | External instruments | Installed by the developer (not shipped) | ⏳ none — `skill-creator` was adopted ([ADR-0011](adr/0011-ecosystem-survey.md)), found orphaned and never used on 2026-08-13, and demoted; re-adopt when `claude plugin eval` leaves early access (its `--ablation with-without` is the native form of the paired runs that justified adoption) |
 | **—** | External npm tools | `harnessctl doctor` checks PATH | ✅ `slides-grab` (slides, [ADR-0010](adr/0010-slides-profile.md)), and `node` ≥ 18 for `archify` (dev) |
+
+The hook, permission, style, slash-command and dependency integrations in this table describe Claude Code. Codex receives the same canonical skill packages and shared principles/rules, using its own permissions and available tools. The adapter does not install Claude runtime enforcement in Codex.
 
 > Phase 0 is guardrails, Phase 1 is the guides and automation on top of them, Phase 2 is the division of labour on top of that. **Each phase is the safety net for the next.**
 
@@ -286,6 +290,7 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 |---|---|
 | Hooks | `plugins/harness-core/scripts/verify-<name>.sh` — one per hook, 8 cases or more, carrying all three kinds: no-op, block, boundary. Two more are added by `verify_begin` to every hook that parses stdin, so a new hook cannot arrive without them: it normalises jq's line endings, and it resolves jq with `type -P` rather than `command -v` (which the CR wrapper turns into a guard that cannot fail) |
 | Installer | `scripts/verify-install.sh` — harnessctl's init → reinstall → module swap → uninstall round trip, **and `install.sh` itself** (is there an executable line in the header; do `--help` and the argument rejections run without the Claude CLI; the jq bootstrap — right asset, checksum enforced, nothing left behind when it refuses, and jq on the PATH harnessctl inherits; and the jq guards themselves — what a user with no jq is actually told by `harnessctl`, `doctor` and `harness-log`, plus a globbed check that no file carrying the CR wrapper resolves jq with `command -v`), **and `uninstall.sh`** (the shims are written by one script and found by the other on a marker string held in both, so the fixture is generated with `install.sh` and swept with `uninstall.sh` — a renamed marker would otherwise leave every shim behind in silence; plus that `--dry-run` writes nothing, that a missing manifest is reported rather than fatal, and that a bootstrapped jq and an unmarked executable in the same directory both survive). User scope is checked against a scratch directory via `CLAUDE_CONFIG_DIR`, so the real `~/.claude` is never touched |
+| Codex delivery | `plugins/harness-core/scripts/verify-harness-codex.sh` — ownership, scope, relocation, exact consumer bytes, instruction limits and failed-write rollback. `scripts/verify-codex-bootstrap.sh` exercises public host selection and a real locally pinned Git fetch; its Claude network boundary is a logged stub. `scripts/verify-codex-loader.py` queries the actual pinned Codex loader without a model request, including a missing-file control, reload and removal; its separate CI gate does not contribute to the portable suite total |
 | Frontmatter | `scripts/verify-frontmatter.sh` — YAML parsing of every skill, agent, rule and command, plus a skill description's negative routing and the second-language triggers `.claude/trigger-langs` declares (this repository declares `한국어\|Korean`; the English triggers cannot be checked by machine and stay a human review item). Runs its own 7 cases first, none of them about frontmatter — they hold the reporting path, which once died on a console that could not encode an em-dash, and glob every python-embedding verifier for the same two defects. Needs only python3 |
 | Output tools | `plugins/harness-core/scripts/verify-harness-log.sh` — 44 cases. The same three kinds as a hook, but centred on **must-not-appear**: if tool output, a subagent transcript, a skill injection or a compaction summary leaked onto the page, then in a repository running `secret-scrubber` whatever a command printed would survive in a file ([harness-log](harness-log.md)) |
 | Document references | `scripts/verify-doc-refs.sh` — does the file a link points at exist, does `#anchor` resolve to a heading, and does the first segment of a path an instruction file calls exist. Runs its own 19 cases first (false positives being this checker's only failure mode) |
@@ -295,13 +300,13 @@ Line endings are part of this: [`.gitattributes`](../.gitattributes) pins `eol=l
 | Syntax | `make syntax` — parses every shipped script with `bash -n` |
 | Conventions and skills | Human review plus [`harness-reviewer`](../.claude/agents/harness-reviewer.md)'s structural audit |
 
-**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 232 assertions, context-budget gate 16, inventory figures 35 + selftest 7, frontmatter 17 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, decision-log helper 27, document references 96 files + 21 own cases, documented commands 44 + 12, context-budget ceiling 1 — a total of 958. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
+**Now**: 7 hook verifiers / 267 cases, session-log renderer 46, claim checker 50, block provenance checker 29, harnessctl round trip + install.sh and uninstall.sh 232 assertions, context-budget gate 16, inventory figures 35 + selftest 7, frontmatter 17 + selftest 7, version bump selftest 19, plugin manifests 13, benchmark health 19, decision-log helper 27, Codex installer 96 and bootstrap 33, document references 98 files + 23 own cases, documented commands 73 + 19, context-budget ceiling 1 — a total of 1127. That number is itself checked by `make verify-all` (`verify-check-total.sh`) — the total has to wrap `verify` and read its output, so it does not count itself. `make verify` runs everything, and CI executes it as four jobs: ubuntu (bash 5), macOS (`/bin/bash` 3.2), manifests, and a pull-request-only version-bump range check.
 
 **The document-reference checker earned its place on its first run.** The bodies of `pr-review` and `research-notes` gave the checklist's location as `rules/harness/…` — while `pr-create` writes the same location as `.claude/rules/harness/…`. A path that does not resolve from the project root, inside a skill body where nobody was looking. The second ledger occurrence that caused this checker to exist was exactly that kind.
 
 **And it produced three false positives first.** The frozen corpus (`evals/prose-corpus.md`) is a copy of past documents, so its links are relative to the original location, and the relative links in the `declarative/` payload are correct relative to their *post-install* location. All three were removed by fixing the checker — going the other way would have made correct things wrong. The last one especially: the ledger was *quoting a broken link as evidence*, and because inline code was not stripped, the quotation was counted as a real link. **The discipline of adding the opposite-direction case when widening a guard applies here too.**
 
-**Context cost is counted by `make context-budget`.** The following is the complete isolated macOS candidate-install measurement, Claude Code 2.1.302, 2026-10-18, with `--require-plugins`. All 58 shipped core 1.26.0 and dev 1.5.0 files were checked byte-for-byte against this tree. Partial measurements do not price the whole harness. CI independently enforces the ceiling on a complete install; plugin estimates can differ by environment.
+**Context cost is counted by `make context-budget`.** The following is the complete isolated macOS candidate-install measurement, Claude Code 2.1.302, 2026-10-18, with `--require-plugins`. All 71 shipped files in the changed core 1.27.1, dev 1.6.0, research 1.0.4 and slides 1.7.1 packages were checked byte-for-byte against this tree. Partial measurements do not price the whole harness. CI independently enforces the ceiling on a complete install; plugin estimates can differ by environment.
 
 | What | Always loaded | When |
 |---|---|---|
@@ -371,11 +376,21 @@ Boundary cases earn the most of the three kinds. A verifier with only block case
 | **LSP** | Does it improve tokens or accuracy? | accuracy 3/3 against 3/3, tokens −6.3% | **Inconclusive** — this design can only resolve effects above 61% |
 | **Installer** | Does uninstall restore the original? | 232 assertions | An invariant, not an A/B subject |
 
-**Every agent-session measurement came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
+**The Claude benchmark session measurements above came from `model=opus` and `effort=high`** (change them with `BENCH_MODEL` and `BENCH_EFFORT`). The first version did not pass these through and inherited the caller's `settings.json`, and which configuration produced a number was recorded nowhere — no comparison with another machine's figures was possible, and a reader had no way to know. The benches now print it at the start.
 
 **That effort can move the result is left open.** More reasoning may mean more convention-following without the harness, which raises the raw arm and shrinks the effect below what is reported here. It has not been measured at `effort=xhigh`.
 
 Below is the basis for each row. **If you take one line: guards and conventions earn their place, the LSP is not yet known, and some of the conventions earn nothing at all.**
+
+### Codex delivery and execution (2026-10-18)
+
+Codex CLI 0.163.0 is the exercised runtime and the pinned CI loader. The actual `codex app-server --stdio` skill loader discovered the installed shared packages, including all requested research and slides workflows. Removing the installed engineering skill file made that entry disappear; restoring it returned the entry; uninstalling removed the owned entries and retained the original consumer instructions. The check filters by owned paths and records name, description and scope. It does not infer loading from file presence or issue a model request.
+
+A separate actual Codex session in an owned project loaded the engineering skill body and task references, ran the public installed Codex dry-run and used its decision-log helper to produce `decision.tsv` and `verification.json`. Command receipts, exit status and before/after file hashes and link targets are checked separately from the model's final answer. The core 1.27.0 / dev 1.6.0 execution used existing CLI defaults (`gpt-6.1-sol`, max effort in the root configuration), with no per-run model override. The engineering body SHA-256 was `40b5b3720d8355785be9b2c560f46b0ac45802ada05e14792046b2a94cba10e2`, identical to the shipped body. The public `init --dry-run` ran once and exited 0. All existing paths remained identical: the model's full comparison included Git metadata; an independent comparison of 48 pre-existing files and links found no changes. The [execution receipt](../evals/codex-execution.json) preserves commands, exits, the decision log and limits. Its CLI snapshot predates the later native-symlink preflight; the final installer has separate deterministic coverage.
+
+The corrected combined project bootstrap was also executed through the actual Claude CLI and Codex installer at core 1.27.1. Copied shared skill files matched the canonical source and removal restored the original consumer instructions. Discriminator fixtures prove that a different local checkout cannot override the source selected by Claude and that custom profile selections refresh shared core too. The installed PR skill's ledger lookup was executed against both host paths, a nearer Codex ledger and a missing-ledger control.
+
+The default Codex instruction block measures **8,155 UTF-8 bytes**; names and descriptions reported by the native loader for the default shared skills total **4,005 bytes**. Byte/4 estimates are about **2,039** and **1,002** tokens respectively. This is a component estimate, excluding paths, loader wrappers, host tools, existing instructions and selectively read bodies; it is not a whole-session cost or the Claude cost table. Claude benchmark scores remain Claude scores; this is a bounded delivery/body execution, with no Codex quality A/B or claim of cross-provider review diversity.
 
 ### Guards (`make bench`)
 
@@ -629,6 +644,7 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 
 **Held, waiting for the second occurrence** (there is a corresponding row in §2, and it has happened once or not at all):
 
+- ✅ **Codex workflow delivery** — owner-requested after the pstack integration; shared canonical bodies, native discovery and `AGENTS.md`, with an owned reversible installer and an actual Codex loader gate ([ADR-0016](adr/0016-codex-workflows.md)). Host permission and hook implementations remain runtime-specific.
 - ✅ ~~Worktree helper~~ — decided against building one. Superpowers' `using-git-worktrees` solves it upstream. The most direct gain from adopting an external dependency, and code we did not write is the gain itself.
 - ✅ **How the harness reports to the user** — answered in two parts. `CLAUDE.md` §6 took the *content* half on 2026-08-08, after an offline reviewer measured a `Stop`-hook gate at 31 of 40 reports flagged with 18 of those false positives on the reader's own section numbers; the gate was not shipped and the three findings that survived became §6. The *length and provenance* half is the [`Report` output style](output-styles.md), added 2026-08-26. **The mechanism was the part that had been missed**: that 2026-08-08 decision weighed a convention against a blocking gate and never considered output styles, which sit between the two — in the system prompt, with a per-turn reminder, and costing nothing per turn because they never call the model. Two things to know about the row. §7's two-occurrence rule does **not** back it: report quality stands at occurrence 1, and the scope was chosen anyway with that stated. And its effect is unmeasured — see §4b, which names the instrument.
 - ⏳ Measuring the Korean *negative-routing* sentences. ADR-0011's pilot varied the `한국어 트리거` clause only; the 198 characters of `… 이 스킬 말고 X 로.` that every description also carries were never an arm. Same instrument, one more arm — but it is a paid bench, so it waits for a reason to spend.
@@ -679,7 +695,8 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   │   ├── skills/pr-create/SKILL.md
 │   │   ├── commands/verify.md
 │   │   ├── scripts/{_verify-lib,verify-*}.sh
-│   │   ├── bin/harnessctl              # init, doctor, uninstall
+│   │   ├── bin/harnessctl              # Claude init, doctor, uninstall
+│   │   ├── bin/harness-codex            # Codex init, doctor, uninstall
 │   │   ├── bin/harness-log             # session history → self-contained HTML
 │   │   ├── bin/harness-check-{claims,provenance}   # claim traceability, any profile
 │   │   ├── output-styles/report.md     # system-prompt voice, selected by a scalar
@@ -698,9 +715,10 @@ The two tiers are unchanged: **managed** (overwritten on reinstall — currently
 │   └── harness-{csharp,cpp,lua,swift,kotlin}/   # deps: core + one official LSP each
 ├── install.sh                          # thin bootstrap
 ├── uninstall.sh                        # its counterpart — both halves, plus shims
-├── scripts/verify-{install,frontmatter,engineering}.sh
+├── scripts/verify-{install,frontmatter,engineering,codex-bootstrap}.sh
+├── scripts/verify-codex-loader.py       # actual Codex loader, no model request
 ├── Makefile · CLAUDE.md · .claude/     # developing this repository itself
 ├── AGENTS.md                           # the same conventions, summarised for other agents
-├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin manifests
-└── docs/ (agent-layer.md · engineering-axes.md · harness-log.md · output-styles.md · adr/0001..0015 · hooks/*.md · superpowers/{specs,plans}/ — dated design records)
+├── .github/workflows/verify.yml        # ubuntu · macOS bash 3.2 · plugin/Codex loader · PR version bump
+└── docs/ (agent-layer.md · engineering-axes.md · harness-log.md · output-styles.md · adr/0001..0016 · hooks/*.md · superpowers/{specs,plans}/ — dated design records)
 ```

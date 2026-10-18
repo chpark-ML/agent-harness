@@ -1,15 +1,15 @@
 <h1 align="center">agent-harness</h1>
 
 <p align="center">
-  <strong>연구와 개발을 위한 범용 Claude Code 하네스</strong><br>
+  <strong>Claude Code와 Codex를 위한 공통 작업 절차</strong><br>
   쓸 만한 플러그인을 검토하고 조합해, 한 명령으로 설치되고 한 명령으로 되돌아가는 한 벌로 유지한다.
 </p>
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-958-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-1127-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.8k%2F9k-informational">
+  <img alt="Claude Code always-on context" src="https://img.shields.io/badge/Claude%20context-5.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -51,11 +51,11 @@
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
-| **상시 컨텍스트** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
+| **Claude Code 컨텍스트** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
 
 스킬과 의존성의 최신 목록은 [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder)에서 관리한다.
 
-**훅과 LSP는 상시 컨텍스트 비용이 0이다.** 격리된 설정의 완전한 설치에서 프로젝트 스코프 기본 `core,dev`는 **~3,940 tok / 세션**, 프로젝트 스코프 전 프로파일은 **~5,809 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.302, 2026-10-18). user 스코프는 각각 ~2,572과 ~3,899였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
+**Claude Code 컨텍스트.** 훅과 LSP는 상시 토큰을 더하지 않는다. 격리된 설정의 완전한 설치에서 프로젝트 스코프 기본 `core,dev`는 **~3,940 tok / 세션**, 프로젝트 스코프 전 프로파일은 **~5,809 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.302, 2026-10-18). user 스코프는 각각 ~2,572과 ~3,899였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -109,6 +109,17 @@
 
 ## 시작하기
 
+현재 저장소에 Codex용으로 설치하거나 두 에이전트에 함께 설치할 수 있다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --agent codex --scope project
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --agent both --scope project
+```
+
+설치 후 새 세션을 시작한다. 두 호스트는 같은 스킬 본문과 작업 체크포인트를 사용한다. Codex는 `AGENTS.md`와 `.agents/skills`로 읽으며 자체 권한과 도구를 따른다. 설치·갱신·제거는 [Codex 설정](docs/harness-codex.md), 실제 실행 검증 범위는 [agent-layer](docs/agent-layer.md)에 기록한다. 제거 명령도 [Codex 설정](docs/harness-codex.md#check-preview-and-remove)에 있다. 양쪽을 제거하려면 같은 명령에 `--agent both`를 쓴다.
+
+아래 명령은 기본값인 **Claude Code** 설치를 설명한다.
+
 **한 줄이면 된다.** 기본은 `core,dev`다. 다른 프로파일은 필요한 작업에 맞춰 `--profile`로 추가한다.
 
 ```bash
@@ -161,7 +172,7 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 `--ref` 는 태그·브랜치·커밋 SHA 를 다 받는다. 릴리스 태그는 **스냅샷 전체** 를 버저닝한다 — 설치기·선언적 페이로드·그 리비전의 플러그인 버전까지. 각 플러그인의 자체 버전과는 독립이다 ([ADR-0013](docs/adr/0013-release-tags.md)).
 
-**클론은 원래 필요 없었다.** 설치기는 체크아웃에서 아무것도 읽지 않는다 — `harnessctl` 을 *플러그인 캐시 → 마켓플레이스 클론 → 이 체크아웃* 순으로 찾는데, 앞의 둘은 스크립트 자신이 방금 만든 것이다. 세 번째는 fallback 일 뿐이라 클론은 스크립트 파일 하나를 얻는 용도였다.
+**Claude 설치에는 클론이 필요 없다.** 설치기는 `harnessctl`을 설치된 경로에서 찾는다 — `harnessctl` 을 *플러그인 캐시 → 마켓플레이스 클론 → 이 체크아웃* 순으로 찾는데, 앞의 둘은 스크립트 자신이 방금 만든 것이다. 세 번째는 fallback 일 뿐이라 클론은 스크립트 파일 하나를 얻는 용도였다.
 
 </details>
 
@@ -332,6 +343,8 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 ## 무엇이 들어 있고 어떻게 구조화했나
 
+다음 플러그인과 가드 설명은 Claude Code 기준이다. [Codex 어댑터](docs/harness-codex.md)는 공통 작업 내용을 Codex의 스킬·지침 경로로 전달한다.
+
 ### 두 조각으로 배포된다
 
 플랫폼이 그은 선을 그대로 따른다 ([ADR-0008](docs/adr/0008-plugin-declarative-split.md)).
@@ -456,14 +469,15 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **19** |
 | 엔지니어링 판단 로그 (`verify-engineering`) | **27** |
-| 문서 내부 참조 (`verify-doc-refs`) | **96** 파일 + 자체 **21** |
-| 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **44** + selftest **12** |
+| Codex 설치기·bootstrap | **96** + **33** |
+| 문서 내부 참조 (`verify-doc-refs`) | **98** 파일 + 자체 **23** |
+| 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **73** + selftest **19** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **958** |
+| **합계** | **1127** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
-CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인 매니페스트.
+CI는 ubuntu (bash 5) · macOS (bash 3.2) · 플러그인과 Codex 로더 · PR 버전 bump의 네 작업으로 돈다.
 
 **벤치마크도 감시 대상이다.** `bench-claims` 가 한 번 조용히 썩었다 — 코퍼스를 git 커밋에서 만들었는데 히스토리를 다시 쓰자 그 커밋이 사라졌고, 벤치는 빈 코퍼스로 결과 없이 끝나는데 README 는 마지막 수치를 현재형으로 인용하고 있었다. `verify-benches` 가 이제 그걸 막는다 — 공짜 벤치 둘은 실제로 돌리고, 유료 넷은 입력(코퍼스·eval 세트·픽스처·동의 게이트·커밋 SHA 고정 여부)을 검사한다.
 

@@ -7,7 +7,7 @@ description: "Use when the user wants the current commit range reviewed by a dif
 
 Sends `<default-branch>..HEAD` to a **different model** and brings back what it found.
 
-**The boundary is who reviews, not when.** The input here is the same commit range `superpowers:requesting-code-review` takes, so the two cannot be separated by lifecycle stage the way `pr-create` and `pr-review` are — see ADR-0009 in `docs/adr/`. This skill is for when the user asked for an **outside opinion** — another model, ChatGPT, a cross-check. A plain "review my commits" is not this skill; it belongs to `requesting-code-review`, which stays inside Claude and needs no consent gate.
+**The boundary is who reviews, not when.** The input here is the same commit range `superpowers:requesting-code-review` takes, so the two cannot be separated by lifecycle stage the way `pr-create` and `pr-review` are — see ADR-0009 in `docs/adr/`. This skill is for when the user asked for an **outside opinion** — another model, ChatGPT, a cross-check. A plain "review my commits" belongs to the current host's local review workflow (`requesting-code-review` when available).
 
 ## Step 0 — Was a second opinion actually asked for?
 
@@ -15,7 +15,7 @@ If the request never named another model, a cross-check, or an outside opinion, 
 
 ## Step 1 — Preflight the channel, before promising anything
 
-Two legs, in order. Stop at the first failure.
+Use an available connected browser adapter. Check two legs, in order, and stop at the first failure. Claude Code's Chrome extension uses the calls below; another host uses its actual equivalent tools. Do not invent those tool names in Codex or treat this skill as installing a browser adapter.
 
 ```
 mcp__claude-in-chrome__tabs_context_mcp     # is the extension connected at all?

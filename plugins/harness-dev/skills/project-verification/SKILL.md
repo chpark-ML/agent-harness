@@ -24,7 +24,7 @@ Read linked design records or relevant history when an unfamiliar constraint aff
 
 ## 2. Write a consumer-owned skill
 
-Honor a requested destination. Otherwise update an existing project verification skill, or create `.claude/skills/verify-<project>/SKILL.md` with a lowercase project slug. Preserve existing journeys and user edits. Keep the result outside managed harness rules and plugin caches.
+Honor a requested destination. Otherwise update an existing project verification skill, or create `verify-<project>/SKILL.md` under the host's project skill directory: `.agents/skills/` for Codex, `.claude/skills/` for Claude Code. Use a lowercase project slug. Preserve existing journeys and user edits. Keep the result outside managed harness rules and installed payloads.
 
 Give the generated skill a matching `name` and a quoted `description` naming its project, surface and trigger. Use the project's instruction language. Include these sections with actual paths and commands, not unresolved placeholders:
 

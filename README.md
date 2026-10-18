@@ -1,15 +1,15 @@
 <h1 align="center">agent-harness</h1>
 
 <p align="center">
-  <strong>A general-purpose Claude Code harness for research and development</strong><br>
+  <strong>Shared workflows for Claude Code and Codex</strong><br>
   Guards, conventions and a reversible installer — assembled from what already exists, and measured against running without it.
 </p>
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-958-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-1127-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.8k%2F9k-informational">
+  <img alt="Claude Code always-on context" src="https://img.shields.io/badge/Claude%20context-5.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -28,13 +28,22 @@
 
 Most agent harnesses are a pile of rules nobody checked. This one keeps a rule only while it can show the rule changes what the agent does — and **deletes the ones that measure zero.** Two are already gone: a commit-subject length limit and a draft loop rule, both of which scored identically with and without the harness.
 
-> **Agent = Model + Harness.** The harness is everything around the model — tool dispatch, permissions, context, verification. In a production agent it is [most of the system](https://en.wikipedia.org/wiki/Agent_harness). This repository is the guards-and-conventions part of it for Claude Code, plus a way to install and remove that part cleanly.
+> **Agent = Model + Harness.** The harness is everything around the model — tool dispatch, permissions, context, verification. In a production agent it is [most of the system](https://en.wikipedia.org/wiki/Agent_harness). This repository delivers shared workflows to Claude Code and Codex, with Claude guard integration and reversible host installers.
 
 ---
 
 ## Quick start
 
-One command. It installs everything.
+Choose the host. For Codex in the current repository, or both agents:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --agent codex --scope project
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --agent both --scope project
+```
+
+Start a new session after installation. Both hosts use the same skill bodies and workflow checkpoints. Codex uses `AGENTS.md` and `.agents/skills`, with its own permissions and tools. Installation, update and removal details are in [Codex setup](docs/harness-codex.md); runtime coverage is recorded in [agent-layer](docs/agent-layer.md). For removal, use the matching command in [Codex setup](docs/harness-codex.md#check-preview-and-remove).
+
+The commands below default to **Claude Code**. One command installs its plugins and declarative settings.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash
@@ -87,7 +96,7 @@ git clone https://github.com/chpark-ML/agent-harness && bash agent-harness/insta
 
 `--ref` takes a tag, a branch or a commit SHA. Release tags version the whole snapshot — the installer, the declarative payload, and the plugin versions at that revision — and are independent of the plugins' own versions ([ADR-0013](docs/adr/0013-release-tags.md)).
 
-The clone was never required: the installer reads nothing from the checkout. It looks for `harnessctl` in the plugin cache, then the marketplace clone, then the checkout — and the first two are what the script itself just created.
+The Claude bootstrap does not require a checkout. It looks for `harnessctl` in the plugin cache, then the marketplace clone, then the checkout — and the first two are what the script itself just created.
 
 </details>
 
@@ -198,11 +207,11 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
+| **Claude Code context** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
 
 The maintained skill and dependency inventory is in [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder).
 
-**Hooks and LSP cost nothing in context.** A complete scratch install measured **~3,940 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,809 tok per session** (macOS, Claude Code 2.1.302, 2026-10-18). User-scope totals were ~2,572 and ~3,899 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
+**Claude Code context.** Hooks and LSP add no always-on tokens. A complete scratch install measured **~3,940 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,809 tok per session** (macOS, Claude Code 2.1.302, 2026-10-18). User-scope totals were ~2,572 and ~3,899 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
 
@@ -254,6 +263,8 @@ Nine times an instrument produced a confident zero that turned out to be its own
 
 ## How it is built
 
+The following plugin and guard details describe Claude Code. The [Codex adapter](docs/harness-codex.md) delivers the shared workflow content through Codex's native discovery and instruction paths.
+
 ### Two halves, because the platform draws the line there
 
 | | Plugin | `harnessctl` |
@@ -296,15 +307,16 @@ make context-budget          # always-on token cost per scope and profile
 | inventory figures | **35** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
-| document references | **96** files + **21** own cases |
-| documented commands exist | **44** + selftest **12** |
+| document references | **98** files + **23** own cases |
+| documented commands exist | **73** + selftest **19** |
 | frontmatter | **17** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |
 | benchmark health | **19** |
 | engineering decision log | **27** |
+| Codex installer and bootstrap | **96** + **33** |
 | context-budget ceiling | **1** |
-| **Total** | **958** |
+| **Total** | **1127** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
