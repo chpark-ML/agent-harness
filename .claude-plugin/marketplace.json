@@ -20,7 +20,7 @@
     {
       "name": "harness-dev",
       "displayName": "Harness Dev",
-      "description": "Development conventions, evidence-based reviews and project verification contracts, plus Superpowers and archify diagrams",
+      "description": "Development conventions, pstack engineering playbooks, evidence-based reviews and project verification, plus Superpowers and archify diagrams",
       "source": "./plugins/harness-dev",
       "category": "development"
     },

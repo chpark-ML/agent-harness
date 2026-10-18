@@ -14,12 +14,12 @@ TRIGGER_RUNS ?= 3
 CONV_TRIALS  ?= 6
 
 # Always-on context the harness costs a consumer, worst case (project scope,
-# every profile). Measured at 5381 in an isolated complete install on
+# every profile). Measured at 5809 in an isolated complete install on
 # 2026-10-18 (macOS, Claude Code 2.1.302); CI independently enforces the ceiling. Headroom is not spare room to fill.
 # Raising the ceiling requires an explicit decision — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands version-bump version-bump-range context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands version-bump version-bump-range context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-engineering bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -37,6 +37,7 @@ help:
 	@echo "make verify-hooks     hook behaviour only"
 	@echo "make verify-install   harnessctl round-trip only"
 	@echo "make verify-plugins   claude plugin validate (skipped when the CLI is absent)"
+	@echo "make verify-engineering  decision-trail helper file contract"
 	@echo "make bench            measure the guard layer against a held-out corpus"
 	@echo "make bench-lsp        does the Python LSP reduce tokens? (costs money)"
 	@echo "make bench-trigger    do the skill descriptions actually fire? (costs money)"
@@ -47,14 +48,15 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs doc-commands version-bump context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches
+verify: syntax frontmatter doc-refs doc-commands version-bump context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches verify-engineering
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
 syntax:
 	@fail=0; \
 	for f in install.sh scripts/*.sh evals/*.sh plugins/*/bin/* \
-	         plugins/*/scripts/*.sh plugins/*/hooks/*.sh; do \
+	         plugins/*/scripts/*.sh plugins/*/hooks/*.sh \
+	         plugins/*/skills/*/scripts/*.sh; do \
 	  if $(BASH) -n "$$f"; then echo "  ok    $$f"; else echo "  FAIL  $$f"; fail=1; fi; \
 	done; \
 	exit $$fail
@@ -162,6 +164,9 @@ verify-all:
 
 verify-benches:
 	@$(BASH) scripts/verify-benches.sh
+
+verify-engineering:
+	@$(BASH) scripts/verify-engineering.sh
 
 verify-hooks:
 	@$(BASH) plugins/harness-core/scripts/verify-hooks.sh

@@ -1,0 +1,17 @@
+{
+  "skill": "harness-dev:engineering",
+  "cases": [
+    {"query": "pstack 방식으로 이 프로젝트의 설치기 개선을 진행해줘. 기존 워크플로에 맞춰 실제 동작 검증까지 해줘.", "should_trigger": true},
+    {"query": "성능 개선 플레이북으로 harnessctl 초기화 병목을 계측해줘. 기준선과 실제 작업 완료 여부도 확인해줘.", "should_trigger": true},
+    {"query": "startup.cpuprofile 프로파일 분석해줘. 핫 스택과 소스 위치를 찾아서 설명하고 코드 수정은 하지 마.", "should_trigger": true},
+    {"query": "harnessctl init --dry-run 변경 영향 범위 검증을 해줘. 파일을 안 쓴다는 안전성 전제를 실제 공개 CLI로 확인해줘.", "should_trigger": true},
+    {"query": "pstack의 멀티페이즈 플레이북으로 내부 API 마이그레이션 계획을 만들어줘. 호출자 이전과 단계별 동작 검증을 포함하고 지금은 구현하지 마.", "should_trigger": true},
+    {"query": "다음 세션 인수인계 내용을 정리해줘. WORK_NOTES.md와 현재 git 상태를 보고 완료한 일과 미검증 항목, 이어갈 작업을 나눠줘.", "should_trigger": true},
+    {"query": "날짜 파서가 윤년 입력에서 잘못된 값을 돌려줘. 원인을 찾아서 버그를 고쳐줘.", "should_trigger": false},
+    {"query": "이미 열려 있는 PR #104를 리뷰해줘. blocking과 non-blocking을 구분해줘.", "should_trigger": false},
+    {"query": "이 프로젝트 검증 스킬 만들어줘. 실행 검증 절차와 기능별 검증 목록을 재사용할 수 있게 남겨줘.", "should_trigger": false},
+    {"query": "현재 변경사항 커밋하고 PR 만들어줘. 이 저장소 제목과 본문 규약을 따라줘.", "should_trigger": false},
+    {"query": "현재 커밋 범위를 ChatGPT로 크로스모델 리뷰해줘. 보내기 전에 전송 범위를 보여줘.", "should_trigger": false},
+    {"query": "이번 실험 결과를 FINDINGS.md와 ARTIFACTS.md에 정리해줘. 근거 파일과 숫자를 연결해줘.", "should_trigger": false}
+  ]
+}

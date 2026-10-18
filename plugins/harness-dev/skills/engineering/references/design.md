@@ -1,0 +1,13 @@
+# Design from the caller and data
+
+Write the caller's intended command, call site or interaction before choosing the internals. Recover the relevant constraints with [investigation](investigation.md). Model the state and access patterns before adding logic: a state machine for mutually exclusive phases, a table for one authoritative mapping, or a typed domain model for repeated shape assumptions. Keep a clear local representation when another abstraction would add no useful invariant.
+
+For a consequential new boundary, compare the current shape and plausible alternatives against the same criteria: user behavior, interface size, ownership, correctness evidence and migration cost. Different names for one shape do not count as alternatives. Use a small sketch before implementation. A novel interaction whose quality depends on feel can justify an isolated prototype and side-by-side variants. Keep prototypes separate from production code, observe the decision they test, and carry only the chosen idea into the implementation.
+
+Check designs for shallow pass-through layers, leaked storage or transport representations, modules split only by execution order, multiple writers of the same state, importable internals and hand-synchronized lists. Prefer one boundary that hides a meaningful decision. Judge both the layers a reader must trace and the mutable state the reader must hold.
+
+Validate external data at its boundary, then pass the validated model inward. Preserve guards for legitimate states; remove redundant checks only after the boundary contract is established. Prefer schema-derived types, explicit variants and exhaustive handling. In typed languages, distinguish semantic identifiers that share a primitive representation. In TypeScript, use `unknown` for unparsed input, honest type guards and existing schema validators; prefer `satisfies` to a cast that silences a mismatch. Strengthen a collection type when an operation actually needs the stronger invariant.
+
+For retries and restarts, derive work from observed current state and reconcile partial results. Check double execution and interrupted execution. Give independent actors separate state before adding locks; where sharing is necessary, enforce one writer or synchronization structurally.
+
+During a refactor, pin observable behavior before moving structure. Keep that comparison green in small units. Migrate owned internal callers and remove the obsolete API together; preserve documented external compatibility or use its migration process. Repeated casts, caller coordination or same-shaped workarounds are evidence to reconsider the boundary. A change that only trades one layer for another has not demonstrated an improvement.

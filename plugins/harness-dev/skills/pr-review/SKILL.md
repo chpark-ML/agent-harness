@@ -47,6 +47,8 @@ When dirty, do not check out. Work from `gh pr diff` and the base files, and **s
 
 For changes to interfaces, ownership boundaries or unexplained operational constraints, follow [design evidence](references/design-evidence.md). Recover the existing rationale from relevant records, separate documented constraints from inference, and compare the caller's experience against plausible alternatives. Keep this pass proportional to the change.
 
+When safety depends on callers, persisted data, configuration or a dependency outside the diff, use [change impact](../engineering/references/change-impact.md). Identify the fact the change depends on and execute the cheapest meaningful probe rather than returning only a caller list.
+
 ## Step 4 — Apply the checklist
 
 Walk `review.md` R2's six items in order. For each, collect the `file:line` of what it caught. Omit items that caught nothing — a list of passes is not output.

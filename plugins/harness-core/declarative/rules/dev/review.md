@@ -9,6 +9,14 @@ paths: ["**/*"]
 
 For an open PR, `pr-review` applies this checklist. Commit-range self-review belongs to Superpowers' `requesting-code-review`; responding to feedback belongs to `receiving-code-review`. PR mechanics remain in workflow and `pr-create`.
 
+## R0 — Implementation checkpoints
+
+For non-trivial work, name the observable user result and the data or state shape before adding logic. Use the existing implementation workflow; `harness-dev:engineering` supplies pstack-derived procedures when performance, impact analysis, migrations or coordination need more detail.
+
+Validate at boundaries, give mutable state one owner and check retries against partial prior state. Prefer a smaller interface and fewer independent assumptions. Migrate owned internal callers before deleting their old API; honor external contracts.
+
+Verify coherent units before building on them. If two fixes fail while assuming the same fact, write down and test that premise. Tests should catch broken behavior and survive changes to the internals.
+
 ## R1 — What counts as a review unit
 
 Use workflow R1's unit boundary. Split a change whose intent requires unrelated explanations. Honor an explicit review request, including small changes.
@@ -23,6 +31,8 @@ Use workflow R1's unit boundary. Split a change whose intent requires unrelated 
 - [ ] New dependencies are justified against standard-library and existing alternatives.
 
 Do not repeat style or lint checks already handled by tooling.
+
+Before commit, remove authorized dead code, speculative scaffolding and redundant comments. Check warning comments and suppressions against the live path; a comment is not a reason to preserve a workaround. Fix an accepted cause, encode a valid invariant where feasible and retain necessary evidenced rationale. Prove the changed public path and the assumptions its downstream consumers need. Keep evidence after cleanup and refresh applicable checks when the patch changes.
 
 ## R3 — How to report findings
 

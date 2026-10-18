@@ -50,6 +50,13 @@ external constraints, legal notices, public contracts and necessary rationale
 remain. Unknown claims become decisions, not automatic keeps or deletions.
 This stays a scoped, report-only review pass; it adds no agent or cleanup hook.
 
+### Broader integration (2026-10-18)
+
+The owner's subsequent request expands the selected-only scope. [ADR-0015](0015-pstack-native-integration.md)
+records the full source accounting, default development checkpoints and
+selectively loaded engineering procedures. The original review boundaries
+remain; comment cleanup is also available during authorized implementation.
+
 ## Verification
 
 Use the skill's positive and negative trigger set, execute its generated
