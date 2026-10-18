@@ -46,7 +46,7 @@ This is the step the skill exists to get right. Everything in the diff leaves th
 
 Show the user, in chat, before anything is pasted:
 
-- the file list and `--stat` totals from Step 2
+- the file list and `--stat` totals from Step 2, plus every additional context file or excerpt that will be sent; include the intent and rubric in this preview
 - one plain sentence that this content will be sent to ChatGPT under their account
 - anything in the range that looks like a credential, a customer name, or a fixture with real data
 
