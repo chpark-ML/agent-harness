@@ -39,15 +39,20 @@ parser_flags() { # <script path>
 }
 
 HCTL="$REPO/plugins/harness-core/bin/harnessctl"
+CODEX="$REPO/plugins/harness-core/bin/harness-codex"
 INSTALL="$REPO/install.sh"
+UNINSTALL="$REPO/uninstall.sh"
 MAKEFILE="$REPO/Makefile"
 
 HCTL_FLAGS="$(parser_flags "$HCTL") --help"
 INSTALL_FLAGS="$(parser_flags "$INSTALL") --help"
+UNINSTALL_FLAGS="$(parser_flags "$UNINSTALL") --help"
+CODEX_FLAGS="$(parser_flags "$CODEX") --help"
 # Subcommands come from the dispatcher's own comparisons.
 # From the usage block, not from `[ "$CMD" = x ]` — `init` is the fall-through
 # and has no such comparison, so reading the dispatcher misses it.
 HCTL_CMDS="$(grep -oE '^#   harnessctl [a-z]+' "$HCTL" 2>/dev/null | awk '{print $3}' | LC_ALL=C sort -u)"
+CODEX_CMDS="$(grep -oE '^#   harness-codex [a-z]+' "$CODEX" 2>/dev/null | awk '{print $3}' | LC_ALL=C sort -u)"
 MAKE_TARGETS="$(grep -oE '^[a-z][a-z-]*:' "$MAKEFILE" 2>/dev/null | tr -d ':' | LC_ALL=C sort -u)"
 
 has() { # <needle> <haystack…>
@@ -65,7 +70,7 @@ doc_list() {
 # giving a command, and flagging it would be the false positive that gets a
 # checker switched off.
 check_file() { # <relative path>
-  local rel="$1" f="$REPO/$1" in_block=0 cont=0 line cmd word flag
+  local rel="$1" f="$REPO/$1" in_block=0 cont=0 line cmd word flag commands flags
   [ -f "$f" ] || return 0
   while IFS= read -r line; do
     case "$line" in
@@ -84,6 +89,11 @@ check_file() { # <relative path>
     cmd="${line%%#*}"                       # drop trailing comments
     cmd="$(printf '%s' "$cmd" | sed 's/^[[:space:]]*\$\{0,1\}[[:space:]]*//; s/[[:space:]]*$//')"
     [ -n "$cmd" ] || continue
+    # Our documented piped bootstrap has no local script filename in bash's argv.
+    case "$cmd" in
+      curl*'/agent-harness/'*'/uninstall.sh | bash -s -- '*) cmd="uninstall.sh ${cmd#*| bash -s -- }" ;;
+      curl*'/agent-harness/'*'/install.sh | bash -s -- '*) cmd="install.sh ${cmd#*| bash -s -- }" ;;
+    esac
     case "$cmd" in *'<'*'>'*|*'…'*|*'...'*) continue ;; esac
 
     # A command is the FIRST token of a segment, and the program is matched by
@@ -103,40 +113,43 @@ check_file() { # <relative path>
     set -- $seg
     prog="$(basename "${1:-}")"
     case "$prog" in
-      bash|sh) shift; prog="$(basename "${1:-}")" ;;
+      bash|sh) shift; case "${1:-}" in -*) continue ;; esac; seg="$*"; prog="$(basename "${1:-}")" ;;
     esac
     [ -n "$prog" ] || continue
     cmd="$seg"
 
     case "$prog" in
-      harnessctl)
+      harnessctl|harness-codex)
+        if [ "$prog" = harnessctl ]; then commands="$HCTL_CMDS"; flags="$HCTL_FLAGS"
+        else commands="$CODEX_CMDS"; flags="$CODEX_FLAGS"; fi
         set -- $cmd
         shift                                # the program itself
         [ $# -gt 0 ] || continue
-        if has "$1" $HCTL_CMDS; then
-          ok "$rel — harnessctl $1"
+        if has "$1" $commands; then
+          ok "$rel — $prog $1"
         else
-          case "$1" in --*) ;; *) bad "$rel — harnessctl $1" "not a subcommand; the dispatcher knows: $(printf '%s' "$HCTL_CMDS" | tr '\n' ' ')" ;; esac
+          case "$1" in --*) ;; *) bad "$rel — $prog $1" "not a subcommand; the dispatcher knows: $(printf '%s' "$commands" | tr '\n' ' ')" ;; esac
         fi
         for word in "$@"; do
           case "$word" in
             --) ;;                       # sh's end-of-options marker, not a flag
             --*) flag="${word%%=*}"
-                 has "$flag" $HCTL_FLAGS \
-                   && ok "$rel — harnessctl $flag" \
-                   || bad "$rel — harnessctl $flag" "no such flag; the parser accepts: $(printf '%s' "$HCTL_FLAGS" | tr '\n' ' ')" ;;
+                 has "$flag" $flags \
+                   && ok "$rel — $prog $flag" \
+                   || bad "$rel — $prog $flag" "no such flag; the parser accepts: $(printf '%s' "$flags" | tr '\n' ' ')" ;;
           esac
         done
         ;;
-      install.sh)
+      install.sh|uninstall.sh)
+        if [ "$prog" = install.sh ]; then flags="$INSTALL_FLAGS"; else flags="$UNINSTALL_FLAGS"; fi
         set -- $cmd
         for word in "$@"; do
           case "$word" in
             --) ;;                       # sh's end-of-options marker, not a flag
             --*) flag="${word%%=*}"
-                 has "$flag" $INSTALL_FLAGS \
-                   && ok "$rel — install.sh $flag" \
-                   || bad "$rel — install.sh $flag" "no such flag; the parser accepts: $(printf '%s' "$INSTALL_FLAGS" | tr '\n' ' ')" ;;
+                 has "$flag" $flags \
+                   && ok "$rel — $prog $flag" \
+                   || bad "$rel — $prog $flag" "no such flag; the parser accepts: $(printf '%s' "$flags" | tr '\n' ' ')" ;;
           esac
         done
         ;;
@@ -174,6 +187,25 @@ S
 #!/bin/bash
     --profile)    P="$1" ;;
 S
+  cp "$FIX/install.sh" "$FIX/uninstall.sh"
+  cat > "$FIX/plugins/harness-core/bin/harness-codex" <<'S'
+#!/bin/bash
+    --source) SOURCE="$1" ;;
+    --scope) SCOPE="$1" ;;
+#   harness-codex init [--source <checkout>]
+#   harness-codex doctor [--scope user|project]
+S
+  cat > "$FIX/codex.md" <<'D'
+```bash
+bash plugins/harness-core/bin/harness-codex init --source checkout
+harness-codex doctor --scope project
+harness-codex missing-command
+harness-codex init --invented
+bash uninstall.sh --invented
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/install.sh | bash -s -- --profile core
+curl -fsSL https://raw.githubusercontent.com/chpark-ML/agent-harness/main/uninstall.sh | bash -s -- --invented-pipe
+```
+D
   printf 'verify:\n\t@true\n' > "$FIX/Makefile"
 
   cat > "$FIX/good.md" <<'D'
@@ -235,6 +267,22 @@ D
   check_rc "the command after cd && IS seen" \
     "$(printf '%s' "$out" | grep -c 'prose.md — harnessctl doctor' | grep -qE '^[2-9]' && echo 0 || echo 1)" \
     "expected two doctor hits (bare and after cd &&)"
+
+  check_rc "Codex commands through bash are checked without a false subcommand" \
+    "$(printf '%s' "$out" | grep -q '^  PASS  codex.md — harness-codex init' && echo 0 || echo 1)"
+  check_rc "the Codex parser supplies accepted flags" \
+    "$(printf '%s' "$out" | grep -q '^  PASS  codex.md — harness-codex --source' && echo 0 || echo 1)"
+  check_rc "an invented Codex command is caught" \
+    "$(printf '%s' "$out" | grep '^  FAIL' | grep -q 'codex.md — harness-codex missing-command' && echo 0 || echo 1)"
+  check_rc "an invented Codex flag is caught" \
+    "$(printf '%s' "$out" | grep '^  FAIL' | grep -q 'codex.md — harness-codex --invented' && echo 0 || echo 1)"
+  check_rc "uninstall flags come from their own parser" \
+    "$(printf '%s' "$out" | grep '^  FAIL' | grep -q 'codex.md — uninstall.sh --invented' && echo 0 || echo 1)"
+
+  check_rc "piped install flags are checked against the installer" \
+    "$(printf '%s' "$out" | grep -q '^  PASS  codex.md — install.sh --profile' && echo 0 || echo 1)"
+  check_rc "invented piped removal flags are caught" \
+    "$(printf '%s' "$out" | grep '^  FAIL' | grep -q 'codex.md — uninstall.sh --invented-pipe' && echo 0 || echo 1)"
 
   summary
   exit $?

@@ -19,7 +19,7 @@ CONV_TRIALS  ?= 6
 # Raising the ceiling requires an explicit decision — see scripts/context-budget.sh.
 CONTEXT_CEILING ?= 9000
 
-.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands version-bump version-bump-range context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-engineering bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
+.PHONY: help verify verify-all syntax frontmatter doc-refs doc-commands version-bump version-bump-range context-budget context-budget-strict verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-engineering verify-codex verify-codex-loader bench bench-lsp bench-claims bench-trigger bench-convention bench-tier verify-benches
 
 help:
 	@echo "make verify           syntax + frontmatter + doc-refs + hooks + harnessctl + plugins"
@@ -38,6 +38,8 @@ help:
 	@echo "make verify-install   harnessctl round-trip only"
 	@echo "make verify-plugins   claude plugin validate (skipped when the CLI is absent)"
 	@echo "make verify-engineering  decision-trail helper file contract"
+	@echo "make verify-codex     public Codex bootstrap and removal routes"
+	@echo "make verify-codex-loader  actual Codex CLI discovery, reload and removal (no model request)"
 	@echo "make bench            measure the guard layer against a held-out corpus"
 	@echo "make bench-lsp        does the Python LSP reduce tokens? (costs money)"
 	@echo "make bench-trigger    do the skill descriptions actually fire? (costs money)"
@@ -48,7 +50,7 @@ help:
 	@echo ""
 	@echo "make verify BASH=/bin/bash    run everything under macOS bash 3.2"
 
-verify: syntax frontmatter doc-refs doc-commands version-bump context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches verify-engineering
+verify: syntax frontmatter doc-refs doc-commands version-bump context-budget verify-context-budget verify-inventory verify-hooks verify-install verify-plugins verify-benches verify-engineering verify-codex
 
 # Parsing every script catches bash-4 syntax on a branch no test happens to
 # reach — which is most of harnessctl's error paths.
@@ -167,6 +169,14 @@ verify-benches:
 
 verify-engineering:
 	@$(BASH) scripts/verify-engineering.sh
+
+verify-codex:
+	@$(BASH) scripts/verify-codex-bootstrap.sh
+
+# Requires the pinned CLI in CI; skill metadata discovery needs no authentication.
+# Kept outside verify so the portable suite still runs without either agent CLI.
+verify-codex-loader:
+	@python3 scripts/verify-codex-loader.py --bash "$(BASH)" --evidence "$$(mktemp -d)"
 
 verify-hooks:
 	@$(BASH) plugins/harness-core/scripts/verify-hooks.sh

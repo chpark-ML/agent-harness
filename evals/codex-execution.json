@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "runtime": "codex-cli 0.163.0",
+  "selection": {
+    "selection": "existing CLI defaults, no model override",
+    "root_model_settings": [
+      "model = \"gpt-6.1-sol\"",
+      "model_reasoning_effort = \"max\""
+    ]
+  },
+  "scope": "project",
+  "versions": {
+    "core": "1.27.0",
+    "dev": "1.6.0"
+  },
+  "prompt": "pstack 절차로 README의 Codex 설치 dry-run이 이 저장소의 기존 파일을 보존하는지 검증해줘. 실제 공개 CLI를 한 번 실행하고, 파일·심볼릭 링크 전후 비교와 exit code를 verification.json, 판단과 근거를 decision.tsv에 남겨줘. 필요한 절차만 읽고 검증 범위를 넓히지 마. 제품 소스 수정, 네트워크 작업, 커밋·푸시, 다른 에이전트 위임은 하지 마.",
+  "engineering_sha256": "40b5b3720d8355785be9b2c560f46b0ac45802ada05e14792046b2a94cba10e2",
+  "executed_cli_sha256": "851cb5380b2b9841739d45b295fcd59883d917094c67b1a1ce42bbec7010b215",
+  "raw_events_sha256": "bb9e512783f577cf436e7533cdf930db0cd20478077381d65f61eb7308588652",
+  "model_exit": 0,
+  "execution": {
+    "command": "bash .agents/agent-harness/payload/plugins/harness-core/bin/harness-codex init --dry-run",
+    "argv": [
+      "bash",
+      ".agents/agent-harness/payload/plugins/harness-core/bin/harness-codex",
+      "init",
+      "--dry-run"
+    ],
+    "cwd": "/private/var/folders/n_/zlbmkdjj7w94tcgrs8dk38v00000gp/T/agent-harness-codex-xo8ml4xy/runtime-final",
+    "invocation_count": 1,
+    "started_at": "2026-10-18T08:51:18.114119+00:00",
+    "finished_at": "2026-10-18T08:51:19.107251+00:00",
+    "exit_code": 0,
+    "stdout": "Would install Codex workflows (core dev) at /private/var/folders/n_/zlbmkdjj7w94tcgrs8dk38v00000gp/T/agent-harness-codex-xo8ml4xy/runtime-final/.agents/agent-harness; target files unchanged.\n",
+    "stderr": ""
+  },
+  "comparison": {
+    "scope": "저장소 내 모든 경로(.git과 숨김 파일 포함); 심볼릭 링크를 역참조하지 않음",
+    "excluded_paths": [],
+    "compared_fields": [
+      "type",
+      "mode",
+      "uid",
+      "gid",
+      "device",
+      "inode",
+      "mtime_ns",
+      "file.size",
+      "file.sha256",
+      "symlink.target"
+    ],
+    "ignored_fields": [
+      "atime (검증을 위한 읽기로 변경될 수 있음)",
+      "ctime (비교 범위 밖)"
+    ],
+    "before_counts": {
+      "file": 59,
+      "symlink": 6,
+      "directory": 40,
+      "special": 0
+    },
+    "after_counts": {
+      "file": 59,
+      "symlink": 6,
+      "directory": 40,
+      "special": 0
+    },
+    "added": [],
+    "removed": [],
+    "changed": [],
+    "all_existing_paths_preserved": true
+  },
+  "independent_comparison": {
+    "protected_entries": 48,
+    "mismatches": [],
+    "exit": 0
+  },
+  "body_tool_receipts": [
+    {
+      "command": "/bin/zsh -lc \"pwd; rg --files -g 'README*' -g 'AGENTS.md' -g 'SKILL.md' -g 'decision.tsv' -g 'verification.json' -g 'harness-gaps.md' -g '*pstack*' -g '*engineering*' -g '*codex*' -g '*install*' -g '\"'!node_modules'\"' -g '\"'!.git'\"' . .agents .codex\"",
+      "exit_code": 0
+    },
+    {
+      "command": "/bin/zsh -lc 'cat /private/var/folders/n_/zlbmkdjj7w94tcgrs8dk38v00000gp/T/agent-harness-codex-xo8ml4xy/runtime-final/.agents/skills/engineering/SKILL.md'",
+      "exit_code": 0
+    },
+    {
+      "command": "/bin/zsh -lc \"rg -n -A 55 -B 5 'Keep a decision trail|verification|decision.tsv' .agents/skills/engineering/references/work-sessions.md\"",
+      "exit_code": 0
+    },
+    {
+      "command": "/bin/zsh -lc 'cat .agents/skills/engineering/scripts/decision-log.sh'",
+      "exit_code": 0
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport datetime\nimport hashlib\nimport json\nimport os\nimport pathlib\nimport platform\nimport shutil\nimport stat\nimport subprocess\nimport sys\nimport tempfile\n\nroot = pathlib.Path.cwd().resolve()\ncommand = ['bash', '.agents/agent-harness/payload/plugins/harness-core/bin/harness-codex', 'init', '--dry-run']\nhelper = root / '.agents/skills/engineering/scripts/decision-log.sh'\nfor name in ('verification.json', 'decision.tsv'):\n    if os.path.lexists(root / name):\n        raise SystemExit(f'Existing evidence must be preserved: {name}')\n\ndef now():\n    return datetime.datetime.now(datetime.timezone.utc).isoformat()\n\ndef snapshot():\n    result = {}\n    def visit(directory):\n        for path in sorted(directory.iterdir(), key=lambda p: p.name):\n            info = path.lstat()\n            rel = path.relative_to(root).as_posix()\n            item = {'mode': oct(stat.S_IMODE(info.st_mode)), 'uid': info.st_uid, 'gid': info.st_gid,\n                    'device': info.st_dev, 'inode': info.st_ino, 'mtime_ns': info.st_mtime_ns}\n            if stat.S_ISLNK(info.st_mode):\n                item.update(type='symlink', target=os.readlink(path))\n            elif stat.S_ISREG(info.st_mode):\n                item.update(type='file', size=info.st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())\n            elif stat.S_ISDIR(info.st_mode):\n                item['type'] = 'directory'\n            else:\n                item.update(type='special', stat_mode=info.st_mode)\n            result[rel] = item\n            if item['type'] == 'directory':\n                visit(path)\n    visit(root)\n    return result\n\ndef counts(items):\n    return {kind: sum(v['type'] == kind for v in items.values())\n            for kind in ('file', 'symlink', 'directory', 'special')}\n\nwith tempfile.TemporaryDirectory(prefix='codex-dry-run-evidence-') as staging:\n    trail = pathlib.Path(staging) / 'decision.tsv'\n    def log(phase, decision, why, evidence, result):\n        subprocess.run(['bash', str(helper), str(trail), phase, decision, why, evidence, result],\n                       cwd=root, check=True, capture_output=True, text=True)\n    log('scope', 'README의 공개 CLI를 원래 인수로 한 번 실행',\n        '기존 설치의 보존 여부만 관찰; 네트워크·소스 수정·위임·커밋·푸시 제외',\n        'README.md:6', '범위 확정')\n    log('baseline', '파일 SHA-256·권한·정체성과 링크 대상을 전후 비교',\n        '.git과 숨김 경로 포함; 링크를 따라가지 않음; 증거 파일은 측정 후 생성',\n        'verification.json', '측정 기준 확정')\n    baseline_time = now()\n    before = snapshot()\n    started = now()\n    completed = subprocess.run(command, cwd=root, capture_output=True)\n    finished = now()\n    after = snapshot()\n    after_time = now()\n    added = sorted(set(after) - set(before))\n    removed = sorted(set(before) - set(after))\n    changed = [{'path': p, 'fields': sorted(k for k in set(before[p]) | set(after[p])\n                                         if before[p].get(k) \"'!= after[p].get(k))}\n               for p in sorted(set(before) & set(after)) if before[p] != after[p]]\n    preserved = not (added or removed or changed)\n    stdout = completed.stdout.decode('\"'utf-8', errors='replace')\n    stderr = completed.stderr.decode('utf-8', errors='replace')\n    verdict = 'pass' if preserved and completed.returncode == 0 else ('inconclusive' if preserved else 'fail')\n    record = {\n        'schema_version': 1,\n        'purpose': 'README의 Codex 설치 dry-run이 현재 저장소의 기존 파일과 심볼릭 링크를 보존하는지 검증',\n        'procedure': {'skill': 'harness-dev:engineering',\n                      'references': ['investigation.md', 'work-sessions.md#keep-a-decision-trail'],\n                      'review': 'self-review'},\n        'environment': {'cwd': str(root), 'platform': platform.platform(),\n                        'python_version': sys.version.split()[0],\n                        'bash_path': shutil.which('bash'), 'jq_path': shutil.which('jq'),\n                        'branch': 'main', 'revision': None,\n                        'revision_note': 'git rev-parse --verify HEAD exited 128: fatal: Needed a single revision; unborn repository',\n                        'environment_overrides': {}},\n        'execution': {'command': ' '.join(command), 'argv': command, 'cwd': str(root),\n                      'invocation_count': 1, 'started_at': started, 'finished_at': finished,\n                      'exit_code': completed.returncode, 'stdout': stdout, 'stderr': stderr},\n        'comparison': {\n            'scope': '저장소 내 모든 경로(.git과 숨김 파일 포함); 심볼릭 링크를 역참조하지 않음',\n            'excluded_paths': [],\n            'snapshot_before_at': baseline_time, 'snapshot_after_at': after_time,\n            'compared_fields': ['type', 'mode', 'uid', 'gid', 'device', 'inode', 'mtime_ns',\n                                'file.size', 'file.sha256', 'symlink.target'],\n            'ignored_fields': ['atime (검증을 위한 읽기로 변경될 수 있음)', 'ctime (비교 범위 밖)'],\n            'before_counts': counts(before), 'after_counts': counts(after),\n            'added': added, 'removed': removed, 'changed': changed,\n            'all_existing_paths_preserved': preserved,\n            'before': before, 'after': after},\n        'conclusion': {'verdict': verdict, 'preservation_observed': preserved,\n                       'dry_run_succeeded': completed.returncode == 0,\n                       'basis': '실제 공개 CLI 1회 실행의 exit code와 전체 경로 전후 비교',\n                       'limits': ['현재 저장소·현재 환경의 init --dry-run 1회에 한정',\n                                  '실제 설치·다른 옵션·다른 환경은 검증하지 않음',\n                                  '측정 중간의 일시적 쓰기는 전후 비교만으로 판단할 수 없음']},\n        'artifacts': {'verification': 'verification.json', 'decisions': 'decision.tsv',\n                      'timing': '두 증거 파일은 전후 스냅샷 완료 후 새로 생성; 기존 파일 제외나 덮어쓰기 없음'}\n    }\n    with (root / 'verification.json').open('x', encoding='utf-8') as output:\n        json.dump(record, output, ensure_ascii=False, indent=2)\n        output.write('\\\\n')\n    log('execution', '공개 CLI 실행 결과 기록',\n        f'exit code {completed.returncode}; 실제 stdout·stderr를 수정 없이 보존',\n        'verification.json', '실행 완료; 재실행 없음')\n    log('verification', '기존 파일·심볼릭 링크의 보존 여부 판단',\n        f\\\"파일 {counts(before)['file']}개·링크 {counts(before)['symlink']}개·디렉터리 {counts(before)['directory']}개; 추가 {len(added)}개·삭제 {len(removed)}개·변경 {len(changed)}개\\\",\n        'verification.json', verdict)\n    with (root / 'decision.tsv').open('x', encoding='utf-8') as output:\n        output.write(trail.read_text(encoding='utf-8'))\n    print(json.dumps({'verdict': verdict, 'exit_code': completed.returncode,\n                      'stdout': stdout, 'stderr': stderr,\n                      'before_counts': counts(before), 'after_counts': counts(after),\n                      'added': added, 'removed': removed, 'changed': changed,\n                      'artifacts': ['verification.json', 'decision.tsv']}, ensure_ascii=False, indent=2))\nPY\"",
+      "exit_code": 0
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport csv\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport stat\n\nroot = Path.cwd()\nrecord = json.loads((root / 'verification.json').read_text(encoding='utf-8'))\nwith (root / 'decision.tsv').open(encoding='utf-8', newline='') as stream:\n    rows = list(csv.reader(stream, delimiter='\\\\t'))\nassert rows[0] == ['ts', 'phase', 'decision', 'why', 'evidence', 'result']\nassert len(rows) == 5 and all(len(row) == 6 for row in rows)\nassert record['execution']['invocation_count'] == 1\nassert record['execution']['exit_code'] == 0\nassert record['comparison']['before'] == record['comparison']['after']\nassert record['conclusion']['verdict'] == 'pass'\nfor rel, expected in record['comparison']['after'].items():\n    path = root / rel\n    info = path.lstat()\n    actual = {'mode': oct(stat.S_IMODE(info.st_mode)), 'uid': info.st_uid, 'gid': info.st_gid,\n              'device': info.st_dev, 'inode': info.st_ino, 'mtime_ns': info.st_mtime_ns}\n    if stat.S_ISLNK(info.st_mode):\n        actual.update(type='symlink', target=os.readlink(path))\n    elif stat.S_ISREG(info.st_mode):\n        actual.update(type='file', size=info.st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())\n    elif stat.S_ISDIR(info.st_mode):\n        actual['type'] = 'directory'\n    else:\n        actual.update(type='special', stat_mode=info.st_mode)\n    assert actual == expected, rel\ncurrent = set()\nfor directory, dirs, files in os.walk(root, followlinks=False):\n    for name in dirs + files:\n        current.add((Path(directory) / name).relative_to(root).as_posix())\nassert current - set(record['comparison']['after']) == {'verification.json', 'decision.tsv'}\nprint('JSON/TSV 형식 및 기록 일치: PASS')\nprint('증거 생성 후 기존 경로 재확인: PASS; 추가된 경로는 verification.json, decision.tsv뿐')\nprint('decision.tsv:')\nprint((root / 'decision.tsv').read_text(encoding='utf-8'), end='')\nfor rel in ('AGENTS.md', '.codex/config.toml', '.agents/skills/consumer-owned/SKILL.md'):\n    item = record['comparison']['after'][rel]\n    print(f'{rel}: SHA-256 {item[\\\"sha256\\\"]} (전후 동일)')\nprint('심볼릭 링크:')\nfor rel, item in record['comparison']['after'].items():\n    if item['type'] == 'symlink':\n        print(f'{rel} -> {item[\\\"target\\\"]} (전후 동일)')\nPY\"",
+      "exit_code": 0
+    }
+  ],
+  "decision_log": "ts\tphase\tdecision\twhy\tevidence\tresult\n2026-10-18T08:51:18Z\tscope\tREADME의 공개 CLI를 원래 인수로 한 번 실행\t기존 설치의 보존 여부만 관찰; 네트워크·소스 수정·위임·커밋·푸시 제외\tREADME.md:6\t범위 확정\n2026-10-18T08:51:18Z\tbaseline\t파일 SHA-256·권한·정체성과 링크 대상을 전후 비교\t.git과 숨김 경로 포함; 링크를 따라가지 않음; 증거 파일은 측정 후 생성\tverification.json\t측정 기준 확정\n2026-10-18T08:51:19Z\texecution\t공개 CLI 실행 결과 기록\texit code 0; 실제 stdout·stderr를 수정 없이 보존\tverification.json\t실행 완료; 재실행 없음\n2026-10-18T08:51:19Z\tverification\t기존 파일·심볼릭 링크의 보존 여부 판단\t파일 59개·링크 6개·디렉터리 40개; 추가 0개·삭제 0개·변경 0개\tverification.json\tpass\n",
+  "limits": [
+    "One ordinary engineering task, not a routing or quality A/B.",
+    "Native model body execution on macOS; final loader also runs on Linux CI.",
+    "The executed CLI snapshot predates the added native-symlink preflight. The engineering body is byte-identical; final installer behavior is checked separately.",
+    "Existing host model defaults were retained. Root configuration reports gpt-6.1-sol with max effort; no per-run override was supplied."
+  ],
+  "verification_artifact_sha256": "23de4fea40187822cf5ac1776fbfd9d6aad47137f79dd605426d53df2e28404d",
+  "loader": {
+    "runtime": "codex-cli 0.163.0",
+    "tested_cli_sha256": "83ce8735576e42fd8a2c5de0b943f85b684cca237f4b478ef176efbcfef62496",
+    "discovered": [
+      "harness-core:pr-create",
+      "harness-dev:cross-model-review",
+      "harness-dev:ecosystem-review",
+      "harness-dev:engineering",
+      "harness-dev:pr-review",
+      "harness-dev:project-verification",
+      "harness-research:repro-checklist",
+      "harness-research:research-notes",
+      "harness-slides:manuscript-audit",
+      "harness-slides:results-deck"
+    ],
+    "missing_skill_control": [
+      "harness-core:pr-create",
+      "harness-dev:cross-model-review",
+      "harness-dev:ecosystem-review",
+      "harness-dev:pr-review",
+      "harness-dev:project-verification",
+      "harness-research:repro-checklist",
+      "harness-research:research-notes",
+      "harness-slides:manuscript-audit",
+      "harness-slides:results-deck"
+    ],
+    "restored": [
+      "harness-core:pr-create",
+      "harness-dev:cross-model-review",
+      "harness-dev:ecosystem-review",
+      "harness-dev:engineering",
+      "harness-dev:pr-review",
+      "harness-dev:project-verification",
+      "harness-research:repro-checklist",
+      "harness-research:research-notes",
+      "harness-slides:manuscript-audit",
+      "harness-slides:results-deck"
+    ],
+    "after_uninstall": {},
+    "consumer_instructions_preserved": true,
+    "owned_consumer_removed": true,
+    "limits": [
+      "metadata discovery, not a model-quality measurement",
+      "project scope"
+    ]
+  }
+}
