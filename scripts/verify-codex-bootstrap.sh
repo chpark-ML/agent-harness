@@ -84,10 +84,11 @@ printf '\nSelected Claude source control\n' >> "$WORK/shared-source/plugins/harn
 mkdir -p "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/bin"
 : > "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/.in_use"
 printf '#!/bin/sh\nexit 0\n' > "$WORK/claude/plugins/cache/agent-harness/harness-core/9.9.9/bin/harnessctl"
-invoke install.sh --agent both --scope project
+invoke install.sh --agent both --scope project --profile dev
 check_rc 'both route reaches the actual Codex installer after the Claude boundary' "$RC" "$(tail -3 "$WORK/out")"
 check_rc 'both route calls the Claude plugin installer' "$(grep -qx 'plugin install harness-dev@agent-harness --scope project' "$WORK/claude-calls"; echo $?)" "$(cat "$WORK/claude-calls" 2>/dev/null)"
 check_rc 'both route also installs Codex skill files' "$([ -f "$PROJ/.agents/skills/engineering/SKILL.md" ]; echo $?)"
+check_rc 'custom combined profiles also refresh shared core' "$(grep -qx 'plugin install harness-core@agent-harness --scope project' "$WORK/claude-calls"; echo $?)"
 cmp -s "$PROJ/.agents/skills/engineering/SKILL.md" "$WORK/shared-source/plugins/harness-dev/skills/engineering/SKILL.md"
 check_rc 'both hosts use the selected Claude source rather than a different local checkout' "$?"
 awk '/^read_gap_ledger\(\) \{/{body=1} body{print} body && /^}/{exit}' "$PROJ/.agents/skills/pr-create/SKILL.md" > "$WORK/ledger-helper"

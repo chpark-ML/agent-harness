@@ -105,6 +105,10 @@ case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $S
 case "$AGENT_TARGET" in claude|codex|both) ;; *) die "--agent takes claude, codex or both" ;; esac
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
+# Both hosts need the current shared core even when only a role was selected.
+if [ "$AGENT_TARGET" = both ]; then
+  case " $PROFILE_LIST " in *" core "*) ;; *) PROFILE_LIST="core $PROFILE_LIST" ;; esac
+fi
 for p in $PROFILE_LIST; do
   case "$p" in core|dev|research|slides|frontend|python|typescript|csharp|cpp|lua|swift|kotlin) ;; *) die "unknown profile: $p" ;; esac
 done
