@@ -1,0 +1,53 @@
+{
+  "skill": "harness-dev:project-verification",
+  "cases": [
+    {
+      "query": "이 프로젝트 검증 스킬 만들어줘. 다음 에이전트도 CLI를 직접 실행하고 결과를 남길 수 있게 해줘",
+      "should_trigger": true
+    },
+    {
+      "query": "실행 검증 절차 정리해줘. 시작 명령, 준비 상태 확인, 사용자 기능 실행, 증거 보관, 정리까지 재사용 가능한 스킬로 남겨줘",
+      "should_trigger": true
+    },
+    {
+      "query": "Create a project-local verification skill from this repository's existing commands, with real user journeys and evidence that survives cleanup.",
+      "should_trigger": true
+    },
+    {
+      "query": "새 세션에서 앱 사용법을 다시 찾지 않도록 verification feature map과 실행 지침을 .claude/skills에 만들어줘",
+      "should_trigger": true
+    },
+    {
+      "query": "Refresh our project verification guide after the launch command changed. Keep the existing journeys and exercise one of them.",
+      "should_trigger": true
+    },
+    {
+      "query": "검증 지침 갱신해줘. 코드에서 실행 방법을 확인하고 다음 에이전트가 그대로 따라 할 검증 스킬과 기능 지도를 남겨줘",
+      "should_trigger": true
+    },
+    {
+      "query": "하네스 가드 훅 테스트만 실행해서 통과 여부 알려줘. 검증 스킬을 새로 만들 필요는 없어",
+      "should_trigger": false
+    },
+    {
+      "query": "Fix the CLI bug that ignores the output path, then rerun the existing regression tests. Do not write a verification guide.",
+      "should_trigger": false
+    },
+    {
+      "query": "PR #47 리뷰해줘. 이미 열린 PR이고 새 파일을 만드는 요청은 아니야",
+      "should_trigger": false
+    },
+    {
+      "query": "ChatGPT 한테도 이 커밋 범위 리뷰받아줘. 다른 모델 의견이 필요해",
+      "should_trigger": false
+    },
+    {
+      "query": "Assess the external pstack plugin for adoption. Read its implementation and compare overlap and context cost with our harness.",
+      "should_trigger": false
+    },
+    {
+      "query": "이 실험 결과를 연구 노트에 기록하고 재현성 체크리스트를 점검해줘",
+      "should_trigger": false
+    }
+  ]
+}

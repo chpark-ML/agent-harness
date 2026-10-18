@@ -38,6 +38,8 @@ git diff --stat "$BASE..HEAD"
 
 An empty range is not a review, it is a mistake upstream — say so and stop. Read the commit subjects and bodies before the diff: **the author's stated intent is what the outside model has to be told**, or it reviews against a purpose it invented.
 
+Derive a short review rubric from that intent and the repository's contracts. Include relevant caller context and documented constraints; label anything inferred. Use that same rubric and package for each reviewer if the user requested several. Keep earlier reviewers' findings out of independent review prompts. Do not add reviewers or send additional material beyond the user's authorization.
+
 ## Step 3 — The consent gate
 
 This is the step the skill exists to get right. Everything in the diff leaves the machine and reaches a third party, and once sent it cannot be recalled.
@@ -54,7 +56,7 @@ If the user declines, that is a complete outcome: say the review did not happen 
 
 ## Step 4 — Send it: the diff as a file, the instruction as text
 
-**Attach the diff. Do not put it in the composer.** Write the range to a `.diff` file — a header comment carrying the commit subjects, then `git diff` — and upload it to the composer's file input. Then type only the instruction: what the file is, and what shape of answer you want (blocking versus non-blocking, `file:line` on everything).
+**Attach the diff. Do not put it in the composer.** Write the range to a `.diff` file — a header comment carrying the commit subjects, then `git diff` — and upload it to the composer's file input. Then type only the instruction: what the file is, the stated intent and rubric, and what shape of answer you want (blocking versus non-blocking, `file:line` on everything).
 
 Everything below was observed on the first real run, 2026-08-17. None of it announces itself.
 
@@ -72,12 +74,28 @@ Everything below was observed on the first real run, 2026-08-17. None of it anno
 
 ## Step 5 — Report, with your own verdict on each finding
 
-Bring back what the other model said, and then **judge it**. An unevaluated second opinion is noise the user now has to sort through themselves.
+Bring back what the other model said, and then **judge it**. Trace a claimed failure through the caller or reproduce it where possible. Record the reviewing model when the channel exposes it; otherwise mark its identity unverified. A same-model fallback does not establish model diversity.
+
+Adapted from pstack's `interrogate`; attribution and the MIT license are in [NOTICE](../../NOTICE.md).
+
+Merge duplicate findings while retaining their sources. Give each finding a disposition and an evidence-based reason:
+
+| Disposition | Basis |
+|---|---|
+| Act on | A concrete correctness, security or contract violation. Give `file:line`, the reachable failure and a fix. |
+| Consider | A valid tradeoff that needs a decision or further evidence. State what remains unresolved. |
+| Noted | A coverage limit or contextual observation without a change to make now. |
+| Dismissed | Refuted by the code, outside this change's scope, contrary to a documented constraint or only a style preference. Cite the reason. |
+
+If several models actually reviewed the same package independently, show where they agreed or disagreed. Agreement prioritizes investigation; it does not prove the finding. A concrete bug from one reviewer still matters. Check disagreements against the code and leave unresolved ones visible. Do not invent a panel or agreement map for a single reviewer.
 
 ```
-## From ChatGPT (N findings)
+## From ChatGPT (N findings before deduplication)
 1. `path/file.py:88` — <their finding>
-   → agree / disagree / needs checking, and why in one line
+   → Act on / Consider / Noted / Dismissed — <evidence and reason>
+
+## Coverage and disagreements
+- <what was checked, what remains unknown, and any actual reviewer disagreement>
 
 ## Conflicts with this repo's conventions
 - <finding> contradicts `.claude/rules/harness/dev/review.md` <item>

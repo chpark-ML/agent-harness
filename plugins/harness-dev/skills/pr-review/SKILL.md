@@ -45,6 +45,8 @@ gh pr checkout <N>                # changes the working tree — never run this 
 
 When dirty, do not check out. Work from `gh pr diff` and the base files, and **say in the report that the surrounding context was not read**.
 
+For changes to interfaces, ownership boundaries or unexplained operational constraints, follow [design evidence](references/design-evidence.md). Recover the existing rationale from relevant records, separate documented constraints from inference, and compare the caller's experience against plausible alternatives. Keep this pass proportional to the change.
+
 ## Step 4 — Apply the checklist
 
 Walk `review.md` R2's six items in order. For each, collect the `file:line` of what it caught. Omit items that caught nothing — a list of passes is not output.

@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-908-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-914-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -46,14 +46,14 @@
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
-| **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
+| **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review`<br>`project-verification` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
 | **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
-| **상시 컨텍스트** | ~1,700 tok | **+1,702** | **+787** | **+373** | **+709** | **0** |
+| **상시 컨텍스트** | ~1,700 tok | **+1,812** | **+787** | **+373** | **+709** | **0** |
 
-**훅과 LSP는 상시 컨텍스트 비용이 0이다.** CI의 완전한 설치에서 프로젝트 스코프 기본 `core,dev`는 **~3,402 tok / 세션**, 프로젝트 스코프 전 프로파일은 **~5,271 tok / 세션**으로 측정했다(Ubuntu CI, Claude Code 2.1.288, 2026-10-03). user 스코프는 각각 ~2,348과 ~3,675였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
+**훅과 LSP는 상시 컨텍스트 비용이 0이다.** 격리된 설정의 완전한 설치에서 프로젝트 스코프 기본 `core,dev`는 **~3,512 tok / 세션**, 프로젝트 스코프 전 프로파일은 **~5,381 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.302, 2026-10-18). user 스코프는 각각 ~2,458과 ~3,785였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
 
 `make context-budget` 이 소스에서 직접 세고, `make verify` 가 천장(9,000)을 넘으면 실패한다. **이 표를 손으로 고치지 말 것** — 이전 판은 스킬만 세어 `~2.2k` 라고 적었고 3.6배 틀렸다.
 
@@ -347,7 +347,7 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 전부 `harness-core` 를 dependency 로 갖고, 조합해서 설치한다. 무엇이 더해지는지는 [맨 위 매트릭스](#무엇이-설치되나)에 있고, 여기서는 세 가지만 덧붙인다.
 
-**두 프로파일의 두께가 다른 것은 미완성이 아니다.** Superpowers 가 개발 워크플로를 폭넓게 덮지만 **연구 전용 스킬은 0개** 라서, `harness-dev` 는 우리 것으로는 얇고 (규약 1 + 스킬 1) `harness-research` 는 두껍다 (규약 1 + 스킬 2 + 템플릿 5). dev 를 두껍게 만들려는 충동이 들면 먼저 Superpowers 에 이미 있는지 확인할 것.
+**프로파일의 두께는 상위 도구가 덮는 범위를 따른다.** Superpowers가 개발 워크플로를 폭넓게 덮으므로 dev는 저장소 규약과 검증 계약을 보완한다. `project-verification`은 기존 실행 명령에서 프로젝트 소유의 검증 지침을 만들며, 구현·TDD·디버깅은 Superpowers에 맡긴다. dev를 확장할 때는 먼저 이미 있는 절차인지 확인한다.
 
 **언어 프로파일은 파일이 없다.** `harness-python` · `harness-typescript` · `harness-csharp`(Unity·.NET) · `harness-cpp`(Unreal) · `harness-lua`(Roblox·love2d) · `harness-swift`(iOS) · `harness-kotlin`(Android) 은 각각 공식 LSP 플러그인 하나를 dependency 로 선언하는 manifest 한 장이 전부다. `harness-frontend` 도 같은 모양이다.
 
@@ -454,14 +454,14 @@ make verify BASH=/bin/bash      # macOS bash 3.2 바닥 — 머지 전 필수
 | 인벤토리 수치 (`verify-inventory`) | **35** + selftest **7** |
 | 발표 수치 검사기 | **50** |
 | 블록 근거 검사기 (`verify-check-provenance`) | **29** |
-| frontmatter 파싱 | **15** + selftest **7** |
+| frontmatter 파싱 | **16** + selftest **7** |
 | 버전 bump 게이트 (`verify-version-bump`) | selftest **19** |
 | 플러그인·마켓플레이스 매니페스트 | **13** |
 | 벤치마크 건강 (`verify-benches`) | **19** |
-| 문서 내부 참조 (`verify-doc-refs`) | **75** 파일 + 자체 **21** |
+| 문서 내부 참조 (`verify-doc-refs`) | **80** 파일 + 자체 **21** |
 | 문서가 시키는 명령의 실재 (`verify-doc-commands`) | **44** + selftest **12** |
 | 컨텍스트 예산 천장 (`context-budget`) | **1** |
-| **합계** | **908** |
+| **합계** | **914** |
 
 케이스는 세 종류를 다 담는다 — **no-op**(끼어들면 안 되는 입력) · **block** · **boundary**(막을 것과 닮았지만 통과해야 하는 것). 세 번째가 실제로 값을 한다. 검증 없이 머지된 가드는 가드가 아니라 장식이다.
 
@@ -521,10 +521,11 @@ CI 는 세 곳에서 돈다: ubuntu (bash 5) · macOS (bash 3.2) · 플러그인
 
 `settings.json` 을 안전하게 병합하는 법, 충돌 방지 백업, 대칭 제거, "무엇을 건드리는가" 감사 절은 [`claude-statusline`](https://github.com/chpark-ML/claude-statusline) 에서 가져왔다. 2-tier 설치·훅별 검증 의무·자동 발견 디스패처·ADR 규율, 그리고 원칙 기반 `CLAUDE.md`·harness gap 루프·PR 규약·"가드만 차단한다" 원칙·연구 노트 5문서 패턴은 공개하지 않는 사내 하네스 두 벌에서 가져와 프로젝트 특화를 걷어낸 것이다.
 
-외부 저작물에서 가져온 것 둘, 출처와 라이선스를 밝힌다.
+외부 저작물에서 가져온 것은 출처와 라이선스를 밝힌다.
 
 - **`CLAUDE.md` §1–§4** — MIT 라이선스 [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills) 를 축약했다. Andrej Karpathy 의 LLM 코딩 함정 관찰에서 나온 것이다. §5 만 우리 것이다.
 - **`CLAUDE.md` §5 의 발생 기록(ledger) 방식** — CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all) 에서 가져왔다. "적는 행위가 곧 집행" 이라는 논지가 그쪽 것이다.
+- **프로젝트 검증과 리뷰 근거 절차** — Lauren Tan의 MIT 라이선스 [`pstack`](https://github.com/cursor/plugins/tree/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack)에서 흡수했다. dev 플러그인에 [출처와 라이선스](plugins/harness-dev/NOTICE.md)를 함께 배포한다.
 
 의존으로 들이는 것은 [`superpowers`](https://github.com/obra/superpowers) 와 공식 마켓플레이스의 LSP 플러그인들이고, 각자의 라이선스를 따른다.
 
