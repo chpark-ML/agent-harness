@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
-  <img alt="checks" src="https://img.shields.io/badge/checks-914-blue">
+  <img alt="checks" src="https://img.shields.io/badge/checks-958-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.3k%2F9k-informational">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -194,16 +194,19 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
 | **Permission tiers** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | | |
-| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review`<br>`project-verification` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **Workflow focus** | PR delivery | Engineering and review | Research records and reproducibility | Presentations and manuscripts | UI/UX design | |
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~1,700 tok | **+1,812** | **+787** | **+373** | **+709** | **0** |
+| **Always-on context** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
 
-**Hooks and LSP cost nothing in context.** A complete scratch install measured **~3,512 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,381 tok per session** (macOS, Claude Code 2.1.302, 2026-10-18). User-scope totals were ~2,458 and ~3,785 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
+The maintained skill and dependency inventory is in [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder).
+
+**Hooks and LSP cost nothing in context.** A complete scratch install measured **~3,940 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,809 tok per session** (macOS, Claude Code 2.1.302, 2026-10-18). User-scope totals were ~2,572 and ~3,899 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 
 `make context-budget` counts this from source and `make verify` fails past the ceiling of 9,000. **Do not edit those numbers by hand** — an earlier table counted skills only and was wrong by 3.6×.
+
+Use `/harness-dev:engineering` for pstack-derived design, impact, performance, migration and handoff procedures. Core dev rules apply data, ownership, pre-commit cleanup and evidence checkpoints during ordinary development. Superpowers retains implementation, TDD and debugging; `/harness-dev:project-verification` creates or maintains a project-owned verification contract. [Coverage and limits](docs/agent-layer.md#pstack-native-integration).
 
 ### The guards
 
@@ -293,14 +296,15 @@ make context-budget          # always-on token cost per scope and profile
 | inventory figures | **35** + selftest **7** |
 | slide claim checker | **50** |
 | block provenance checker | **29** |
-| document references | **80** files + **21** own cases |
+| document references | **96** files + **21** own cases |
 | documented commands exist | **44** + selftest **12** |
-| frontmatter | **16** + selftest **7** |
+| frontmatter | **17** + selftest **7** |
 | version bump | selftest **19** |
 | plugin and marketplace manifests | **13** |
 | benchmark health | **19** |
+| engineering decision log | **27** |
 | context-budget ceiling | **1** |
-| **Total** | **914** |
+| **Total** | **958** |
 
 Cases come in three kinds — **no-op** (input the hook must ignore), **block**, and **boundary** (something that resembles what is blocked and must pass). The third is what earns its keep: a verifier with only block cases proves it stops what it should and says nothing about what it lets through, and the second is how guards actually die.
 
@@ -337,7 +341,7 @@ External works used directly, with their licences:
 
 - **`CLAUDE.md` §1–§4** — condensed from the MIT-licensed [`karpathy-guidelines`](https://github.com/multica-ai/andrej-karpathy-skills), itself derived from Andrej Karpathy's observations on LLM coding pitfalls. §5 and §6 are ours.
 - **The ledger mechanism in §5** — from the CC BY 4.0 [`task-observer`](https://github.com/rebelytics/one-skill-to-rule-them-all), whose argument is that writing the observation down *is* the enforcement.
-- **Project verification and review evidence procedures** — adapted from Lauren Tan's MIT-licensed [`pstack`](https://github.com/cursor/plugins/tree/d1715e03a8b1a2f03fdbe336d40c4a56b81f3c8f/pstack). The dev plugin carries the [attribution and license](plugins/harness-dev/NOTICE.md).
+- **Engineering, verification and review procedures** — adapted from Lauren Tan's MIT-licensed [`pstack`](https://github.com/cursor/plugins/tree/16541c6bc1ed6c8d808b2f78a33364003e82b967/pstack). The [dev](plugins/harness-dev/NOTICE.md) and [core](plugins/harness-core/NOTICE.md) plugins carry the attribution and license.
 
 Dependencies are [`superpowers`](https://github.com/obra/superpowers) and the official LSP plugins, under their own licences.
 

@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "harness-dev",
   "displayName": "Harness Dev",
-  "version": "1.4.0",
-  "description": "Development conventions, PR and cross-model reviews, project verification contracts, Superpowers and archify (needs Node 18+)",
+  "version": "1.5.0",
+  "description": "Development conventions, pstack engineering playbooks, evidence-based reviews, project verification, Superpowers and archify (needs Node 18+)",
   "author": {
     "name": "chpark-ML"
   },

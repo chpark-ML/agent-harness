@@ -55,3 +55,11 @@ Follow the generated skill once: launch, doctor, drive one mapped feature, captu
 Use isolated local or test resources within the task's authorization. If proof would require unavailable credentials, production changes or an external action outside that scope, keep the artifact labeled **draft**, record the exact blocked step and finish the independent checks. A substitute environment does not establish behavior on the real target; name the difference.
 
 Report the generated paths, the journey actually exercised, its result and surviving evidence location. List blocked or unverified journeys. Ask for a refresh when entry points or launch commands change; do not create a schedule.
+
+## 5. Maintain an existing contract
+
+For a requested maintenance pass, inventory the map against the current public entry points. Read every mapped feature's source, check for missing or duplicate entries, and distinguish doc drift, a driver gap and an actual product regression. Keep edits inside the consumer-owned verification directory; a broken product is a reported finding, not a reason to weaken its expected behavior.
+
+Exercise every mapped journey before calling the whole map current. Reconcile recipes into as few owned app states as practical: one serially driven instance for a server or UI, separate isolated invocations for short-lived CLIs. Run doctor before the first drive and after a surprising result; reset or relaunch when the state is no longer trustworthy. Retain prior evidence through failed attempts and cleanup.
+
+A verified driver correction is re-driven before delivery. A missing prerequisite records the attempted route and concrete blocker; it does not count as feature success. Report **clean**, **changed** or **blocked**, with per-feature coverage. A creation pass still needs only the one journey from step 4; do not confuse that seed with a full maintenance pass.
