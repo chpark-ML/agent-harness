@@ -653,7 +653,7 @@ check_rc "the shim falls back to \$HOME/.claude when unset" \
 
 # Nothing installed anywhere: the shim must say so and fail, not exec nothing.
 emptyhome="$shimroot/empty"; mkdir -p "$emptyhome"
-shim_out="$( env PATH="/usr/bin:/bin" HOME="$emptyhome" sh "$shimbin/harnessctl" 2>&1 )"; rc=$?
+shim_out="$( env -u CLAUDE_CONFIG_DIR PATH="/usr/bin:/bin" HOME="$emptyhome" sh "$shimbin/harnessctl" 2>&1 )"; rc=$?
 check_rc "with no plugin installed the shim exits non-zero" "$([ "$rc" -ne 0 ] && echo 0 || echo 1)"
 check_rc "...and names the command that would fix it" \
   "$(printf '%s' "$shim_out" | grep -q 'claude plugin install harness-core' && echo 0 || echo 1)" \

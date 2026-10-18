@@ -2519,3 +2519,27 @@ PR 본문 `## Notes` 로 올라가고, 고치는 것은 그다음이다.
 - **고친 것**: fragment deny 에 `Read(./.env*)` 바로 뒤 `Read(!.env.example)`. `harnessctl` 은 fragment
   항목을 순서대로 기존 목록 뒤에 붙이므로(`harnessctl:477-501`) 설치 후에도 순서가 유지된다.
 - **회차**: 3 (사용자 원장 기준)
+
+## 2026-10-18 — 문서 명령 검사가 macOS basename 경고를 내고도 통과한다
+
+- **어디**: `scripts/verify-doc-commands.sh:104` (같은 호출이 106줄에도 있음)
+- **무슨 일**: pstack 검토 기록의 문서 검증 중 기존 명령 검사기가 `basename: illegal
+  option` 을 네 번 출력하고 `44 / 44 passed` 로 끝났다. `basename` 에 넘긴 첫 토큰이
+  `-` 로 시작하면 macOS 구현이 옵션으로 해석한다. 이 검토는 표의 두 행만 추가했고,
+  검사기와 기존 fenced 명령 블록은 바꾸지 않았다.
+- **현재 한계**: stderr 경고가 있으므로 통과가 깨끗한 실행을 뜻하지 않는다. 실제 하네스
+  명령을 놓쳤는지는 확인하지 않았다. 기록만 남기고 이번 조사에서 검사기를 고치지는 않았다.
+- **회차**: 1 (이 원장에서 같은 basename 옵션 경고의 선행 기록을 찾지 못함)
+
+## 2026-10-18 — 미설치 shim 테스트가 외부 설정 디렉터리를 읽는다
+
+- **어디**: `scripts/verify-install.sh:656` — empty-home fixture
+- **무슨 일**: pstack 흡수본을 격리된 `CLAUDE_CONFIG_DIR`에 완전히 설치한 뒤
+  `make verify-all BASH=/bin/bash`를 실행하자 설치기 검사 232개 중 하나가 실패했다.
+  "어디에도 설치되지 않음"을 재현하려고 HOME만 바꿨지만, shim이 외부 설정에 있는
+  실제 harnessctl을 찾아 실행했다. 그래서 설치 안내 대신 도움말이 나왔다.
+- **근거와 수정**: 바로 앞의 unset-config fixture는 2026-10-01에 `env -u
+  CLAUDE_CONFIG_DIR`로 고쳤지만 empty-home fixture에는 빠졌다. 같은 전제 누락의
+  다른 경로다. 해당 호출도 설정 디렉터리를 unset한다. 제품 동작을 고치는 변경이
+  아니라 테스트의 미설치 전제를 복원하는 한 줄이며, 흡수 기능과 별도 커밋으로 남긴다.
+- **회차**: 환경 상속 계열 2 (2026-10-01 항목이 1회차)
