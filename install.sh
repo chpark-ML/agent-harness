@@ -6,6 +6,7 @@
 #   ./install.sh --profile research,slides        # research and presentation
 #   ./install.sh --profile dev,python             # one language axis, not all seven
 #   ./install.sh --with-tools                     # npm-install the language servers too
+#   ./install.sh --agent both --scope project     # Claude Code and Codex workflows
 #
 # The harness ships in two halves and this runs both. The plugin half
 # (`claude plugin install`) carries hooks, skills, commands and verifiers. The
@@ -20,7 +21,9 @@
 # directory and runs it directly, so the install finishes here rather than
 # leaving you a second step to remember.
 #
-# Requires bash 3.2 and a Claude Code with plugin support. jq is required too,
+# Requires bash 3.2, git and jq; Claude targets need Claude Code plugin support.
+# Codex uses native skill discovery and AGENTS.md through harness-codex.
+# jq is required too,
 # and this script installs one if the machine has none — see ensure_jq below.
 set -uo pipefail
 
@@ -34,6 +37,7 @@ UIUX_MARKETPLACE="ui-ux-pro-max-skill"
 # selected explicitly with --profile; all supported profiles remain available.
 PROFILES_DEFAULT="core,dev"
 PROFILES="$PROFILES_DEFAULT"
+AGENT_TARGET=claude
 SCOPE="user"
 REF=""
 WITH_TOOLS=0
@@ -73,6 +77,7 @@ usage() {
                      Default: $PROFILES_DEFAULT
                      Select the roles, outputs and languages you use.
   --scope <s>        user (default) or project
+  --agent <a>        claude (default), codex, or both
   --with-tools       npm install the language servers the LSP plugins need
   --ref <ref>        pin the marketplace to a git tag or branch
   -h, --help
@@ -85,6 +90,8 @@ while [ $# -gt 0 ]; do
     --profile=*)  PROFILES="${1#--profile=}" ;;
     --scope)      shift; [ $# -gt 0 ] || die "--scope needs a value"; SCOPE="$1" ;;
     --scope=*)    SCOPE="${1#--scope=}" ;;
+    --agent)      shift; [ $# -gt 0 ] || die "--agent needs a value"; AGENT_TARGET="$1" ;;
+    --agent=*)    AGENT_TARGET="${1#--agent=}" ;;
     --with-tools) WITH_TOOLS=1 ;;
     --ref)        shift; [ $# -gt 0 ] || die "--ref needs a value"; REF="$1" ;;
     --ref=*)      REF="${1#--ref=}" ;;
@@ -95,6 +102,7 @@ while [ $# -gt 0 ]; do
 done
 
 case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $SCOPE)" ;; esac
+case "$AGENT_TARGET" in claude|codex|both) ;; *) die "--agent takes claude, codex or both" ;; esac
 
 PROFILE_LIST="$(printf '%s' "$PROFILES" | tr ',' ' ' | tr -s ' ')"
 for p in $PROFILE_LIST; do
@@ -203,6 +211,46 @@ $JQ_MANUAL"
   JQ_BOOTSTRAPPED=1
   say "  $dest  ($("$dest" --version 2>/dev/null))"
 }
+
+install_codex() (
+  [ "$SCOPE" != project ] || [ -e "$PWD/.git" ] || die "--scope project must be run from the root of a git repository."
+  codex_modules=""
+  for p in $PROFILE_LIST; do
+    case "$p" in
+      core) ;;
+      dev|research|slides) codex_modules="${codex_modules:+$codex_modules,}$p" ;;
+      *)
+        [ "$AGENT_TARGET" = both ] || die "Codex workflow profiles: core, dev, research, slides (got: $p)"
+        say "  $p: Claude profile only; Codex keeps its host tooling" ;;
+    esac
+  done
+  [ "$WITH_TOOLS" -eq 0 ] || [ "$AGENT_TARGET" = both ] || die "--with-tools applies to Claude language profiles"
+  ensure_jq
+  codex_source=""
+  codex_tmp=""
+  trap '[ -z "$codex_tmp" ] || rm -rf "$codex_tmp"' EXIT
+  if [ -z "$REF" ] && [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    [ ! -f "$candidate/plugins/harness-core/bin/harness-codex" ] || codex_source="$candidate"
+  fi
+  if [ -z "$codex_source" ]; then
+    command -v git >/dev/null 2>&1 || die "git is required to fetch Codex workflow sources"
+    codex_tmp="$(mktemp -d)" || die "cannot create source workspace"
+    codex_source="$codex_tmp/source"
+    git init --quiet "$codex_source" || die "cannot initialize source workspace"
+    git -C "$codex_source" remote add origin "https://github.com/$MARKETPLACE_REPO.git"
+    git -C "$codex_source" fetch --quiet --depth 1 -- origin "${REF:-main}" || die "could not fetch Codex source ref: ${REF:-main}"
+    git -C "$codex_source" checkout --quiet --detach FETCH_HEAD || die "could not check out Codex source"
+  fi
+  say "Codex workflows (scope: $SCOPE)"
+  "${BASH:-bash}" "$codex_source/plugins/harness-core/bin/harness-codex" init \
+    --source "$codex_source" --scope "$SCOPE" --with "$codex_modules"
+)
+
+if [ "$AGENT_TARGET" = codex ]; then
+  install_codex || die "Codex installation failed; read the named conflict above"
+  exit 0
+fi
 
 command -v claude >/dev/null 2>&1 || die "Claude Code is not on PATH."
 claude plugin --help >/dev/null 2>&1 || die "This Claude Code does not support plugins. Run 'claude update' and try again."
@@ -495,6 +543,11 @@ if [ -n "$DEP_FAILED" ]; then
   for d in $DEP_FAILED; do warn "  $d"; done
   warn "Fix the cause (network, GitHub access) and run the installer again."
   exit 1
+fi
+
+if [ "$AGENT_TARGET" = both ]; then
+  [ "$rc" -eq 0 ] || die "Claude doctor failed; stopping before Codex installation"
+  install_codex || die "Claude is installed; Codex installation needs the correction named above"
 fi
 
 cat <<EOF

@@ -5,7 +5,7 @@ description: "Use when the user wants the current work turned into a pull reques
 
 # pr-create
 
-Runs `.claude/rules/harness/workflow.md` R1–R4 end to end. **Scope ends at PR open** — merging is the user's. The post-merge harness retro (R3.1) is a separate trigger.
+Runs the installed workflow's R1–R4 end to end. Claude Code reads `.claude/rules/harness/workflow.md`; Codex's `AGENTS.md` names its installed rules location for `workflow.md`. Use the active host's file and command tools. **Scope ends at PR open** — merging is the user's. The post-merge harness retro (R3.1) is a separate trigger.
 
 ## Step 0 — Is this a PR unit at all?
 
@@ -105,7 +105,7 @@ EOF
 
 `git push` and `git merge` sit in `settings.json`'s `ask` tier, so an approval prompt appears. That is normal in an interactive session.
 
-**In a non-interactive session (`claude -p`, CI) push is always refused.** There is nobody to answer, and `--permission-mode` does not get around it — `acceptEdits`, `dontAsk` and `bypassPermissions` were all measured as refused. What to do then is fixed.
+**In Claude Code's non-interactive session (`claude -p`), a push in its `ask` tier is refused.** There is nobody to answer, and `--permission-mode` does not get around it — `acceptEdits`, `dontAsk` and `bypassPermissions` were all measured as refused. Other hosts use their own permission policy. When an approval cannot be obtained, the response is fixed.
 
 - **Do not fire the same command again.** The second attempt is refused too.
 - **Do not substitute a commit to `main`.** That is the path by which a convention violation arrives quietly.

@@ -5,7 +5,7 @@ description: "Use to create or maintain the five-document research-note set (STA
 
 # research-notes
 
-**Creates** the five documents defined in `.claude/rules/harness/research/notes.md`, and afterwards **routes each result to the file it belongs in**.
+**Creates** the five documents defined in the installed research rules, and afterwards **routes each result to the file it belongs in**. Read `.claude/rules/harness/research/notes.md` in Claude Code; in Codex, use the research rules included in `AGENTS.md` and its installed-rules location. If the rules are absent, report the missing research profile before creating a note set.
 
 Two paths — § A (bootstrap) for a new set, § B (maintenance) for one that exists.
 
@@ -36,7 +36,7 @@ Leave existing files alone. Empty counts as existing — the user may have start
 Templates live in this skill's [`templates/`](templates/).
 
 ```bash
-cp .claude/skills/research-notes/templates/<NAME>.md <target-dir>/<NAME>.md
+cp <this-skill-directory>/templates/<NAME>.md <target-dir>/<NAME>.md
 ```
 
 ### A4. Substitute

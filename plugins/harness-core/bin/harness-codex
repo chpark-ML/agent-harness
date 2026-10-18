@@ -1,0 +1,324 @@
+#!/bin/bash
+# harness-codex — install the shared workflows for Codex without changing its permissions.
+#
+#   harness-codex init      [--scope user|project] [--with dev,research,slides] [--source <checkout>] [--dry-run]
+#   harness-codex doctor    [--scope user|project]
+#   harness-codex uninstall [--scope user|project] [--dry-run]
+#
+# Catches conflicting skills, changed managed files and edited instruction blocks.
+# Scope: owned skill links, a payload receipt and one marked AGENTS.md block.
+# Bypass: none; preserve or move conflicting work before retrying. See docs/harness-codex.md.
+set -euo pipefail
+
+say() { printf '%s\n' "$*"; }
+die() { printf 'harness-codex: %s\n' "$*" >&2; exit 1; }
+usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+CMD="${1:-}"
+case "$CMD" in -h|--help) usage; exit 0 ;; init|doctor|uninstall) shift ;; *) usage; exit 1 ;; esac
+SCOPE=project
+WITH=dev
+WITH_SET=0
+SOURCE=""
+DRY_RUN=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --scope) shift; [ "$#" -gt 0 ] || die '--scope needs a value'; SCOPE="$1" ;;
+    --scope=*) SCOPE="${1#--scope=}" ;;
+    --with) shift; [ "$#" -gt 0 ] || die '--with needs a value'; [ "$WITH_SET" -eq 1 ] || WITH=""; WITH="${WITH:+$WITH,}$1"; WITH_SET=1 ;;
+    --with=*) [ "$WITH_SET" -eq 1 ] || WITH=""; WITH="${WITH:+$WITH,}${1#--with=}"; WITH_SET=1 ;;
+    --source) shift; [ "$#" -gt 0 ] || die '--source needs a value'; SOURCE="$1" ;;
+    --source=*) SOURCE="${1#--source=}" ;;
+    --dry-run) DRY_RUN=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "unknown argument: $1" ;;
+  esac
+  shift
+done
+case "$SCOPE" in user|project) ;; *) die '--scope takes user or project' ;; esac
+type -P jq >/dev/null 2>&1 || die 'jq is required; install jq and retry'
+# Normalize metadata captures; raw Markdown writes use binary output instead.
+jq() { local rc; command jq "$@" | tr -d '\r'; rc=${PIPESTATUS[0]}; return "$rc"; }
+JQ_BINARY=""
+command jq -bn 'null' >/dev/null 2>&1 && JQ_BINARY=-b
+raw_jq() { command jq ${JQ_BINARY:+"$JQ_BINARY"} "$@"; }
+sha() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  else die 'sha256sum or shasum is required'; fi
+}
+
+if [ "$SCOPE" = project ]; then
+  [ -e "$PWD/.git" ] || die '--scope project requires the root of a git repository'
+  BASE="$PWD/.agents"
+  AGENTS="$PWD/AGENTS.md"
+else
+  [ -n "${HOME:-}" ] || die 'HOME is required to locate Codex user skills'
+  BASE="${CODEX_HOME:-$HOME/.codex}"
+  case "$BASE" in /*|[A-Za-z]:/*) ;; *) die 'CODEX_HOME must be an absolute path' ;; esac
+  case "$HOME" in /*|[A-Za-z]:/*) ;; *) die 'HOME must be an absolute path' ;; esac
+  AGENTS="$BASE/AGENTS.md"
+fi
+ROOT="$BASE/agent-harness"
+if [ "$SCOPE" = project ]; then SKILLS="$BASE/skills"; else SKILLS="$HOME/.agents/skills"; fi
+RECEIPT="$ROOT/manifest.json"
+ROOT_LABEL="$ROOT"
+AGENTS_LABEL="$AGENTS"
+SKILLS_LABEL="$SKILLS"
+if [ "$SCOPE" = project ]; then
+  ROOT_LABEL=.agents/agent-harness
+  AGENTS_LABEL=AGENTS.md
+  SKILLS_LABEL=.agents/skills
+fi
+BEGIN='<!-- agent-harness:codex:start -->'
+END='<!-- agent-harness:codex:end -->'
+for path in "$BASE" "$ROOT" "$SKILLS" "$AGENTS"; do
+  [ ! -L "$path" ] || die "refusing a symlink at $path"
+done
+[ ! -e "$AGENTS" ] || [ -f "$AGENTS" ] || die "$AGENTS is not a regular file"
+OVERRIDE="${AGENTS%/AGENTS.md}/AGENTS.override.md"
+if [ "$CMD" != uninstall ]; then
+  [ ! -e "$OVERRIDE" ] && [ ! -L "$OVERRIDE" ] \
+    || die "$OVERRIDE masks AGENTS.md in Codex; consolidate the instructions before installing"
+fi
+
+WORK="$(mktemp -d)" || die 'cannot create temporary workspace'
+BACKUP=""
+TRANSACTION=0
+NEW_ROOT=0
+AGENTS_CHANGED=0
+cleanup() {
+  local rc=$? failed=0 name target
+  trap - EXIT
+  set +e
+  if [ "$TRANSACTION" -eq 1 ]; then
+    while IFS= read -r name; do
+      target="$(jq -r --arg name "$name" '.[$name]' "$WORK/links")"
+      if [ -L "$SKILLS/$name" ] && [ "$(readlink "$SKILLS/$name")" = "$target" ]; then
+        rm "$SKILLS/$name" || failed=1
+      fi
+    done < <(jq -r 'keys[]' "$WORK/links")
+    [ "$NEW_ROOT" -eq 0 ] || rm -rf "$ROOT" || failed=1
+    if [ -d "$BACKUP/previous" ]; then mv "$BACKUP/previous" "$ROOT" || failed=1; fi
+    if [ "$AGENTS_CHANGED" -eq 1 ]; then
+      if [ -f "$BACKUP/agents-original" ]; then mv -f "$BACKUP/agents-original" "$AGENTS" || failed=1
+      else rm -f "$AGENTS" || failed=1; fi
+    fi
+    for target in "$BACKUP"/links/*; do
+      [ -L "$target" ] || continue
+      mv -f "$target" "$SKILLS/$(basename "$target")" || failed=1
+    done
+    if [ "$failed" -ne 0 ]; then
+      printf 'harness-codex: rollback incomplete; recovery files retained at %s\n' "$BACKUP" >&2
+      BACKUP=""
+    else
+      printf 'harness-codex: failed change rolled back; previous install retained\n' >&2
+    fi
+    [ "$rc" -ne 0 ] || rc=1
+  fi
+  [ -z "$BACKUP" ] || rm -rf "$BACKUP"
+  rm -rf "$WORK"
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Stage replacements on the destination filesystem before moving any owned file.
+prepare_change() {
+  [ ! -f "$AGENTS" ] || [ -w "$AGENTS" ] || die "$AGENTS is not writable; left unchanged"
+  mkdir -p "$BASE" "$SKILLS" "$(dirname "$AGENTS")"
+  [ -w "$BASE" ] && [ -w "$SKILLS" ] && [ -w "$(dirname "$AGENTS")" ] \
+    || die 'install directories are not writable; left unchanged'
+  BACKUP="$(mktemp -d "$BASE/.agent-harness-rollback.XXXXXX")"
+  mkdir "$BACKUP/links"
+  if [ -f "$AGENTS" ]; then
+    cp -p "$AGENTS" "$BACKUP/agents-original"
+    cp -p "$AGENTS" "$BACKUP/agents-next"
+  else : > "$BACKUP/agents-next"; fi
+  cat "$WORK/agents" > "$BACKUP/agents-next"
+  if [ "$OLD" -eq 1 ]; then
+    while IFS= read -r name; do cp -P "$SKILLS/$name" "$BACKUP/links/$name"; done < <(jq -r '.links | keys[]' "$RECEIPT")
+  fi
+}
+OLD=0
+if [ -e "$ROOT" ]; then
+  [ -d "$ROOT" ] && [ -f "$RECEIPT" ] || die "existing $ROOT has no install receipt; left unchanged"
+  jq -e --arg scope "$SCOPE" --arg root "$ROOT_LABEL" --arg agents "$AGENTS_LABEL" --arg skills "$SKILLS_LABEL" '
+    .schema == 1 and .scope == $scope and .root == $root and .agentsPath == $agents and .skillsDir == $skills
+    and (.files | type == "object") and (.links | type == "object")
+    and (.agentsBlock | type == "string") and (.agentsExisted | type == "boolean")
+    and (.links | keys | all(test("^[a-z0-9][a-z0-9-]*$")))
+  ' "$RECEIPT" >/dev/null || die "invalid install receipt at $RECEIPT; left unchanged"
+  [ -z "$(find "$ROOT" -type l -print)" ] || die 'managed payload contains a symlink; left unchanged'
+  n=0
+  while IFS= read -r file; do
+    [ "$file" = "$RECEIPT" ] && continue
+    rel="${file#"$ROOT/"}"
+    want="$(jq -r --arg rel "$rel" '.files[$rel] // empty' "$RECEIPT")"
+    [ -n "$want" ] && [ "$(sha "$file")" = "$want" ] || die "changed or foreign managed file: $file; left unchanged"
+    n=$((n + 1))
+  done < <(find "$ROOT" -type f -print)
+  [ "$n" -eq "$(jq '.files | length' "$RECEIPT")" ] || die 'managed payload is incomplete; left unchanged'
+  while IFS= read -r name; do
+    target="$(jq -r --arg name "$name" '.links[$name]' "$RECEIPT")"
+    [ -L "$SKILLS/$name" ] && [ "$(readlink "$SKILLS/$name")" = "$target" ] \
+      || die "changed or missing skill link: $SKILLS/$name; left unchanged"
+  done < <(jq -r '.links | keys[]' "$RECEIPT")
+  [ -f "$AGENTS" ] || die 'managed AGENTS.md is missing; left unchanged'
+  jq -en --rawfile doc "$AGENTS" --slurpfile receipt "$RECEIPT" '
+    $receipt[0].agentsBlock as $block | ($block | length) > 0 and ($doc | split($block) | length) == 2
+  ' >/dev/null || die 'managed AGENTS.md block was edited or duplicated; left unchanged'
+  OLD=1
+fi
+
+if [ "$CMD" = doctor ]; then
+  [ "$OLD" -eq 1 ] || die "no Codex harness installed at $ROOT"
+  say "ok: managed payload, AGENTS.md block and skill links ($SCOPE)"
+  if command -v codex >/dev/null 2>&1; then codex --version; else say 'Codex CLI not on PATH; confirm discovery in the Codex app.'; fi
+  say 'This checks installed files; model execution and host permissions are separate.'
+  exit 0
+fi
+
+if [ "$CMD" = uninstall ]; then
+  [ "$OLD" -eq 1 ] || { say 'No Codex harness installed; nothing changed.'; exit 0; }
+  [ "$DRY_RUN" -eq 0 ] || { say "Would remove owned Codex skills and the AGENTS.md block at $ROOT"; exit 0; }
+  raw_jq -jn --rawfile doc "$AGENTS" --slurpfile receipt "$RECEIPT" '
+    $doc | split($receipt[0].agentsBlock) | join("")
+  ' > "$WORK/agents"
+  existed="$(jq -r '.agentsExisted' "$RECEIPT")"
+  printf '{}\n' > "$WORK/links"
+  prepare_change
+  TRANSACTION=1
+  while IFS= read -r name; do rm "$SKILLS/$name"; done < <(jq -r '.links | keys[]' "$RECEIPT")
+  mv "$ROOT" "$BACKUP/previous"
+  if [ "$existed" = false ] && [ ! -s "$WORK/agents" ]; then rm "$AGENTS"; else mv -f "$BACKUP/agents-next" "$AGENTS"; fi
+  AGENTS_CHANGED=1
+  TRANSACTION=0
+  say 'Removed Codex harness; consumer instructions, settings and unrelated skills retained.'
+  exit 0
+fi
+
+if [ -z "$SOURCE" ]; then SOURCE="$(cd "$(dirname "$0")/../../.." && pwd)"; fi
+[ -d "$SOURCE/plugins/harness-core/declarative" ] || die 'complete source checkout required; pass --source <checkout>'
+SOURCE="$(cd "$SOURCE" && pwd)"
+PROFILES=core
+for profile in $(printf '%s' "$WITH" | tr ',' ' '); do
+  case "$profile" in dev|research|slides) ;; *) die "Codex workflow profile not supported: $profile (dev, research, slides)" ;; esac
+  case " $PROFILES " in *" $profile "*) ;; *) PROFILES="$PROFILES $profile" ;; esac
+done
+STAGE="$WORK/new"
+mkdir -p "$STAGE/payload/plugins"
+printf '{}\n' > "$WORK/links"
+printf '{}\n' > "$WORK/versions"
+for profile in $PROFILES; do
+  src="$SOURCE/plugins/harness-$profile"
+  dst="$STAGE/payload/plugins/harness-$profile"
+  [ -f "$src/.claude-plugin/plugin.json" ] || die "source profile missing: $profile; use --source <complete checkout>"
+  mkdir -p "$dst/.claude-plugin"
+  cp "$src/.claude-plugin/plugin.json" "$dst/.claude-plugin/"
+  [ ! -f "$src/NOTICE.md" ] || cp "$src/NOTICE.md" "$dst/"
+  [ ! -d "$src/skills" ] || cp -R "$src/skills" "$dst/skills"
+  version="$(jq -er '.version | strings' "$src/.claude-plugin/plugin.json")"
+  jq --arg p "$profile" --arg v "$version" '.[$p]=$v' "$WORK/versions" > "$WORK/next"; mv "$WORK/next" "$WORK/versions"
+  for skill in "$dst"/skills/*/SKILL.md; do
+    [ -f "$skill" ] || continue
+    name="$(basename "$(dirname "$skill")")"
+    target="$ROOT/payload/plugins/harness-$profile/skills/$name"
+    [ "$SCOPE" != project ] || target="../agent-harness/payload/plugins/harness-$profile/skills/$name"
+    if [ -e "$SKILLS/$name" ] || [ -L "$SKILLS/$name" ]; then
+      [ "$OLD" -eq 1 ] && jq -e --arg name "$name" '.links | has($name)' "$RECEIPT" >/dev/null \
+        || die "existing skill conflicts: $SKILLS/$name; left unchanged"
+    fi
+    jq --arg name "$name" --arg target "$target" 'if has($name) then error("duplicate skill name") else .[$name]=$target end' "$WORK/links" > "$WORK/next"
+    mv "$WORK/next" "$WORK/links"
+  done
+done
+cp -R "$SOURCE/plugins/harness-core/declarative" "$STAGE/payload/plugins/harness-core/declarative"
+mkdir -p "$STAGE/payload/plugins/harness-core/bin"
+for exe in harness-codex harness-check-claims harness-check-provenance; do
+  cp "$SOURCE/plugins/harness-core/bin/$exe" "$STAGE/payload/plugins/harness-core/bin/$exe"
+done
+[ -z "$(find "$STAGE" -type l -print)" ] || die 'source payload contains symlinks; no files installed'
+
+render_rule() {
+  awk 'NR==1 && $0=="---"{front=1;next} front && $0=="---"{front=0;next} !front{print}' "$1" \
+    | raw_jq -jRs --arg root "$ROOT_LABEL" '
+      split("CLAUDE.md") | join("AGENTS.md") |
+      split(".claude/harness-gaps.md") | join(".agents/harness-gaps.md") |
+      split(".claude/rules/harness/") | join($root+"/rules/")'
+}
+inline_rule() {
+  raw_jq -jRs --arg root "$ROOT_LABEL" 'split("[workflow](../workflow.md)") | join("[workflow](<"+$root+"/rules/workflow.md>)")' "$1"
+}
+mkdir -p "$STAGE/rules"
+render_rule "$SOURCE/plugins/harness-core/declarative/rules/core/workflow.md" > "$STAGE/rules/workflow.md"
+for profile in $PROFILES; do
+  case "$profile" in dev) rule=review ;; research) rule=notes ;; *) continue ;; esac
+  mkdir -p "$STAGE/rules/$profile"
+  render_rule "$SOURCE/plugins/harness-core/declarative/rules/$profile/$rule.md" > "$STAGE/rules/$profile/$rule.md"
+done
+{
+  printf '\n\n%s\n# Agent harness — Codex\n\n' "$BEGIN"
+  printf 'Invoke only discovered skills by their names. Read only the relevant skill. Use the host implementation workflow when Superpowers is unavailable; do not invent absent skills or tool calls.\n\n'
+  printf 'Installed rules: `%s/rules/`. Bundled helpers: `%s/payload/plugins/harness-core/bin/`; resolve harness executables here when they are not on PATH. Relative paths start at this repository root. Host permissions and approvals remain authoritative; these instructions do not install Claude hooks or permission settings.\n\n' "$ROOT_LABEL" "$ROOT_LABEL"
+  awk '/^\*\*Language:\*\*/{body=1} /^<!--/{exit} body{print}' "$SOURCE/plugins/harness-core/declarative/CLAUDE.md" > "$WORK/principles"
+  render_rule "$WORK/principles"
+  printf '\n'
+  inline_rule "$STAGE/rules/workflow.md"
+  printf '\n'
+  for profile in $PROFILES; do
+    case "$profile" in dev) rule=review ;; research) rule=notes ;; *) continue ;; esac
+    doc="$STAGE/rules/$profile/$rule.md"
+    [ -f "$doc" ] || continue
+    inline_rule "$doc"
+    printf '\n'
+  done
+  printf '%s\n' "$END"
+} > "$WORK/block"
+if [ "$OLD" -eq 1 ]; then
+  raw_jq -jn --rawfile doc "$AGENTS" --rawfile block "$WORK/block" --slurpfile old "$RECEIPT" '$doc | split($old[0].agentsBlock) | .[0]+$block+.[1]' > "$WORK/agents"
+  existed="$(jq -r '.agentsExisted' "$RECEIPT")"
+else
+  [ -f "$AGENTS" ] && existed=true || existed=false
+  if [ -f "$AGENTS" ]; then
+    ! grep -Fq "$BEGIN" "$AGENTS" && ! grep -Fq "$END" "$AGENTS" || die 'unowned or malformed AGENTS.md block; left unchanged'
+    cat "$AGENTS" > "$WORK/agents"
+  else : > "$WORK/agents"; fi
+  cat "$WORK/block" >> "$WORK/agents"
+fi
+DOC_LIMIT="${HARNESS_CODEX_DOC_LIMIT:-32768}"
+case "$DOC_LIMIT" in ''|*[!0-9]*) die 'HARNESS_CODEX_DOC_LIMIT must be a positive byte count' ;; esac
+[ "$DOC_LIMIT" -gt 0 ] || die 'HARNESS_CODEX_DOC_LIMIT must be a positive byte count'
+[ "$(wc -c < "$WORK/agents" | tr -d ' ')" -le "$DOC_LIMIT" ] \
+  || die "AGENTS.md would exceed the instruction budget ($DOC_LIMIT bytes); move notes out of AGENTS.md or match HARNESS_CODEX_DOC_LIMIT to Codex project_doc_max_bytes"
+printf '{}\n' > "$WORK/files"
+while IFS= read -r file; do
+  rel="${file#"$STAGE/"}"
+  jq --arg rel "$rel" --arg sha "$(sha "$file")" '.[$rel]=$sha' "$WORK/files" > "$WORK/next"; mv "$WORK/next" "$WORK/files"
+done < <(find "$STAGE" -type f -print)
+jq -n --arg scope "$SCOPE" --arg root "$ROOT_LABEL" --arg agents "$AGENTS_LABEL" --arg skills "$SKILLS_LABEL" --argjson existed "$existed" \
+  --rawfile block "$WORK/block" --slurpfile files "$WORK/files" --slurpfile links "$WORK/links" --slurpfile versions "$WORK/versions" \
+  '{schema:1,scope:$scope,root:$root,agentsPath:$agents,skillsDir:$skills,agentsExisted:$existed,agentsBlock:$block,files:$files[0],links:$links[0],versions:$versions[0]}' > "$STAGE/manifest.json"
+[ "$DRY_RUN" -eq 0 ] || { say "Would install Codex workflows ($PROFILES) at $ROOT; target files unchanged."; exit 0; }
+prepare_change
+mv "$STAGE" "$BACKUP/candidate"
+mkdir "$BACKUP/new-links"
+while IFS= read -r name; do
+  ln -s "$(jq -r --arg name "$name" '.[$name]' "$WORK/links")" "$BACKUP/new-links/$name"
+  [ -L "$BACKUP/new-links/$name" ] || die 'skill discovery requires real symlinks; enable native symlinks for this filesystem and retry'
+done < <(jq -r 'keys[]' "$WORK/links")
+TRANSACTION=1
+if [ "$OLD" -eq 1 ]; then
+  while IFS= read -r name; do rm "$SKILLS/$name"; done < <(jq -r '.links | keys[]' "$RECEIPT")
+  mv "$ROOT" "$BACKUP/previous"
+fi
+mv "$BACKUP/candidate" "$ROOT"
+NEW_ROOT=1
+mv -f "$BACKUP/agents-next" "$AGENTS"
+AGENTS_CHANGED=1
+while IFS= read -r name; do
+  mv "$BACKUP/new-links/$name" "$SKILLS/$name"
+done < <(jq -r 'keys[]' "$WORK/links")
+TRANSACTION=0
+say "Installed Codex workflows ($PROFILES) at $ROOT. Start a new Codex session."
+say "Doctor: bash '$ROOT/payload/plugins/harness-core/bin/harness-codex' doctor --scope $SCOPE"

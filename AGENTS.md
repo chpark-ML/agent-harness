@@ -2,11 +2,11 @@
 
 Conventions for any agent working in or reviewing this repository. **This file is a summary — [`CLAUDE.md`](CLAUDE.md) is the full version, and the reasoning lives in [`docs/adr/`](docs/adr/).** Where the two appear to disagree, `CLAUDE.md` wins and the difference is a bug worth reporting.
 
-This repository *is* a Claude Code harness: guard hooks, skills, and a declarative installer, shipped as plugins. Reviews that only check general correctness miss most of what goes wrong here, because most of what goes wrong is a contribution that is *incomplete* rather than incorrect.
+This repository ships a Claude Code harness and a Codex workflow adapter: shared skills and principles, host-specific installers, and Claude guard hooks. Reviews that only check general correctness miss most of what goes wrong here, because most of what goes wrong is a contribution that is *incomplete* rather than incorrect.
 
 ## The nine things a review should actually check
 
-1. **bash 3.2 and `jq` only — in what ships.** Shipped hooks and `bin/` executables run on stock macOS `/bin/bash` — no `mapfile`, no associative arrays, no `${x^^}`, no python or node. Under `set -u`, expand a possibly-empty array as `"${a[@]+"${a[@]}"}"`. ([ADR-0002](docs/adr/0002-hook-contract.md)) Repo-only scripts under `scripts/` are outside that rule and four of them use python3 — flagging one as a contract violation is a false positive.
+1. **bash 3.2 and `jq` only — in what ships.** Shipped hooks and `bin/` executables run on stock macOS `/bin/bash` — no `mapfile`, no associative arrays, no `${x^^}`, no python or node. Under `set -u`, expand a possibly-empty array as `"${a[@]+"${a[@]}"}"`. ([ADR-0002](docs/adr/0002-hook-contract.md)) Repo-only scripts under `scripts/` are outside that rule and some of them use python3 — flagging one as a contract violation is a false positive.
 
 2. **Only a blocking hook exits 2.** Everything else exits 0 no matter what. An informational hook that stops a turn is a bug. A hook that reads stdin self-disables with one stderr line and `exit 0` when `jq` is absent — a missing dependency must never block work.
 

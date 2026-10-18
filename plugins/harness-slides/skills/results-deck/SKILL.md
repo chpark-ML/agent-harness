@@ -62,7 +62,7 @@ Years, dates, versions, list numbers, slide references, identifiers shaped like 
 
 ## Step 4 — Hand off to rendering
 
-If `slides-grab` is installed, pass the outline to its skills (`slides-grab-plan` → `slides-grab-html` → `slides-grab-export`). If it is not, `harnessctl doctor` prints the install command. This skill ends here — design, layout and PDF are not rebuilt.
+If the `slides-grab` skills are available in this host, pass the outline to them (`slides-grab-plan` → `slides-grab-html` → `slides-grab-export`). If they are absent, hand over the checked outline and report the missing renderer. In Claude Code, `harnessctl doctor` prints the install command; in Codex, use the host's supported renderer setup and do not invoke unavailable skills. This skill ends here — design, layout and PDF are not rebuilt.
 
 ## What this skill does not do
 

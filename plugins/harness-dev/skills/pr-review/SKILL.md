@@ -5,7 +5,7 @@ description: "Use when a pull request is already open on the forge and you want 
 
 # pr-review
 
-Reviews one already-open PR against the checklist in `.claude/rules/harness/dev/review.md` and **reports**.
+Reviews one already-open PR against the installed development checklist and **reports**. Claude Code uses `.claude/rules/harness/dev/review.md`; Codex's `AGENTS.md` gives the installed development rules location for `review.md`. Read the actual rule; report a missing checklist instead of inventing its path.
 
 **What this skill does not do** — it does not commit or push, does not comment on GitHub unless the user explicitly asks, and does not merge. The output is one punch list for the user.
 
@@ -36,7 +36,7 @@ Do not review from the diff alone. A diff shows *changed lines*, so it cannot sh
 gh pr diff <N> --name-only        # the changed files
 ```
 
-Open each with Read. If the branch is not local and the files are not current:
+Read each with the host's file tools. If the branch is not local and the files are not current:
 
 ```bash
 git status --short                # confirm clean first, always

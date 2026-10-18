@@ -1,6 +1,6 @@
 # CLAUDE.md — working on agent-harness itself
 
-This repository ships a Claude Code harness as plugins plus a declarative installer. Read [the consumer defaults](plugins/harness-core/declarative/CLAUDE.md) before non-trivial work; they apply here too. Match the user's language. Shipped content is English except §8's named exceptions.
+This repository ships a Claude Code harness as plugins plus a declarative installer, and delivers the shared workflows to Codex through `harness-codex`. Read [the consumer defaults](plugins/harness-core/declarative/CLAUDE.md) before non-trivial work; they apply here too. Match the user's language. Shipped content is English except §8's named exceptions.
 
 ## 1. What goes where
 

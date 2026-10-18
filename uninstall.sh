@@ -43,6 +43,7 @@ MARKETPLACE_NAME="agent-harness"
 # apart from a marketplace the user added.
 UIUX_MARKETPLACE="ui-ux-pro-max-skill"
 SCOPE="user"
+AGENT_TARGET=claude
 DRY_RUN=0
 PURGE_TEMPLATES=0
 # Resolved after the argument loop, not here. Under `set -u` a `$HOME` read at
@@ -94,6 +95,7 @@ usage() {
   cat <<'EOF'
 
   --scope <s>          user (default) or project — which install to remove
+  --agent <a>          claude (default), codex, or both
   --dry-run            print what would happen; write nothing
   --purge-templates    also remove the template files harnessctl left in place
   -h, --help
@@ -107,6 +109,8 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --scope)           shift; [ $# -gt 0 ] || die "--scope needs a value"; SCOPE="$1" ;;
     --scope=*)         SCOPE="${1#--scope=}" ;;
+    --agent)           shift; [ $# -gt 0 ] || die "--agent needs a value"; AGENT_TARGET="$1" ;;
+    --agent=*)         AGENT_TARGET="${1#--agent=}" ;;
     --dry-run)         DRY_RUN=1 ;;
     --purge-templates) PURGE_TEMPLATES=1 ;;
     -h|--help)         usage; exit 0 ;;
@@ -116,6 +120,30 @@ while [ $# -gt 0 ]; do
 done
 
 case "$SCOPE" in user|project) ;; *) die "--scope takes user or project (got: $SCOPE)" ;; esac
+case "$AGENT_TARGET" in claude|codex|both) ;; *) die "--agent takes claude, codex or both" ;; esac
+
+uninstall_codex() (
+  if [ "$SCOPE" = project ]; then
+    codex_root="$PWD/.agents/agent-harness"
+  else
+    [ -n "${HOME:-}" ] || die "HOME is required to locate Codex user skills"
+    codex_root="${CODEX_HOME:-$HOME/.codex}/agent-harness"
+  fi
+  [ -e "$codex_root" ] || { say "No Codex harness installed at $codex_root"; exit 0; }
+  codex_ctl="$codex_root/payload/plugins/harness-core/bin/harness-codex"
+  if [ ! -f "$codex_ctl" ] && [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    codex_ctl="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plugins/harness-core/bin/harness-codex"
+  fi
+  [ -f "$codex_ctl" ] || die "Codex install is incomplete; use harness-codex from a source checkout to diagnose it"
+  args=(uninstall --scope "$SCOPE")
+  [ "$DRY_RUN" -eq 0 ] || args+=(--dry-run)
+  "${BASH:-bash}" "$codex_ctl" "${args[@]}"
+)
+
+if [ "$AGENT_TARGET" != claude ]; then
+  uninstall_codex || die "Codex removal failed; no Claude plugins were removed"
+  [ "$AGENT_TARGET" != codex ] || exit 0
+fi
 
 # Where install.sh puts the shims, and where it puts a bootstrapped jq with
 # them. Read from the environment first, so an install that overrode BIN_DIR is
