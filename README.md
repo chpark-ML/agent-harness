@@ -9,7 +9,7 @@
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="checks" src="https://img.shields.io/badge/checks-958-blue">
   <img alt="incidents stopped" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
-  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.3k%2F9k-informational">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -194,12 +194,13 @@ Profiles fall on three different axes — what you *do*, what you *produce*, and
 | **Guard hooks** | **7** — 5 blocking, 2 informational | | | | | |
 | **Permission tiers** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | six behavioural principles | | | | | |
-| **Our skills** | `pr-create` | `pr-review`<br>`cross-model-review`<br>`ecosystem-review`<br>`project-verification`<br>`engineering` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **External skills** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **Workflow focus** | PR delivery | Engineering and review | Research records and reproducibility | Presentations and manuscripts | UI/UX design | |
 | **Rule files** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **Executables** | `harnessctl` (install/verify/undo)<br>`harness-log` ([session history → HTML](docs/harness-log.md)) | | | | | |
 | **External tools** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | language server (LSP) |
-| **Always-on context** | ~1,700 tok | **+1,812** | **+787** | **+373** | **+709** | **0** |
+| **Always-on context** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
+
+The maintained skill and dependency inventory is in [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder).
 
 **Hooks and LSP cost nothing in context.** A complete scratch install measured **~3,940 tok per session** for the default `core,dev` at project scope; project scope with everything is **~5,809 tok per session** (macOS, Claude Code 2.1.302, 2026-10-18). User-scope totals were ~2,572 and ~3,899 respectively. Declarative costs use bytes/4; plugin costs come from the CLI and vary by environment. **The 9,000 ceiling is the gate**, enforced by CI on a complete install.
 

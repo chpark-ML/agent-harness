@@ -9,6 +9,7 @@
   <a href="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/chpark-ML/agent-harness/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="checks" src="https://img.shields.io/badge/checks-958-blue">
   <img alt="guards" src="https://img.shields.io/badge/incidents%20stopped-33%2F35-success">
+  <img alt="always-on context" src="https://img.shields.io/badge/always--on%20context-5.8k%2F9k-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
@@ -46,12 +47,13 @@
 | **가드 훅** | **7** — 차단 5 · 정보 2 | | | | | |
 | **권한 3티어** | allow 47 / ask 3 / deny 9 | | | | | |
 | **`CLAUDE.md`** | 행동 6원칙 | | | | | |
-| **우리 스킬** | `pr-create` | `pr-review`<br>`cross-model-review`<br>`ecosystem-review`<br>`project-verification`<br>`engineering` | `research-notes`<br>`repro-checklist` | `results-deck`<br>`manuscript-audit` | | |
-| **외부 스킬** | | [Superpowers](https://github.com/obra/superpowers) 14<br>[`archify`](https://github.com/tt-a1i/archify) 1 | | | [`ui-ux-pro-max`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 7 | |
+| **작업 목적** | PR 작성 | 엔지니어링과 리뷰 | 연구 기록과 재현 | 발표와 원고 | UI/UX 설계 | |
 | **규칙 파일** | `workflow.md` | `review.md` | `notes.md` | | | |
 | **실행파일** | `harnessctl` (설치·검증·제거)<br>`harness-log` ([세션 기록 → HTML](docs/harness-log.md)) | | | | | |
 | **외부 도구** | | | | [`slides-grab`](https://www.npmjs.com/package/slides-grab) (npm) | | 언어 서버 (LSP) |
-| **상시 컨텍스트** | ~1,700 tok | **+1,812** | **+787** | **+373** | **+709** | **0** |
+| **상시 컨텍스트** | ~1,700 tok | **+2,240** | **+787** | **+373** | **+709** | **0** |
+
+스킬과 의존성의 최신 목록은 [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder)에서 관리한다.
 
 **훅과 LSP는 상시 컨텍스트 비용이 0이다.** 격리된 설정의 완전한 설치에서 프로젝트 스코프 기본 `core,dev`는 **~3,940 tok / 세션**, 프로젝트 스코프 전 프로파일은 **~5,809 tok / 세션**으로 측정했다(macOS, Claude Code 2.1.302, 2026-10-18). user 스코프는 각각 ~2,572과 ~3,899였다. 선언형 파일은 바이트/4로 추정하고, 플러그인은 CLI의 비용을 읽으므로 환경에 따라 달라진다. **게이트는 9,000 상한이며**, CI가 완전한 설치에서 강제한다.
 
@@ -375,16 +377,9 @@ bash 3.2 이상 (stock macOS `/bin/bash` 가 바닥) · jq · git · 플러그�
 
 **차단하는 훅만 exit 2.** 정보성 훅이 턴을 막으면 그건 버그다. 차단 메시지는 *무엇이 걸렸는지* 와 *어떻게 푸는지* 를 둘 다 담는다 — 컨슈머는 훅 파일을 자기 트리에서 열 수 없으므로 (플러그인 캐시에 있다) 메시지가 유일한 인터페이스다.
 
-### 스킬 6개
+### 스킬 사용
 
-| 스킬 | 프로파일 | 언제 |
-|---|---|---|
-| `pr-create` | core | 현재 작업을 이 저장소 규약대로 PR 로. PR 열고 멈춤, 머지 안 함 |
-| `pr-review` | dev | **이미 열린** PR 을 체크리스트로 훑고 blocking/non-blocking 분리 |
-| `cross-model-review` | dev | 커밋 범위를 **다른 모델** 에 보내 제2의견. 반출 전 매번 명시적 승인 |
-| `research-notes` | research | 5문서 세트(STATUS·experiment_plan·FINDINGS·ARTIFACTS·review_log) 생성·유지 |
-| `repro-checklist` | research | 시드·환경·config 3기둥. 인용될 결과를 내기 전에 |
-| `results-deck` | slides | 산출물 → 발표 서사. 모든 수치가 근거로 추적되는지 기계 검사 |
+작업의 목적과 생애주기에 맞춰 스킬을 선택한다. 이름·소속·개수는 [agent-layer §3](docs/agent-layer.md#3-categories-and-the-adoption-ladder)에서 관리한다.
 
 각 스킬의 description 은 **negative routing** 을 담는다 — 자기가 안 할 일을 이웃 스킬 이름으로 지목한다. 이게 실제로 작동하는지는 아래에서 쟀다.
 
